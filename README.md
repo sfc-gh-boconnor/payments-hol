@@ -27,6 +27,7 @@ dbt/            dbt project (runs as a dbt Project on Snowflake)
 payments-dashboard/  Streamlit dashboard
 guide/          static HTML lab guide (offline fallback for the Lab Companion)
 lab-companion/  Lab Companion: React app on Snowflake App Runtime with Check my work
+dataops-integration/  DataOps configure step and wake-schedule reschedule
 teardown/       remove everything
 legacy/         original 2-hour lab files
 docs/           data model, ERD and column dictionary
@@ -70,7 +71,16 @@ snow sql -c <connection> -f setup/02_publish_iceberg.sql     # publish as Snowfl
 snow dbt deploy BARCLAYS_DBT --source dbt --database BARCLAYS_HOL --schema ANALYTICS --role HOL_PARTICIPANT -c <connection>
 snow sql -c <connection> -f setup/04_lab_companion.sql      # Lab Companion schema + progress table
 (cd lab-companion && snow app deploy -c <connection> --role HOL_ADMIN)   # Lab Companion app
+snow sql -c <connection> -f setup/05_wake_schedule.sql      # WAKE_LAB / SLEEP_LAB / SCHEDULE_LAB
 ```
+
+Accounts are provisioned days ahead, so set the event times to wake the Lab Companion 30 minutes before the start and let it auto-suspend again afterwards:
+
+```bash
+LAB_START='2026-12-01 09:30:00 +00:00' LAB_END='2026-12-01 13:30:00 +00:00' ./setup/provision_account.sh <connection>
+```
+
+Without them, no tasks are created; run `CALL BARCLAYS_HOL.LAB.WAKE_LAB();` on the day. With DataOps, use [`dataops-integration/`](dataops-integration/README.md), which maps `EVENT_START_DATETIME` / `EVENT_END_DATETIME`.
 
 Then grant `HOL_PARTICIPANT` to the attendee users (`setup/03_add_participants.sql`).
 
