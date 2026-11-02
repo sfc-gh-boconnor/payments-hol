@@ -1,6 +1,8 @@
 -- =====================================================
 -- BARCLAYS PAYMENTS HOL v2 - TEARDOWN (facilitator)
 -- Removes everything the lab created. Run as ACCOUNTADMIN.
+-- First remove the Lab Companion app (from the repo root):
+--   (cd lab-companion && snow app teardown --force --connection <conn> --role HOL_ADMIN)
 -- =====================================================
 
 USE ROLE ACCOUNTADMIN;
@@ -14,6 +16,7 @@ ALTER TAG IF EXISTS BARCLAYS_HOL.GOVERNANCE.DATA_SENSITIVITY UNSET MASKING POLIC
 DROP TABLE IF EXISTS BARCLAYS_HOL.GOVERNANCE.ACCOUNT_REGISTER;
 
 -- Lab database (Iceberg tables on Snowflake-managed storage are dropped with it)
+DROP APPLICATION SERVICE IF EXISTS BARCLAYS_HOL.LAB.LAB_COMPANION;
 DROP DATABASE IF EXISTS BARCLAYS_HOL;
 
 -- Marketplace knowledge extension (re-install with setup/00 if needed)

@@ -5,3 +5,9 @@ dbt/dbt_packages/
 __pycache__/
 *.pyc
 .env
+lab-companion/node_modules/
+lab-companion/.next/
+lab-companion/output/
+lab-companion/*.tsbuildinfo
+lab-companion/.env*
+lab-companion/snowflake.log

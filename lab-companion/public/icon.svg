@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <rect width="64" height="64" rx="14" fill="#11567F"/>
+  <!-- stacked lake layers (Iceberg data product) -->
+  <path d="M14 40l18 8 18-8" stroke="#29B5E8" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M14 32l18 8 18-8" stroke="#29B5E8" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.7"/>
+  <path d="M14 24l18-8 18 8-18 8z" fill="#29B5E8" opacity="0.35" stroke="#29B5E8" stroke-width="3" stroke-linejoin="round"/>
+  <!-- check mark: check my work -->
+  <circle cx="47" cy="17" r="9" fill="#FFFFFF"/>
+  <path d="M42.5 17.2l3 3 6-6" stroke="#059669" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

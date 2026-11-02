@@ -25,7 +25,8 @@ vignettes/      11 self-contained modules, each with README.md + .sql
 pathways/       persona agendas, half-day template, shorter formats
 dbt/            dbt project (runs as a dbt Project on Snowflake)
 payments-dashboard/  Streamlit dashboard
-guide/          interactive HTML lab guide with pathway selector
+guide/          static HTML lab guide (offline fallback for the Lab Companion)
+lab-companion/  Lab Companion: React app on Snowflake App Runtime with Check my work
 teardown/       remove everything
 legacy/         original 2-hour lab files
 docs/           data model, ERD and column dictionary
@@ -49,29 +50,54 @@ docs/           data model, ERD and column dictionary
 
 See [pathways/](pathways/README.md) for the half-day agenda and which vignettes each persona runs.
 
-## Facilitator setup (once per lab account, about 10 minutes)
+## Facilitator setup (once per lab account, done in advance by the hands-on lab team)
 
-Run as ACCOUNTADMIN in a Snowsight worksheet, or with the Snowflake CLI:
+The lab runs on **trial accounts provided by the hands-on lab team**, not in Barclays' environment. The Iceberg sources, read-only access and Marketplace extension recreate the Barclays platform constraints inside those accounts.
+
+From a clone of this GitHub repo, with a Snowflake CLI connection (ACCOUNTADMIN) to each trial account:
+
+```bash
+./setup/provision_account.sh <connection>                          # everything, about 10 minutes
+./setup/provision_account.sh <connection> --with-reference-build   # also pre-builds analytics, semantic views and agents
+```
+
+The script runs these steps in order:
 
 ```bash
 snow sql -c <connection> -f setup/00_admin_provision.sql    # roles, DB, warehouse, Marketplace knowledge extension
 snow sql -c <connection> -f setup/01_seed_synthetic_data.sql # synthetic data (SEED schema)
 snow sql -c <connection> -f setup/02_publish_iceberg.sql     # publish as Snowflake-managed Iceberg
-snow sql -c <connection> -f setup/03_add_participants.sql    # optional: shared-account events
 snow dbt deploy BARCLAYS_DBT --source dbt --database BARCLAYS_HOL --schema ANALYTICS --role HOL_PARTICIPANT -c <connection>
+snow sql -c <connection> -f setup/04_lab_companion.sql      # Lab Companion schema + progress table
+(cd lab-companion && snow app deploy -c <connection> --role HOL_ADMIN)   # Lab Companion app
 ```
+
+Then grant `HOL_PARTICIPANT` to the attendee users (`setup/03_add_participants.sql`).
 
 `00` accepts the Marketplace terms for the free **Snowflake Documentation** knowledge extension (listing `GZSTZ67BY9OQ4`) and installs it as `SNOWFLAKE_DOCS_CKE`. To use a finance publisher instead (for example Investopedia), request the listing in Snowsight, then update the service name in `ai3.sql` and `ai2.sql`.
 
 For the **Payments Ops** pathway (low-code), also pre-run the catch-up scripts and DA1 so the agent has data to use. See [pathways/](pathways/README.md#catch-up-order-any-vignette-any-time).
 
-Teardown: `snow sql -c <connection> -f teardown/teardown.sql`
+Teardown: `(cd lab-companion && snow app teardown --force -c <connection> --role HOL_ADMIN)`, then `snow sql -c <connection> -f teardown/teardown.sql`
+
+## Lab Companion app
+
+Every account gets the **Lab Companion**, a React app on Snowflake App Runtime ([`lab-companion/`](lab-companion/README.md)):
+
+- **Pathways:** the attendee picks a persona and the app orders the modules for them.
+- **Instructions:** each module's steps and SQL, generated from this repo.
+- **Check my work:** a button per module that validates the objects the attendee actually built.
+- **Progress:** stored in `BARCLAYS_HOL.LAB.LAB_PROGRESS`.
+- **Facilitator view:** `/facilitator` shows who is stuck.
+
+The provisioning script prints the app URL at the end.
 
 ## Attendee start
 
 1. Log in and switch to role `HOL_PARTICIPANT`.
-2. Open a Workspace from this Git repository (**Projects > Workspaces > From Git repository**).
-3. Run [`core/C1_explore_iceberg.sql`](core/C1_explore_iceberg.sql), then follow your pathway.
+2. Open the **Lab Companion** app (URL from the facilitator) and choose your pathway.
+3. Open a Workspace from this Git repository (**Projects > Workspaces > From Git repository**) to run the SQL and use Cortex Code.
+4. Start with C1, then press **Check my work** at the end of each module.
 
 Every attendee script starts with `USE SECONDARY ROLES NONE` so facilitators testing with admin rights see exactly what attendees see.
 
