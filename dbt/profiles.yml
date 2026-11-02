@@ -1,0 +1,15 @@
+# profiles.yml - used by dbt Projects on Snowflake (Workspaces / snow dbt deploy).
+# No credentials needed: the project runs inside Snowflake as your current user.
+# For a local dbt CLI, copy profiles.yml.example to ~/.dbt/profiles.yml instead.
+barclays_payments:
+  target: dev
+  outputs:
+    dev:
+      type: snowflake
+      account: ''
+      user: ''
+      role: HOL_PARTICIPANT
+      database: BARCLAYS_HOL
+      warehouse: BARCLAYS_WH
+      schema: ANALYTICS
+      threads: 4

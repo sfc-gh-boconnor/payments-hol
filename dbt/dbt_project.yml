@@ -1,0 +1,25 @@
+name: barclays_payments
+version: '1.0.0'
+config-version: 2
+
+profile: barclays_payments
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  barclays_payments:
+    staging:
+      +schema: ANALYTICS
+      +materialized: view
+    marts:
+      +schema: ANALYTICS
+      +materialized: table

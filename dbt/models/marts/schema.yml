@@ -1,0 +1,56 @@
+version: 2
+
+models:
+  - name: mart_payment_kpis
+    description: >
+      Daily payment KPIs by scheme, region, channel, customer sector, and RM.
+      Joins through the full entity chain: stg_payments → stg_accounts → stg_customers.
+    columns:
+      - name: payment_day
+        tests: [not_null]
+      - name: payment_type
+        tests: [not_null]
+      - name: total_payments
+        tests: [not_null]
+      - name: success_rate_pct
+        description: Percentage of payments with COMPLETED status.
+        tests: [not_null]
+
+  - name: mart_sla_compliance
+    description: >
+      Daily SLA compliance status per payment scheme.
+      Aggregates KPIs to scheme+day, then joins SLA_DEFINITIONS thresholds.
+      Flags each day/type as COMPLIANT, AT RISK, or BREACH.
+    columns:
+      - name: sla_status
+        tests:
+          - accepted_values:
+              values: ['COMPLIANT','AT RISK','BREACH']
+
+  # -----------------------------------------------------------
+  # Built by participants using Cortex Code in Step 3b
+  # -----------------------------------------------------------
+
+  - name: mart_customer_payments
+    description: >
+      Customer-level payment summary. Built by Cortex Code.
+      Joins stg_payments → stg_accounts → stg_customers.
+    columns:
+      - name: customer_id
+        tests: [not_null]
+      - name: customer_name
+        tests: [not_null]
+      - name: total_payments
+        tests: [not_null]
+
+  - name: mart_rm_performance
+    description: >
+      RM portfolio performance. Built by Cortex Code.
+      Full entity chain aggregated to RM level.
+    columns:
+      - name: rm_id
+        tests: [not_null]
+      - name: rm_name
+        tests: [not_null]
+      - name: client_count
+        tests: [not_null]

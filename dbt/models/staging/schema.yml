@@ -1,0 +1,87 @@
+version: 2
+
+sources:
+  - name: raw_data
+    database: BARCLAYS_HOL
+    schema: RAW_DATA
+    tables:
+      - name: payments
+        description: Raw payment transactions from the payments processing engine
+      - name: customer_feedback
+        description: Customer feedback collected across all channels (CRM / Qualtrics)
+      - name: sla_definitions
+        description: SLA thresholds per payment scheme (contractual register)
+      - name: operational_alerts
+        description: Operational alerts from payments monitoring platform
+      - name: relationship_managers
+        description: Relationship managers from HR / CRM system
+      - name: customers
+        description: Corporate client entities from core banking / KYC system
+      - name: accounts
+        description: Bank accounts from core banking / account ledger
+      - name: payment_schemes
+        description: Payment scheme reference data (settlement cycles, limits, cutoffs)
+      - name: error_codes
+        description: Payment error code catalog from payments gateway
+
+models:
+  - name: stg_payments
+    description: Cleaned payments with derived boolean flags and account FK references
+    columns:
+      - name: payment_id
+        description: Unique payment identifier
+        tests:
+          - not_null
+          - unique
+      - name: status
+        tests:
+          - accepted_values:
+              values: ['COMPLETED','PENDING','FAILED','RETURNED']
+      - name: payment_type
+        tests:
+          - accepted_values:
+              values: ['SWIFT','BACS','CHAPS','FASTER_PAYMENTS','SEPA','WIRE_TRANSFER']
+      - name: amount
+        tests:
+          - not_null
+
+  - name: stg_feedback
+    description: Cleaned customer feedback with satisfaction tier and optional payment link
+    columns:
+      - name: feedback_id
+        tests:
+          - not_null
+          - unique
+      - name: rating
+        tests:
+          - not_null
+          - accepted_values:
+              values: [1, 2, 3, 4, 5]
+
+  - name: stg_customers
+    description: Cleaned customers with denormalised relationship manager details
+    columns:
+      - name: customer_id
+        tests:
+          - not_null
+          - unique
+      - name: kyc_status
+        tests:
+          - accepted_values:
+              values: ['APPROVED','PENDING_REVIEW','EXPIRED']
+
+  - name: stg_accounts
+    description: Cleaned accounts with denormalised customer name and sector
+    columns:
+      - name: account_id
+        tests:
+          - not_null
+          - unique
+      - name: account_type
+        tests:
+          - accepted_values:
+              values: ['CURRENT','SETTLEMENT','NOSTRO','VOSTRO']
+      - name: status
+        tests:
+          - accepted_values:
+              values: ['ACTIVE','DORMANT','CLOSED']

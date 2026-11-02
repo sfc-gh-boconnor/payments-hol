@@ -1,0 +1,18 @@
+# profiles.yml.example
+# Copy this file to ~/.dbt/profiles.yml and fill in your account details
+# Your Snowflake account details are on the registration confirmation email
+
+barclays_payments:
+  target: dev
+  outputs:
+    dev:
+      type: snowflake
+      account: <your_account_locator>   # e.g. xy12345.eu-west-2.aws
+      user: <your_username>
+      password: <your_password>
+      role: SYSADMIN
+      database: BARCLAYS_HOL
+      warehouse: BARCLAYS_WH
+      schema: ANALYTICS
+      threads: 4
+      client_session_keep_alive: false
