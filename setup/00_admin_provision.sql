@@ -28,15 +28,6 @@ GRANT ROLE HOL_RESTRICTED  TO ROLE HOL_PARTICIPANT;
 GRANT ROLE HOL_PARTICIPANT TO ROLE HOL_ADMIN;
 GRANT ROLE HOL_ADMIN       TO ROLE SYSADMIN;
 
--- Give the installing user the admin role (attendees: 03_add_participants.sql).
--- A scripting block rather than a session variable, so this file also runs via
--- EXECUTE IMMEDIATE FROM (INSTALL.sql), which does not allow SET.
-EXECUTE IMMEDIATE $$
-BEGIN
-    EXECUTE IMMEDIATE 'GRANT ROLE HOL_ADMIN TO USER "' || REPLACE(CURRENT_USER(), '"', '""') || '"';
-END;
-$$;
-
 -- -----------------------------------------------------
 -- 0.2 Warehouse
 -- -----------------------------------------------------
@@ -49,6 +40,17 @@ CREATE WAREHOUSE IF NOT EXISTS BARCLAYS_WH
 GRANT USAGE, OPERATE ON WAREHOUSE BARCLAYS_WH TO ROLE HOL_PARTICIPANT;
 GRANT USAGE ON WAREHOUSE BARCLAYS_WH TO ROLE HOL_RESTRICTED;
 GRANT ALL ON WAREHOUSE BARCLAYS_WH TO ROLE HOL_ADMIN;
+
+-- Give the installing user the admin role (attendees: 03_add_participants.sql).
+-- A scripting block rather than a session variable, so this file also runs via
+-- EXECUTE IMMEDIATE FROM (INSTALL.sql), which does not allow SET. Scripting
+-- needs a warehouse, and service users (DataOps) have no default one.
+USE WAREHOUSE BARCLAYS_WH;
+EXECUTE IMMEDIATE $$
+BEGIN
+    EXECUTE IMMEDIATE 'GRANT ROLE HOL_ADMIN TO USER "' || REPLACE(CURRENT_USER(), '"', '""') || '"';
+END;
+$$;
 
 -- -----------------------------------------------------
 -- 0.3 Database and schemas
