@@ -27,6 +27,7 @@ dbt/            dbt project (runs as a dbt Project on Snowflake)
 payments-dashboard/  Streamlit dashboard
 guide/          static HTML lab guide (offline fallback for the Lab Companion)
 lab-companion/  Lab Companion: React app on Snowflake App Runtime with Check my work
+getting-started/  DataOps Live attendee landing page (step1.md)
 dataops-integration/  DataOps configure step and wake-schedule reschedule
 teardown/       remove everything
 legacy/         original 2-hour lab files
@@ -51,11 +52,28 @@ docs/           data model, ERD and column dictionary
 
 See [pathways/](pathways/README.md) for the half-day agenda and which vignettes each persona runs.
 
-## Facilitator setup (once per lab account, done in advance by the hands-on lab team)
+## Setup: two options
 
-The lab runs on **trial accounts provided by the hands-on lab team**, not in Barclays' environment. The Iceberg sources, read-only access and Marketplace extension recreate the Barclays platform constraints inside those accounts.
+The Iceberg sources, read-only access and Marketplace extension recreate the Barclays platform constraints inside the lab account. Either way, every account ends with the **Lab Companion**, the live lab guide.
 
-From a clone of this GitHub repo, with a Snowflake CLI connection (ACCOUNTADMIN) to each trial account:
+| | Option 1: DataOps pre-provisioned accounts | Option 2: any account |
+|---|---|---|
+| Who | Hands-on lab team, before the event | Anyone with ACCOUNTADMIN |
+| Data and objects | `dataops-integration/configure_account.sh` (or `setup/provision_account.sh`) | Paste [`INSTALL.sql`](INSTALL.sql) into a Snowsight worksheet, Run All |
+| Lab Companion | Installed by the same script | `./setup/install_lab_companion.sh <connection>` from a clone (Snowflake CLI) |
+| Wake schedule | From the event times | Not needed |
+
+The Lab Companion needs **Snowflake App Runtime** on the account.
+
+### Option 2: any account
+
+1. In Snowsight, open a SQL worksheet, paste [`INSTALL.sql`](INSTALL.sql), set the role to ACCOUNTADMIN and press **Run All** (about 10 minutes). It connects the account to this GitHub repo and runs the setup scripts and dbt project from it. Uncomment section 5 for the Payments Ops reference build.
+2. From a clone of the repo, with a Snowflake CLI connection (ACCOUNTADMIN): `./setup/install_lab_companion.sh <connection>`. It prints the Lab Companion URL.
+3. Grant `HOL_PARTICIPANT` to attendees (`setup/03_add_participants.sql`).
+
+### Option 1: DataOps or CLI, everything in one command
+
+From a clone of this GitHub repo, with a Snowflake CLI connection (ACCOUNTADMIN) to each account:
 
 ```bash
 ./setup/provision_account.sh <connection>                          # everything, about 10 minutes
@@ -68,9 +86,10 @@ The script runs these steps in order:
 snow sql -c <connection> -f setup/00_admin_provision.sql    # roles, DB, warehouse, Marketplace knowledge extension
 snow sql -c <connection> -f setup/01_seed_synthetic_data.sql # synthetic data (SEED schema)
 snow sql -c <connection> -f setup/02_publish_iceberg.sql     # publish as Snowflake-managed Iceberg
+snow sql -c <connection> -f setup/git_repo.sql              # connect the lab GitHub repo (skipped with a warning if unreachable)
 snow dbt deploy BARCLAYS_DBT --source dbt --database BARCLAYS_HOL --schema ANALYTICS --role HOL_PARTICIPANT -c <connection>
 snow sql -c <connection> -f setup/04_lab_companion.sql      # Lab Companion schema + progress table
-(cd lab-companion && snow app deploy -c <connection> --role HOL_ADMIN)   # Lab Companion app
+./setup/install_lab_companion.sh <connection>                # Lab Companion app + URL
 snow sql -c <connection> -f setup/05_wake_schedule.sql      # WAKE_LAB / SLEEP_LAB / SCHEDULE_LAB
 ```
 

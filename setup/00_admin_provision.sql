@@ -28,9 +28,14 @@ GRANT ROLE HOL_RESTRICTED  TO ROLE HOL_PARTICIPANT;
 GRANT ROLE HOL_PARTICIPANT TO ROLE HOL_ADMIN;
 GRANT ROLE HOL_ADMIN       TO ROLE SYSADMIN;
 
--- Grant the attendee role to the current user (repeat per attendee, or use 03_add_participants.sql)
-SET MY_USER = CURRENT_USER();
-GRANT ROLE HOL_ADMIN TO USER IDENTIFIER($MY_USER);
+-- Give the installing user the admin role (attendees: 03_add_participants.sql).
+-- A scripting block rather than a session variable, so this file also runs via
+-- EXECUTE IMMEDIATE FROM (INSTALL.sql), which does not allow SET.
+EXECUTE IMMEDIATE $$
+BEGIN
+    EXECUTE IMMEDIATE 'GRANT ROLE HOL_ADMIN TO USER "' || REPLACE(CURRENT_USER(), '"', '""') || '"';
+END;
+$$;
 
 -- -----------------------------------------------------
 -- 0.2 Warehouse

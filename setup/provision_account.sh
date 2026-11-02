@@ -26,6 +26,8 @@ cd "$ROOT"
 step() { printf '\n==> %s\n' "$*"; }
 run_sql() { snow sql -c "$CONN" -f "$1" > "/tmp/hol_$(basename "$1").log" 2>&1 || { echo "FAILED: $1 (see /tmp/hol_$(basename "$1").log)"; exit 1; }
             if grep -q "─ Error" "/tmp/hol_$(basename "$1").log"; then echo "ERRORS in $1:"; grep -A3 "─ Error" "/tmp/hol_$(basename "$1").log" | head -20; exit 1; fi; }
+# Like run_sql, but returns non-zero instead of stopping the script
+try_sql() { snow sql -c "$CONN" -f "$1" > "/tmp/hol_$(basename "$1").log" 2>&1 && ! grep -q "─ Error" "/tmp/hol_$(basename "$1").log"; }
 
 step "1/7 Roles, database, warehouse, Marketplace knowledge extension"
 run_sql setup/00_admin_provision.sql
@@ -35,6 +37,9 @@ run_sql setup/01_seed_synthetic_data.sql
 
 step "3/7 Publish sources as Snowflake-managed Iceberg"
 run_sql setup/02_publish_iceberg.sql
+if ! try_sql setup/git_repo.sql; then
+  echo "   Warning: lab Git repository not connected (is the repo public? see /tmp/hol_git_repo.sql.log). The lab and Lab Companion still work."
+fi
 
 step "4/7 dbt project (BARCLAYS_HOL.ANALYTICS.BARCLAYS_DBT)"
 snow dbt deploy BARCLAYS_DBT --source dbt --database BARCLAYS_HOL --schema ANALYTICS --role HOL_PARTICIPANT -c "$CONN" > /tmp/hol_dbt.log 2>&1 \
@@ -52,9 +57,7 @@ step "5/7 Lab Companion prerequisites"
 run_sql setup/04_lab_companion.sql
 
 step "6/7 Lab Companion app (built inside Snowflake, ~5 min)"
-( cd lab-companion && snow app deploy --connection "$CONN" --role HOL_ADMIN ) > /tmp/hol_app.log 2>&1 \
-  || { echo "FAILED: app deploy (see /tmp/hol_app.log)"; exit 1; }
-snow sql -c "$CONN" --role HOL_ADMIN -q "GRANT USAGE ON APPLICATION SERVICE BARCLAYS_HOL.LAB.LAB_COMPANION TO ROLE HOL_PARTICIPANT" > /dev/null
+"$ROOT/setup/install_lab_companion.sh" "$CONN" | tee /tmp/hol_companion_url.log
 
 step "7/7 Wake schedule (WAKE_LAB / SLEEP_LAB / SCHEDULE_LAB)"
 run_sql setup/05_wake_schedule.sql
@@ -74,7 +77,5 @@ else
   echo "No LAB_START/LAB_END set: wake tasks not scheduled. On the day: CALL BARCLAYS_HOL.LAB.WAKE_LAB();"
 fi
 
-URL=$(snow sql -c "$CONN" --role HOL_ADMIN --format json -q "SHOW APPLICATION SERVICES LIKE 'LAB_COMPANION' IN SCHEMA BARCLAYS_HOL.LAB" 2>/dev/null \
-      | python3 -c "import json,sys; print(json.load(sys.stdin)[0]['url'])")
-printf '\nDone. Lab Companion: https://%s\n' "$URL"
+printf '\nDone. %s\n' "$(grep 'Lab Companion:' /tmp/hol_companion_url.log)"
 printf 'Attendees: grant HOL_PARTICIPANT to each user (setup/03_add_participants.sql).\n'
