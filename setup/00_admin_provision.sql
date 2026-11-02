@@ -58,6 +58,9 @@ $$;
 CREATE DATABASE IF NOT EXISTS BARCLAYS_HOL
     COMMENT = 'Barclays Payments Data Product - Hands-on Lab v2 (synthetic data)';
 GRANT OWNERSHIP ON DATABASE BARCLAYS_HOL TO ROLE HOL_ADMIN COPY CURRENT GRANTS;
+-- Accounts can be reused (or hold an earlier version of the lab): take over any
+-- schemas that already exist so the IF NOT EXISTS creates below are owned by HOL_ADMIN
+GRANT OWNERSHIP ON ALL SCHEMAS IN DATABASE BARCLAYS_HOL TO ROLE HOL_ADMIN COPY CURRENT GRANTS;
 
 USE ROLE HOL_ADMIN;
 CREATE SCHEMA IF NOT EXISTS BARCLAYS_HOL.SEED      COMMENT = 'Platform team only: synthetic generator output (native tables)';
