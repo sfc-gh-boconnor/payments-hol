@@ -24,7 +24,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 step() { printf '\n==> %s\n' "$*"; }
-run_sql() { snow sql -c "$CONN" -f "$1" > "/tmp/hol_$(basename "$1").log" 2>&1 || { echo "FAILED: $1 (see /tmp/hol_$(basename "$1").log)"; exit 1; }
+run_sql() { snow sql -c "$CONN" -f "$1" > "/tmp/hol_$(basename "$1").log" 2>&1 || { echo "FAILED: $1"; tail -25 "/tmp/hol_$(basename "$1").log"; exit 1; }
             if grep -q "─ Error" "/tmp/hol_$(basename "$1").log"; then echo "ERRORS in $1:"; grep -A3 "─ Error" "/tmp/hol_$(basename "$1").log" | head -20; exit 1; fi; }
 # Like run_sql, but returns non-zero instead of stopping the script
 try_sql() { snow sql -c "$CONN" -f "$1" > "/tmp/hol_$(basename "$1").log" 2>&1 && ! grep -q "─ Error" "/tmp/hol_$(basename "$1").log"; }
