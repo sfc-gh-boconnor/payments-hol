@@ -13,4 +13,4 @@ ARGS=("$CONN")
 [[ "${REFERENCE_BUILD:-false}" == "true" ]] && ARGS+=("--with-reference-build")
 
 LAB_START="$EVENT_START_DATETIME" LAB_END="$EVENT_END_DATETIME" \
-  "$ROOT/setup/provision_account.sh" "${ARGS[@]}"
+  bash "$ROOT/setup/provision_account.sh" "${ARGS[@]}"

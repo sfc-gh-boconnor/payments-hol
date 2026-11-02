@@ -57,7 +57,7 @@ step "5/7 Lab Companion prerequisites"
 run_sql setup/04_lab_companion.sql
 
 step "6/7 Lab Companion app (built inside Snowflake, ~5 min)"
-"$ROOT/setup/install_lab_companion.sh" "$CONN" | tee /tmp/hol_companion_url.log
+bash "$ROOT/setup/install_lab_companion.sh" "$CONN" | tee /tmp/hol_companion_url.log
 
 step "7/7 Wake schedule (WAKE_LAB / SLEEP_LAB / SCHEDULE_LAB)"
 run_sql setup/05_wake_schedule.sql
