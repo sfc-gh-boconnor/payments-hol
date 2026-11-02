@@ -5,8 +5,10 @@
 --            data products - and publish them back to the lake as Iceberg."
 -- Prereq:   Core C1 only. (Produces everything core_analytics.sql would.)
 --
--- Work in a Snowflake Workspace connected to this Git repo:
---   Projects > Workspaces > From Git repository
+-- Work in the lab Workspace payments-hol (Projects > Workspaces), which is
+-- already in your account. On your own account, create one from
+-- https://github.com/sfc-gh-boconnor/payments-hol (Projects > Workspaces >
+-- From Git repository).
 -- =====================================================
 
 USE ROLE HOL_PARTICIPANT;

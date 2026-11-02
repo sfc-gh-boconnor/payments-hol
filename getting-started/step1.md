@@ -26,9 +26,9 @@ The Lab Companion is your lab guide, installed in your account. It has the step-
 
 Choose your pathway, start with **C1**, and press **Check my work** at the end of each module.
 
-### 4. Open a Workspace for the SQL
+### 4. Open the lab Workspace
 
-In Snowsight go to **Projects > Workspaces > From Git repository** to run the lab SQL and use Cortex Code.
+In Snowsight go to **Projects > Workspaces** and open **payments-hol**. It already contains the lab SQL and the dbt project; use it to run the SQL and work with Cortex Code.
 
 ---
 

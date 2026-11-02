@@ -23,7 +23,7 @@ CREATE API INTEGRATION IF NOT EXISTS BARCLAYS_HOL_GITHUB
 -- Change the URL here (and in INSTALL.sql) if the lab is published elsewhere
 CREATE GIT REPOSITORY IF NOT EXISTS BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO
     API_INTEGRATION = BARCLAYS_HOL_GITHUB
-    ORIGIN = 'https://github.com/Snowflake-Solutions/barclays-payments-hol.git'
+    ORIGIN = 'https://github.com/sfc-gh-boconnor/payments-hol.git'
     COMMENT = 'Barclays Payments HOL v2 source';
 
 ALTER GIT REPOSITORY BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO FETCH;

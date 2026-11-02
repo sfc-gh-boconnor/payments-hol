@@ -17,7 +17,7 @@
 - Iceberg data product `DP_SLA_COMPLIANCE`
 
 ## Steps
-1. Open a Workspace from this Git repo and walk `dbt/` - sources point at `RAW_DATA` Iceberg tables with no code changes.
+1. Open the lab Workspace **payments-hol** (**Projects > Workspaces**) and walk `dbt/` - sources point at `RAW_DATA` Iceberg tables with no code changes.
 2. Deploy `dbt/` as a dbt Project and run `build` (Workspace **Deploy/Run**, or `EXECUTE DBT PROJECT`).
 3. Use the two Cortex Code prompts to generate the missing marts; re-run `build` until the pre-written tests pass.
 4. Schedule the project with a task.

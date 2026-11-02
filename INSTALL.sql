@@ -25,7 +25,7 @@ CREATE API INTEGRATION IF NOT EXISTS BARCLAYS_HOL_GITHUB
 
 CREATE GIT REPOSITORY IF NOT EXISTS BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO
     API_INTEGRATION = BARCLAYS_HOL_GITHUB
-    ORIGIN = 'https://github.com/Snowflake-Solutions/barclays-payments-hol.git'
+    ORIGIN = 'https://github.com/sfc-gh-boconnor/payments-hol.git'
     COMMENT = 'Barclays Payments HOL v2 source';
 
 ALTER GIT REPOSITORY BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO FETCH;
@@ -70,8 +70,8 @@ CREATE DBT PROJECT IF NOT EXISTS BARCLAYS_HOL.ANALYTICS.BARCLAYS_DBT
 -- Snowflake App Runtime, which is built with the Snowflake CLI, so this
 -- last step runs from a laptop (Snowflake CLI 3.26+, ACCOUNTADMIN connection):
 --
---   git clone https://github.com/Snowflake-Solutions/barclays-payments-hol.git
---   cd barclays-payments-hol
+--   git clone https://github.com/sfc-gh-boconnor/payments-hol.git
+--   cd payments-hol
 --   ./setup/install_lab_companion.sh <snow-connection-name>
 --
 -- Or in Cortex Code: open the cloned repo and ask
