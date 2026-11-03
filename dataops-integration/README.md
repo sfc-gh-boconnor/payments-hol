@@ -1,5 +1,7 @@
 # DataOps integration
 
+**HOL team:** to run an event, use `dataops-integration/hol_event.py` (create, status, rerun, end), or ask Cortex Code to use the `payments-hol-event` skill (`.cortex/skills/payments-hol-event/`), which walks through it with confirmations.
+
 When the hands-on lab team provisions trial accounts through DataOps, each
 account's configure pipeline can run this repo's provisioning and schedule the
 Lab Companion to wake up before the event.
