@@ -354,8 +354,23 @@ SELECT
         'The fraud detection system flagged a legitimate payment causing a 2-day delay.',
         'Impressed with the new same-day settlement capability. This has transformed our cash management.',
         'The mobile banking app crashes frequently when approving high-value payments. Needs urgent fix.',
-        'Excellent support from the relationship manager. They proactively informed us about the maintenance window.'
-    )[UNIFORM(0,11,RANDOM())]::VARCHAR,
+        'Excellent support from the relationship manager. They proactively informed us about the maintenance window.',
+        -- Explicit churn risk: DA2's AI_FILTER step should find these and only these
+        'Third failed CHAPS payment this quarter. We are now reviewing other banking providers and will decide by month end.',
+        'If the SEPA delays continue we will move our payments business to another bank. Please escalate this.',
+        'Our board has asked us to tender our transaction banking next year after repeated outages and poor communication.',
+        -- Aspects (speed, communication, fees) for AI_SENTIMENT
+        'Settlement speed has been excellent, but the new FX fees are far too high compared with last year.',
+        'Nobody told us about the cut-off time change for Faster Payments. Communication has to improve.',
+        'Fees are fair and the payments always arrive on time. Very happy with the service overall.',
+        -- Payment references and amounts for the AI_EXTRACT prompt
+        'Payment reference PAY-2026-118473 for GBP 2,450,000 was returned without explanation. Please investigate urgently.',
+        'The SWIFT transfer of EUR 380,000 (ref INV-77812) arrived two days late and we paid a penalty to our supplier.',
+        'Thank you for recovering the duplicated BACS run of GBP 96,400 so quickly. Great work by the operations team.',
+        'Our payroll file of 1,240 BACS payments was rejected twice because of a format validation error.',
+        'The relationship manager walked us through the new payment limits and it was genuinely useful.',
+        'Online banking timed out while approving a GBP 5,000,000 CHAPS payment and we had to call to release it.'
+    )[UNIFORM(0,23,RANDOM())]::VARCHAR,
     ARRAY_CONSTRUCT('SWIFT','BACS','CHAPS','FASTER_PAYMENTS','SEPA')[UNIFORM(0,4,RANDOM())]::VARCHAR,
     UNIFORM(1, 5, RANDOM())
 FROM TABLE(GENERATOR(ROWCOUNT => 2000))

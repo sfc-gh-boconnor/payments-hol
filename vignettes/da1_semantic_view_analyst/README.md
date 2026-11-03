@@ -15,15 +15,6 @@
 - Semantic view `SV_CLIENT_360` (4 tables, 3 relationships, metrics and verified queries)
 
 ## Steps
-### Set your context
-Where: payments-hol Workspace > **+ > SQL file**
-```sql
-USE ROLE HOL_PARTICIPANT;
-USE SECONDARY ROLES NONE;
-USE WAREHOUSE BARCLAYS_WH;
-USE SCHEMA BARCLAYS_HOL.ANALYTICS;
-```
-
 ### Build stable contract views
 Where: the Cortex Code sidebar
 Semantic views should sit on contracts, not raw tables.

@@ -19,14 +19,9 @@ Where: Snowsight > **Projects > Workspaces**, then the **My Workspace** dropdown
 This shared Workspace is where you'll build every module. Take a quick tour: **Home** and the **+** button list everything you can create here (SQL file, Notebook, dbt Project, Streamlit App, Agent, Semantic view, Pipeline Builder). The file explorer on the left holds the lab project (`dbt/`, `vignettes/`). The bottom panel has Query History and, later, the dbt pane.
 Expect: the payments-hol Workspace open, with `dbt/` and `vignettes/` in the file explorer
 
-### Open Cortex Code and set your context
-Where: payments-hol Workspace > **+ > SQL file**, then the Cortex Code sidebar (right-hand panel)
-Open the Cortex Code sidebar from the right-hand side of the Workspace. You'll paste every prompt in this lab into it. First, run this in a new SQL file so you work as an attendee:
-```sql
-USE ROLE HOL_PARTICIPANT;
-USE SECONDARY ROLES NONE;
-USE WAREHOUSE BARCLAYS_WH;
-```
+### Open Cortex Code
+Where: payments-hol Workspace, the Cortex Code sidebar (right-hand panel)
+Open the Cortex Code sidebar from the right-hand side of the Workspace. You'll paste every prompt in this lab into it. Start a new chat (**+** at the top of the sidebar) at the beginning of each module, so each one starts with a clean context. You're signed in as `HOL_PARTICIPANT` with the `BARCLAYS_WH` warehouse. Cortex Code still checks for a warehouse at the start of each chat, so each module page gives you a one-line context prompt to paste first. That saves it looking.
 
 ### See what has been published
 ```prompt

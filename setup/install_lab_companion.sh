@@ -22,7 +22,10 @@ echo "Building and deploying the Lab Companion inside Snowflake (~5 min)..."
   echo "If the log mentions App Runtime not being available, this account does not support it."
   exit 1
 }
-snow sql -c "$CONN" --role HOL_ADMIN -q "GRANT USAGE ON APPLICATION SERVICE BARCLAYS_HOL.LAB.LAB_COMPANION TO ROLE HOL_PARTICIPANT" > /dev/null
+# Every lab role opens the app (USAGE on the LAB schema comes from setup/04)
+for ROLE in HOL_PARTICIPANT HOL_RESTRICTED; do
+  snow sql -c "$CONN" --role HOL_ADMIN -q "GRANT USAGE ON APPLICATION SERVICE BARCLAYS_HOL.LAB.LAB_COMPANION TO ROLE $ROLE" > /dev/null
+done
 
 URL=$(snow sql -c "$CONN" --role HOL_ADMIN --format json -q "SHOW APPLICATION SERVICES LIKE 'LAB_COMPANION' IN SCHEMA BARCLAYS_HOL.LAB" 2>/dev/null \
       | python3 -c "import json,sys; print(json.load(sys.stdin)[0]['url'])")

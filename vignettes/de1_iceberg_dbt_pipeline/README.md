@@ -27,7 +27,7 @@ Expect: 4 staging models and 2 marts (`mart_payment_kpis`, `mart_sla_compliance`
 
 ### Run dbt build from the dbt pane
 Where: the bottom panel of the Workspace > **dbt** tab (next to Query History)
-Open the **dbt** tab in the bottom panel. It shows Profile **dev** and a **Run** button. Open the dropdown next to Run, choose **build** (not run), and run it. `build` runs the models and the tests; `run` only runs the models.
+Open the **dbt** tab in the bottom panel. It shows Profile **dev** and a blue **Run** button. Click the arrow next to Run to open **Select Operation**, choose **Build** (not Run) and press **Execute**. Build runs the models and their tests in dependency order; Run only creates the models and skips the tests that prove Cortex Code's marts are correct.
 Expect: the Output tab ends with every model and test passing (`ERROR=0`). Open the **DAG** tab to see the lineage from the Iceberg sources to the marts.
 Check: de1_staging
 
@@ -38,19 +38,25 @@ Create a dbt mart model dbt/models/marts/mart_customer_payments.sql that summari
 ```
 Expect: a new file `dbt/models/marts/mart_customer_payments.sql`. DE2 builds on this mart, so keep these column names.
 
-### Generate mart_rm_performance and make the tests pass
-Where: the Cortex Code sidebar, then the **dbt** pane
+### Generate mart_rm_performance with Cortex Code
+Where: the Cortex Code sidebar
 ```prompt
-Create dbt/models/marts/mart_rm_performance.sql: one row per relationship manager with rm_id, rm_name, client_count, total_volume_gbp, avg_success_rate_pct and the name of their client with the lowest success rate. Build it from mart_customer_payments and stg_customers, and keep the column names and tests in models/marts/schema.yml. Then tell me to run dbt build from the dbt pane, and fix any failing tests I paste back to you.
+Create dbt/models/marts/mart_rm_performance.sql: one row per relationship manager with rm_id, rm_name, client_count, total_volume_gbp, avg_success_rate_pct and the name of their client with the lowest success rate. Build it from mart_customer_payments and stg_customers, and keep the column names and tests in models/marts/schema.yml. Then run dbt build for mart_rm_performance and its upstream models in this Workspace, and fix the model until every test passes.
 ```
-Expect: run **build** from the dbt pane again. You should now see 8 models, with the new tests passing. If a test fails, paste the error into Cortex Code and ask it to fix the model.
+Expect: a new file `dbt/models/marts/mart_rm_performance.sql`, and Cortex Code reporting the tests passing. If it only compiles the model, that's fine: the next step builds everything.
+
+### Build the whole project and check the tests
+Where: the bottom panel of the Workspace > **dbt** tab
+Writing or compiling a model doesn't create its table: only a build does. Click the arrow next to **Run** to open **Select Operation**, choose **Build** and press **Execute**.
+Expect: the Output shows 8 models and every test passing (`ERROR=0`), including the tests for both Cortex Code marts. If a test fails, paste the error into Cortex Code, ask it to fix the model, and Build again.
 Check: de1_coco_marts
 
 ### Schedule the project
 ```prompt
 Create a task BARCLAYS_HOL.ANALYTICS.TSK_DBT_NIGHTLY_BUILD on warehouse BARCLAYS_WH that runs EXECUTE DBT PROJECT BARCLAYS_HOL.ANALYTICS.BARCLAYS_DBT ARGS = 'build' every day at 05:00 Europe/London. Leave it suspended.
 ```
-Expect: the task created and suspended. In production you'd resume it. No external orchestrator needed.
+Expect: the task created and suspended, on a 05:00 Europe/London schedule. In production you'd resume it. No external orchestrator needed.
+Check: de1_task
 
 ### Publish the data product back to the lake as Iceberg
 ```prompt

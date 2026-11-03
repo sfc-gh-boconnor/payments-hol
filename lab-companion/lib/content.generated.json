@@ -21,11 +21,11 @@
      "checkId": ""
     },
     {
-     "title": "Open Cortex Code and set your context",
-     "body": "Open the Cortex Code sidebar from the right-hand side of the Workspace. You'll paste every prompt in this lab into it. First, run this in a new SQL file so you work as an attendee:",
-     "where": "payments-hol Workspace > **+ > SQL file**, then the Cortex Code sidebar (right-hand panel)",
+     "title": "Open Cortex Code",
+     "body": "Open the Cortex Code sidebar from the right-hand side of the Workspace. You'll paste every prompt in this lab into it. Start a new chat (**+** at the top of the sidebar) at the beginning of each module, so each one starts with a clean context. You're signed in as `HOL_PARTICIPANT` with the `BARCLAYS_WH` warehouse. Cortex Code still checks for a warehouse at the start of each chat, so each module page gives you a one-line context prompt to paste first. That saves it looking.",
+     "where": "payments-hol Workspace, the Cortex Code sidebar (right-hand panel)",
      "prompt": "",
-     "sql": "USE ROLE HOL_PARTICIPANT;\nUSE SECONDARY ROLES NONE;\nUSE WAREHOUSE BARCLAYS_WH;",
+     "sql": "",
      "expect": "",
      "checkId": ""
     },
@@ -97,7 +97,7 @@
     },
     {
      "title": "Run dbt build from the dbt pane",
-     "body": "Open the **dbt** tab in the bottom panel. It shows Profile **dev** and a **Run** button. Open the dropdown next to Run, choose **build** (not run), and run it. `build` runs the models and the tests; `run` only runs the models.",
+     "body": "Open the **dbt** tab in the bottom panel. It shows Profile **dev** and a blue **Run** button. Click the arrow next to Run to open **Select Operation**, choose **Build** (not Run) and press **Execute**. Build runs the models and their tests in dependency order; Run only creates the models and skips the tests that prove Cortex Code's marts are correct.",
      "where": "the bottom panel of the Workspace > **dbt** tab (next to Query History)",
      "prompt": "",
      "sql": "",
@@ -114,12 +114,21 @@
      "checkId": ""
     },
     {
-     "title": "Generate mart_rm_performance and make the tests pass",
+     "title": "Generate mart_rm_performance with Cortex Code",
      "body": "",
-     "where": "the Cortex Code sidebar, then the **dbt** pane",
-     "prompt": "Create dbt/models/marts/mart_rm_performance.sql: one row per relationship manager with rm_id, rm_name, client_count, total_volume_gbp, avg_success_rate_pct and the name of their client with the lowest success rate. Build it from mart_customer_payments and stg_customers, and keep the column names and tests in models/marts/schema.yml. Then tell me to run dbt build from the dbt pane, and fix any failing tests I paste back to you.",
+     "where": "the Cortex Code sidebar",
+     "prompt": "Create dbt/models/marts/mart_rm_performance.sql: one row per relationship manager with rm_id, rm_name, client_count, total_volume_gbp, avg_success_rate_pct and the name of their client with the lowest success rate. Build it from mart_customer_payments and stg_customers, and keep the column names and tests in models/marts/schema.yml. Then run dbt build for mart_rm_performance and its upstream models in this Workspace, and fix the model until every test passes.",
      "sql": "",
-     "expect": "run **build** from the dbt pane again. You should now see 8 models, with the new tests passing. If a test fails, paste the error into Cortex Code and ask it to fix the model.",
+     "expect": "a new file `dbt/models/marts/mart_rm_performance.sql`, and Cortex Code reporting the tests passing. If it only compiles the model, that's fine: the next step builds everything.",
+     "checkId": ""
+    },
+    {
+     "title": "Build the whole project and check the tests",
+     "body": "Writing or compiling a model doesn't create its table: only a build does. Click the arrow next to **Run** to open **Select Operation**, choose **Build** and press **Execute**.",
+     "where": "the bottom panel of the Workspace > **dbt** tab",
+     "prompt": "",
+     "sql": "",
+     "expect": "the Output shows 8 models and every test passing (`ERROR=0`), including the tests for both Cortex Code marts. If a test fails, paste the error into Cortex Code, ask it to fix the model, and Build again.",
      "checkId": "de1_coco_marts"
     },
     {
@@ -128,8 +137,8 @@
      "where": "",
      "prompt": "Create a task BARCLAYS_HOL.ANALYTICS.TSK_DBT_NIGHTLY_BUILD on warehouse BARCLAYS_WH that runs EXECUTE DBT PROJECT BARCLAYS_HOL.ANALYTICS.BARCLAYS_DBT ARGS = 'build' every day at 05:00 Europe/London. Leave it suspended.",
      "sql": "",
-     "expect": "the task created and suspended. In production you'd resume it. No external orchestrator needed.",
-     "checkId": ""
+     "expect": "the task created and suspended, on a 05:00 Europe/London schedule. In production you'd resume it. No external orchestrator needed.",
+     "checkId": "de1_task"
     },
     {
      "title": "Publish the data product back to the lake as Iceberg",
@@ -146,7 +155,7 @@
    "kind": "vignette",
    "track": "Data Engineer",
    "sqlPath": "vignettes/de1_iceberg_dbt_pipeline/de1.sql",
-   "sql": "-- =====================================================\n-- VIGNETTE DE1: ICEBERG + dbt PIPELINE WITH CORTEX CODE   (~60 min)\n-- Persona: Data Engineer\n-- Question: \"Turn the published Iceberg sources into governed, tested\n--            data products - and publish them back to the lake as Iceberg.\"\n-- Prereq:   Core C1 only. (Produces everything core_analytics.sql would.)\n--\n-- Work in the lab Workspace payments-hol (Projects > Workspaces), which is\n-- already in your account. On your own account, create one from\n-- https://github.com/sfc-gh-boconnor/payments-hol (Projects > Workspaces >\n-- From Git repository).\n-- =====================================================\n\nUSE ROLE HOL_PARTICIPANT;\nUSE SECONDARY ROLES NONE;   -- see exactly what an attendee sees\nUSE WAREHOUSE BARCLAYS_WH;\nUSE SCHEMA BARCLAYS_HOL.ANALYTICS;\n\n-- -----------------------------------------------------\n-- DE1.1 Walk the dbt project (Workspace file explorer: dbt/)\n--   models/staging/schema.yml  - sources point at BARCLAYS_HOL.RAW_DATA (Iceberg)\n--   models/staging/*.sql       - 4 views: cast, clean, denormalise\n--   models/marts/*.sql         - mart_payment_kpis, mart_sla_compliance\n--   macros/generate_schema_name.sql - land models in ANALYTICS, not ANALYTICS_ANALYTICS\n-- dbt reads Iceberg sources exactly like native tables. No code changes.\n-- -----------------------------------------------------\n\n-- -----------------------------------------------------\n-- DE1.2 Deploy and run as a dbt Project on Snowflake\n-- In the Workspace: open the dbt tab in the bottom panel, choose build from the\n-- Run dropdown and run it.\n-- Or from SQL / a task (this is how you would schedule it in production):\n-- -----------------------------------------------------\nEXECUTE DBT PROJECT BARCLAYS_HOL.ANALYTICS.BARCLAYS_DBT ARGS = 'build';\n-- Expect: Done. PASS=27 WARN=0 ERROR=0\n\n-- Schedule it - one task, no external orchestrator\nCREATE OR REPLACE TASK TSK_DBT_NIGHTLY_BUILD\n    WAREHOUSE = BARCLAYS_WH\n    SCHEDULE  = 'USING CRON 0 5 * * * Europe/London'\nAS\n    EXECUTE DBT PROJECT BARCLAYS_HOL.ANALYTICS.BARCLAYS_DBT ARGS = 'build';\n-- Left suspended for the lab. In production: ALTER TASK TSK_DBT_NIGHTLY_BUILD RESUME;\n\n-- -----------------------------------------------------\n-- DE1.3 Accelerate with Cortex Code (CoCo panel in the Workspace)\n-- Prompt 1:\n--   \"Create a dbt mart model mart_customer_payments in dbt/models/marts that\n--    summarises payment activity per customer: total payments, total volume,\n--    success rate and most-used payment scheme. Join stg_payments -> stg_accounts\n--    -> stg_customers and follow the patterns in mart_payment_kpis.sql.\"\n-- Prompt 2:\n--   \"Create mart_rm_performance: one row per relationship manager with rm_id,\n--    rm_name, client_count, total volume, average success rate and their client\n--    with the lowest success rate. Then run dbt build and fix any failing tests.\"\n-- The tests for both models already exist in models/marts/schema.yml, so\n-- `dbt build` proves CoCo's code is correct.\n-- -----------------------------------------------------\n\n-- -----------------------------------------------------\n-- DE1.4 Validate\n-- -----------------------------------------------------\nSELECT 'STG_PAYMENTS' AS OBJ, COUNT(*) AS ROWS_ FROM STG_PAYMENTS\nUNION ALL SELECT 'MART_PAYMENT_KPIS',   COUNT(*) FROM MART_PAYMENT_KPIS\nUNION ALL SELECT 'MART_SLA_COMPLIANCE', COUNT(*) FROM MART_SLA_COMPLIANCE;\n\nSELECT SLA_STATUS, COUNT(*) AS SCHEME_DAYS\nFROM MART_SLA_COMPLIANCE GROUP BY SLA_STATUS ORDER BY SCHEME_DAYS DESC;\n\n-- -----------------------------------------------------\n-- DE1.5 Publish the data product back to the lake as Iceberg\n-- Consumers on other engines (Spark, Trino, etc.) can now read the mart with no copy.\n-- Iceberg stores microsecond precision, so timestamps are cast to scale 6.\n-- -----------------------------------------------------\nCREATE OR REPLACE ICEBERG TABLE DP_SLA_COMPLIANCE\n    CATALOG = 'SNOWFLAKE'\n    COMMENT = 'Data product: daily SLA compliance per payment scheme (Iceberg)'\nAS SELECT * REPLACE (PAYMENT_DAY::TIMESTAMP_NTZ(6) AS PAYMENT_DAY)\n   FROM MART_SLA_COMPLIANCE;\n\nSELECT SYSTEM$GET_ICEBERG_TABLE_INFORMATION('BARCLAYS_HOL.ANALYTICS.DP_SLA_COMPLIANCE') AS METADATA_LOCATION;\n\n-- Barclayflake note: in production the Iceberg table would use the bank's\n-- EXTERNAL_VOLUME (one volume and one IAM role, shared across accounts)\n-- instead of Snowflake-managed storage. The SQL above is otherwise unchanged.\n\nSELECT 'DE1 complete' AS STATUS;\n"
+   "sql": "-- =====================================================\n-- VIGNETTE DE1: ICEBERG + dbt PIPELINE WITH CORTEX CODE   (~60 min)\n-- Persona: Data Engineer\n-- Question: \"Turn the published Iceberg sources into governed, tested\n--            data products - and publish them back to the lake as Iceberg.\"\n-- Prereq:   Core C1 only. (Produces everything core_analytics.sql would.)\n--\n-- Work in the lab Workspace payments-hol (Projects > Workspaces > My Workspace dropdown), which is\n-- already in your account. On your own account, create one from\n-- https://github.com/sfc-gh-boconnor/payments-hol (Projects > Workspaces >\n-- From Git repository).\n-- =====================================================\n\nUSE ROLE HOL_PARTICIPANT;\nUSE SECONDARY ROLES NONE;   -- see exactly what an attendee sees\nUSE WAREHOUSE BARCLAYS_WH;\nUSE SCHEMA BARCLAYS_HOL.ANALYTICS;\n\n-- -----------------------------------------------------\n-- DE1.1 Walk the dbt project (Workspace file explorer: dbt/)\n--   models/staging/schema.yml  - sources point at BARCLAYS_HOL.RAW_DATA (Iceberg)\n--   models/staging/*.sql       - 4 views: cast, clean, denormalise\n--   models/marts/*.sql         - mart_payment_kpis, mart_sla_compliance\n--   macros/generate_schema_name.sql - land models in ANALYTICS, not ANALYTICS_ANALYTICS\n-- dbt reads Iceberg sources exactly like native tables. No code changes.\n-- -----------------------------------------------------\n\n-- -----------------------------------------------------\n-- DE1.2 Deploy and run as a dbt Project on Snowflake\n-- In the Workspace: open the dbt tab in the bottom panel, choose build from the\n-- Run dropdown and run it.\n-- Or from SQL / a task (this is how you would schedule it in production):\n-- -----------------------------------------------------\nEXECUTE DBT PROJECT BARCLAYS_HOL.ANALYTICS.BARCLAYS_DBT ARGS = 'build';\n-- Expect: Done. PASS=27 WARN=0 ERROR=0\n\n-- Schedule it - one task, no external orchestrator\nCREATE OR REPLACE TASK TSK_DBT_NIGHTLY_BUILD\n    WAREHOUSE = BARCLAYS_WH\n    SCHEDULE  = 'USING CRON 0 5 * * * Europe/London'\nAS\n    EXECUTE DBT PROJECT BARCLAYS_HOL.ANALYTICS.BARCLAYS_DBT ARGS = 'build';\n-- Left suspended for the lab. In production: ALTER TASK TSK_DBT_NIGHTLY_BUILD RESUME;\n\n-- -----------------------------------------------------\n-- DE1.3 Accelerate with Cortex Code (CoCo panel in the Workspace)\n-- Prompt 1:\n--   \"Create a dbt mart model mart_customer_payments in dbt/models/marts that\n--    summarises payment activity per customer: total payments, total volume,\n--    success rate and most-used payment scheme. Join stg_payments -> stg_accounts\n--    -> stg_customers and follow the patterns in mart_payment_kpis.sql.\"\n-- Prompt 2:\n--   \"Create mart_rm_performance: one row per relationship manager with rm_id,\n--    rm_name, client_count, total volume, average success rate and their client\n--    with the lowest success rate. Then run dbt build and fix any failing tests.\"\n-- The tests for both models already exist in models/marts/schema.yml, so\n-- `dbt build` proves CoCo's code is correct.\n-- -----------------------------------------------------\n\n-- -----------------------------------------------------\n-- DE1.4 Validate\n-- -----------------------------------------------------\nSELECT 'STG_PAYMENTS' AS OBJ, COUNT(*) AS ROWS_ FROM STG_PAYMENTS\nUNION ALL SELECT 'MART_PAYMENT_KPIS',   COUNT(*) FROM MART_PAYMENT_KPIS\nUNION ALL SELECT 'MART_SLA_COMPLIANCE', COUNT(*) FROM MART_SLA_COMPLIANCE;\n\nSELECT SLA_STATUS, COUNT(*) AS SCHEME_DAYS\nFROM MART_SLA_COMPLIANCE GROUP BY SLA_STATUS ORDER BY SCHEME_DAYS DESC;\n\n-- -----------------------------------------------------\n-- DE1.5 Publish the data product back to the lake as Iceberg\n-- Consumers on other engines (Spark, Trino, etc.) can now read the mart with no copy.\n-- Iceberg stores microsecond precision, so timestamps are cast to scale 6.\n-- -----------------------------------------------------\nCREATE OR REPLACE ICEBERG TABLE DP_SLA_COMPLIANCE\n    CATALOG = 'SNOWFLAKE'\n    COMMENT = 'Data product: daily SLA compliance per payment scheme (Iceberg)'\nAS SELECT * REPLACE (PAYMENT_DAY::TIMESTAMP_NTZ(6) AS PAYMENT_DAY)\n   FROM MART_SLA_COMPLIANCE;\n\nSELECT SYSTEM$GET_ICEBERG_TABLE_INFORMATION('BARCLAYS_HOL.ANALYTICS.DP_SLA_COMPLIANCE') AS METADATA_LOCATION;\n\n-- Barclayflake note: in production the Iceberg table would use the bank's\n-- EXTERNAL_VOLUME (one volume and one IAM role, shared across accounts)\n-- instead of Snowflake-managed storage. The SQL above is otherwise unchanged.\n\nSELECT 'DE1 complete' AS STATUS;\n"
   },
   {
    "code": "DE2",
@@ -158,25 +167,17 @@
    "build": [
     "`DT_LIVE_SLA_BREACHES` (1-minute lag)",
     "`DT_FAILED_PAYMENT_TRIAGE` reading Iceberg directly, chained to `DT_RETRYABLE_SUMMARY`",
-    "System and custom data metric functions with an expectation on `MART_CUSTOMER_PAYMENTS`"
+    "System and custom data metric functions with an expectation on `MART_CUSTOMER_PAYMENTS`",
+    "A Pipeline Builder task graph `payments_nightly` that orchestrates the dbt build, DT refresh and DQ checks"
    ],
    "steps": [
-    {
-     "title": "Set your context",
-     "body": "",
-     "where": "payments-hol Workspace > **+ > SQL file**",
-     "prompt": "",
-     "sql": "USE ROLE HOL_PARTICIPANT;\nUSE SECONDARY ROLES NONE;\nUSE WAREHOUSE BARCLAYS_WH;\nUSE SCHEMA BARCLAYS_HOL.ANALYTICS;",
-     "expect": "",
-     "checkId": ""
-    },
     {
      "title": "Build the SLA breach monitor",
      "body": "",
      "where": "the Cortex Code sidebar",
      "prompt": "Create a dynamic table BARCLAYS_HOL.ANALYTICS.DT_LIVE_SLA_BREACHES with TARGET_LAG = '1 minute' on warehouse BARCLAYS_WH. From MART_SLA_COMPLIANCE where SLA_STATUS = 'BREACH', group by PAYMENT_TYPE and return total payments, breached (failed) payments, breach rate % and the earliest and latest breach day.",
      "sql": "",
-     "expect": "one row per payment scheme with breaches",
+     "expect": "one row per payment scheme with breaches. To see it in the UI: Snowsight > **Catalog > Database Explorer > BARCLAYS_HOL > ANALYTICS > Dynamic Tables > DT_LIVE_SLA_BREACHES**, then the **Data Preview** and **Lineage** tabs (lineage back to `MART_SLA_COMPLIANCE` and the Iceberg sources).",
      "checkId": ""
     },
     {
@@ -207,13 +208,13 @@
      "checkId": "de2_dmfs"
     },
     {
-     "title": "Optional: explore Pipeline Builder",
-     "body": "Pipeline Builder is a new, visual way to build pipelines in the Workspace. Open it and see how it lays out sources, transformations and targets. Your dynamic tables above stay the source of truth for this module.",
+     "title": "Orchestrate the pipeline with Pipeline Builder",
+     "body": "Dynamic tables keep themselves fresh, but the dbt build and the data quality checks need scheduling. Pipeline Builder draws that as a task graph. In **Create Pipeline Builder**, name it `payments_nightly` and for **Database and schema** choose **BARCLAYS_HOL.ANALYTICS**. Not `RAW_DATA`: the Iceberg sources are read-only, so creating it there fails with \"must have CREATE DCM PROJECT\". Then use **Generate with Cortex** with this prompt:",
      "where": "payments-hol Workspace > **+ > Pipeline Builder** (Preview)",
-     "prompt": "",
+     "prompt": "Build a nightly pipeline in BARCLAYS_HOL.ANALYTICS on warehouse BARCLAYS_WH, scheduled at 05:00 Europe/London. Task 1 BARCLAYS_HOL.ANALYTICS.PIPE_DBT_BUILD runs EXECUTE DBT PROJECT BARCLAYS_HOL.ANALYTICS.BARCLAYS_DBT ARGS = 'build'. Task 2 BARCLAYS_HOL.ANALYTICS.PIPE_REFRESH_SLA runs after it: ALTER DYNAMIC TABLE BARCLAYS_HOL.ANALYTICS.DT_LIVE_SLA_BREACHES REFRESH. Task 3 BARCLAYS_HOL.ANALYTICS.PIPE_DQ_CHECKS runs after task 1: SELECT the NULL_COUNT on RM_NAME and DUPLICATE_COUNT on CUSTOMER_ID of BARCLAYS_HOL.ANALYTICS.MART_CUSTOMER_PAYMENTS. Keep the tasks suspended after deploy.",
      "sql": "",
-     "expect": "",
-     "checkId": ""
+     "expect": "a canvas with three connected tasks (dbt build, then the dynamic table refresh and the data quality checks). Review the plan and **Deploy**. The tasks and the task graph are created suspended in `ANALYTICS`, and you can see them under **Monitoring > Task History**. Pipeline Builder orchestrates tasks; it doesn't create the dynamic tables themselves, which is why you built those first.",
+     "checkId": "de2_pipeline"
     }
    ],
    "check": "`SELECT * FROM DT_RETRYABLE_SUMMARY` returns rows; the on-demand data metric checks return `0, 0, 0`.",
@@ -235,15 +236,6 @@
     "Semantic view `SV_CLIENT_360` (4 tables, 3 relationships, metrics and verified queries)"
    ],
    "steps": [
-    {
-     "title": "Set your context",
-     "body": "",
-     "where": "payments-hol Workspace > **+ > SQL file**",
-     "prompt": "",
-     "sql": "USE ROLE HOL_PARTICIPANT;\nUSE SECONDARY ROLES NONE;\nUSE WAREHOUSE BARCLAYS_WH;\nUSE SCHEMA BARCLAYS_HOL.ANALYTICS;",
-     "expect": "",
-     "checkId": ""
-    },
     {
      "title": "Build stable contract views",
      "body": "Semantic views should sit on contracts, not raw tables.",
@@ -297,50 +289,60 @@
    "question": "What are corporate clients actually complaining about, by scheme and by relationship manager - without reading 2,000 comments?",
    "build": [
     "`FEEDBACK_ENRICHED` (sentiment + topic)",
-    "`RM_FEEDBACK_THEMES` (AI_AGG themes and actions per RM)"
+    "`RM_FEEDBACK_THEMES` (AI_AGG themes and actions per RM)",
+    "Notebook `da2_feedback_analysis` with the whole analysis and a sentiment-by-sector chart"
    ],
    "steps": [
     {
-     "title": "Set your context",
-     "body": "",
-     "where": "payments-hol Workspace > **+ > SQL file** (or **+ > Notebook**)",
+     "title": "Create the DA2 notebook",
+     "body": "Name it `da2_feedback_analysis`. When it asks for compute, choose the compute pool **NOTEBOOK_POOL** and the warehouse **BARCLAYS_WH** (SQL cells run on the warehouse; Python and charts run on the pool). The first start can take a minute or two while the pool resumes. You'll build this whole module as cells in this notebook: Cortex Code adds them for you, and you run each one.",
+     "where": "payments-hol Workspace > **+ > Notebook**",
      "prompt": "",
-     "sql": "USE ROLE HOL_PARTICIPANT;\nUSE SECONDARY ROLES NONE;\nUSE WAREHOUSE BARCLAYS_WH;\nUSE SCHEMA BARCLAYS_HOL.ANALYTICS;",
-     "expect": "",
+     "sql": "",
+     "expect": "an empty notebook open in the Workspace, with a connected kernel",
      "checkId": ""
     },
     {
      "title": "Score sentiment by aspect",
      "body": "",
-     "where": "the Cortex Code sidebar",
-     "prompt": "Using AI_SENTIMENT, score 5 rows of FEEDBACK_TEXT from BARCLAYS_HOL.ANALYTICS.STG_FEEDBACK overall and for the aspects speed, communication and fees. Explain what the output means.",
+     "where": "the Cortex Code sidebar, with `da2_feedback_analysis` open",
+     "prompt": "In the open notebook da2_feedback_analysis, add a markdown cell titled \"DA2: AI SQL on customer feedback\", then a SQL cell named aspect_sentiment that uses AI_SENTIMENT to score 5 rows of FEEDBACK_TEXT from BARCLAYS_HOL.ANALYTICS.STG_FEEDBACK overall and for the aspects speed, communication and fees. Run it and explain the output.",
      "sql": "",
-     "expect": "an overall score plus a separate sentiment for each aspect",
+     "expect": "the cell's result shows an overall sentiment plus a separate one for each aspect (positive, negative, neutral, mixed or unknown)",
      "checkId": ""
     },
     {
      "title": "Enrich all feedback once",
      "body": "",
      "where": "",
-     "prompt": "Create a table BARCLAYS_HOL.ANALYTICS.FEEDBACK_ENRICHED from STG_FEEDBACK left-joined to STG_CUSTOMERS. Keep the feedback columns plus CUSTOMER_NAME, CUSTOMER_SECTOR and RM_NAME. Add SENTIMENT_SCORE (rounded to 3 dp), SENTIMENT_LABEL (POSITIVE above 0.3, NEGATIVE below -0.3, otherwise NEUTRAL) and TOPIC_CATEGORY from AI_CLASSIFY into one of: Performance Issue, Service Quality, Technical Problem, Positive Experience, Feature Request. Then show average sentiment and % negative by PAYMENT_TYPE.",
+     "prompt": "Add a SQL cell named enrich that creates the table BARCLAYS_HOL.ANALYTICS.FEEDBACK_ENRICHED from STG_FEEDBACK left-joined to STG_CUSTOMERS. Keep the feedback columns plus CUSTOMER_NAME, CUSTOMER_SECTOR and RM_NAME. Add SENTIMENT_SCORE from AI_SENTIMENT's overall sentiment (positive = 1, negative = -1, neutral or mixed = 0; don't use the legacy SNOWFLAKE.CORTEX.SENTIMENT, which is blocked on new accounts), SENTIMENT_LABEL (POSITIVE above 0.3, NEGATIVE below -0.3, otherwise NEUTRAL) and TOPIC_CATEGORY from AI_CLASSIFY into one of: Performance Issue, Service Quality, Technical Problem, Positive Experience, Feature Request. Then add a SQL cell named by_scheme showing average sentiment and % negative by PAYMENT_TYPE, and run both.",
      "sql": "",
-     "expect": "about 2,000 scored rows, every one with a topic. Score once, query many times.",
+     "expect": "about 2,000 scored rows, every one with a topic, and a per-scheme summary. Score once, query many times.",
      "checkId": "da2_enriched"
     },
     {
      "title": "Find churn risk in plain English",
      "body": "",
      "where": "",
-     "prompt": "Use AI_FILTER on FEEDBACK_ENRICHED to find negative feedback that mentions a risk of the client moving their business elsewhere. Show customer, payment type and the first 120 characters of the feedback.",
+     "prompt": "Add a SQL cell named churn_risk that uses AI_FILTER on BARCLAYS_HOL.ANALYTICS.FEEDBACK_ENRICHED to find negative feedback where the client explicitly says they may leave, switch bank, move their business or tender their banking - not ordinary complaints. Show customer, payment type and the first 120 characters of the feedback, grouped by distinct feedback text with a count. Run it.",
      "sql": "",
-     "expect": "a short list of at-risk clients, found by meaning rather than keywords",
+     "expect": "a short list - three distinct churn statements (reviewing other providers, moving to another bank, tendering their banking) - found by meaning rather than keywords. Ordinary complaints about delays or outages are left out. That's the difference between AI_FILTER and a sentiment score",
+     "checkId": ""
+    },
+    {
+     "title": "Chart sentiment by sector",
+     "body": "",
+     "where": "",
+     "prompt": "Add a SQL cell named sector_trend with one row per complete month and customer sector from BARCLAYS_HOL.ANALYTICS.FEEDBACK_ENRICHED: MONTH, CUSTOMER_SECTOR, AVG_SENTIMENT and FEEDBACK_COUNT, excluding the current partial month. Then add a Python cell that plots sector_trend as an altair line chart (MONTH on x, AVG_SENTIMENT on y, one line per CUSTOMER_SECTOR, tooltip with the count). Run both and tell me which sectors are getting worse.",
+     "sql": "",
+     "expect": "a line chart under the Python cell, one line per sector, and Cortex Code's summary of which sectors are worsening. Hover over a point to see its feedback count.",
      "checkId": ""
     },
     {
      "title": "Summarise complaint themes per RM",
      "body": "",
      "where": "",
-     "prompt": "Create a table BARCLAYS_HOL.ANALYTICS.RM_FEEDBACK_THEMES with one row per RM_NAME from the NEGATIVE rows of FEEDBACK_ENRICHED: NEGATIVE_FEEDBACK (count) and TOP_THEMES using AI_AGG with the instruction \"You are briefing a corporate banking relationship manager. List the top 3 recurring complaint themes in this client feedback, each with a one-line recommended action. Be concise.\"",
+     "prompt": "Add a SQL cell named rm_themes that creates the table BARCLAYS_HOL.ANALYTICS.RM_FEEDBACK_THEMES with one row per RM_NAME from the NEGATIVE rows of FEEDBACK_ENRICHED: NEGATIVE_FEEDBACK (count) and TOP_THEMES using AI_AGG with the instruction \"You are briefing a corporate banking relationship manager. List the top 3 recurring complaint themes in this client feedback, each with a one-line recommended action. Be concise.\" Run it and show the results.",
      "sql": "",
      "expect": "one row per RM with three themes and actions",
      "checkId": "da2_rm_themes"
@@ -349,18 +351,9 @@
      "title": "Draft a client reply",
      "body": "",
      "where": "",
-     "prompt": "Use AI_COMPLETE to draft a short, professional reply from a UK corporate bank to the most negative item in FEEDBACK_ENRICHED: acknowledge the issue, avoid admitting liability and offer a follow-up call.",
+     "prompt": "Add a SQL cell named draft_reply that uses AI_COMPLETE to draft a short, professional reply from a UK corporate bank to the most negative item in FEEDBACK_ENRICHED: acknowledge the issue, avoid admitting liability and offer a follow-up call. Run it.",
      "sql": "",
-     "expect": "a client-ready draft for a human to review",
-     "checkId": ""
-    },
-    {
-     "title": "Go further",
-     "body": "",
-     "where": "",
-     "prompt": "Using FEEDBACK_ENRICHED, show me which customer sectors have worsening sentiment month over month and chart it.",
-     "sql": "",
-     "expect": "a month-by-sector trend and a chart in the sidebar",
+     "expect": "a client-ready draft for a human to review. The notebook is now a complete, re-runnable analysis you could share or schedule.",
      "checkId": ""
     }
    ],
@@ -369,7 +362,7 @@
    "kind": "vignette",
    "track": "Data Analyst",
    "sqlPath": "vignettes/da2_aisql_feedback/da2.sql",
-   "sql": "-- =====================================================\n-- VIGNETTE DA2: AI SQL ON CUSTOMER FEEDBACK   (~45 min)\n-- Persona: Data Analyst\n-- Question: \"What are corporate clients actually complaining about, by\n--            scheme and by relationship manager - without reading 2,000 comments?\"\n-- Prereq:   setup/catchup/core_analytics.sql (for STG_* views), or DE1\n-- All functions run inside Snowflake: no data leaves the platform, no model training.\n-- =====================================================\n\nUSE ROLE HOL_PARTICIPANT;\nUSE SECONDARY ROLES NONE;   -- see exactly what an attendee sees\nUSE WAREHOUSE BARCLAYS_WH;\nUSE SCHEMA BARCLAYS_HOL.ANALYTICS;\n\n-- -----------------------------------------------------\n-- DA2.1 Overall and aspect-based sentiment\n-- AI_SENTIMENT scores the whole text and named aspects separately\n-- -----------------------------------------------------\nSELECT LEFT(FEEDBACK_TEXT, 90) AS FEEDBACK,\n       AI_SENTIMENT(FEEDBACK_TEXT, ['speed', 'communication', 'fees']) AS ASPECT_SENTIMENT\nFROM STG_FEEDBACK\nLIMIT 5;\n\n-- -----------------------------------------------------\n-- DA2.2 Build the enriched feedback table (score once, query many times)\n-- -----------------------------------------------------\nCREATE OR REPLACE TABLE FEEDBACK_ENRICHED AS\nWITH ai_scored AS (\n    SELECT f.*, c.CUSTOMER_NAME, c.SECTOR AS CUSTOMER_SECTOR, c.RM_NAME,\n           ROUND(SNOWFLAKE.CORTEX.SENTIMENT(f.FEEDBACK_TEXT), 3) AS SENTIMENT_SCORE,\n           AI_CLASSIFY(f.FEEDBACK_TEXT,\n               ['Performance Issue','Service Quality','Technical Problem',\n                'Positive Experience','Feature Request']) AS CLASSIFICATION_RESULT\n    FROM STG_FEEDBACK f\n    LEFT JOIN STG_CUSTOMERS c ON f.CUSTOMER_ID = c.CUSTOMER_ID\n)\nSELECT FEEDBACK_ID, FEEDBACK_DATE, CUSTOMER_ID, CUSTOMER_NAME, CUSTOMER_SECTOR, RM_NAME,\n       PAYMENT_ID, FEEDBACK_CHANNEL, FEEDBACK_TEXT, PAYMENT_TYPE, RATING, SENTIMENT_SCORE,\n       CASE WHEN SENTIMENT_SCORE >  0.3 THEN 'POSITIVE'\n            WHEN SENTIMENT_SCORE < -0.3 THEN 'NEGATIVE'\n            ELSE 'NEUTRAL' END                  AS SENTIMENT_LABEL,\n       CLASSIFICATION_RESULT:labels[0]::STRING  AS TOPIC_CATEGORY\nFROM ai_scored;\n\nSELECT PAYMENT_TYPE, COUNT(*) AS FEEDBACK,\n       ROUND(AVG(SENTIMENT_SCORE), 3) AS AVG_SENTIMENT,\n       ROUND(COUNT_IF(SENTIMENT_LABEL = 'NEGATIVE') / COUNT(*) * 100, 1) AS NEGATIVE_PCT\nFROM FEEDBACK_ENRICHED\nGROUP BY PAYMENT_TYPE ORDER BY AVG_SENTIMENT;\n\n-- -----------------------------------------------------\n-- DA2.3 AI_FILTER: natural-language WHERE clause\n-- -----------------------------------------------------\nSELECT CUSTOMER_NAME, PAYMENT_TYPE, LEFT(FEEDBACK_TEXT, 120) AS FEEDBACK\nFROM FEEDBACK_ENRICHED\nWHERE SENTIMENT_LABEL = 'NEGATIVE'\n  AND AI_FILTER(PROMPT('Does this feedback mention a risk of the client moving their business elsewhere? {0}', FEEDBACK_TEXT))\nLIMIT 10;\n\n-- -----------------------------------------------------\n-- DA2.4 AI_AGG: themes across many rows, per relationship manager\n-- One LLM summary per group - no row limit, no prompt stuffing\n-- -----------------------------------------------------\nCREATE OR REPLACE TABLE RM_FEEDBACK_THEMES AS\nSELECT RM_NAME,\n       COUNT(*) AS NEGATIVE_FEEDBACK,\n       AI_AGG(FEEDBACK_TEXT,\n              'You are briefing a corporate banking relationship manager. List the top 3 recurring complaint themes in this client feedback, each with a one-line recommended action. Be concise.') AS TOP_THEMES\nFROM FEEDBACK_ENRICHED\nWHERE SENTIMENT_LABEL = 'NEGATIVE' AND RM_NAME IS NOT NULL\nGROUP BY RM_NAME;\n\nSELECT RM_NAME, NEGATIVE_FEEDBACK, TOP_THEMES FROM RM_FEEDBACK_THEMES ORDER BY NEGATIVE_FEEDBACK DESC;\n\n-- -----------------------------------------------------\n-- DA2.5 AI_COMPLETE: draft a client-ready response for the worst item\n-- -----------------------------------------------------\nSELECT CUSTOMER_NAME, FEEDBACK_TEXT,\n       AI_COMPLETE('claude-sonnet-4-5',\n         'Draft a short, professional reply from a UK corporate bank to this client feedback. Acknowledge the issue, avoid admitting liability, offer a follow-up call. Feedback: ' || FEEDBACK_TEXT) AS DRAFT_REPLY\nFROM FEEDBACK_ENRICHED\nWHERE SENTIMENT_LABEL = 'NEGATIVE'\nORDER BY SENTIMENT_SCORE\nLIMIT 1;\n\n-- -----------------------------------------------------\n-- DA2.6 Cortex Code prompts\n--  \"Using FEEDBACK_ENRICHED, show me which customer sectors have worsening\n--   sentiment month over month and chart it.\"\n--  \"Use AI_EXTRACT on FEEDBACK_TEXT to pull out any payment reference or amount\n--   mentioned, into a new table FEEDBACK_ENTITIES.\"\n-- -----------------------------------------------------\n\nSELECT 'DA2 complete' AS STATUS;\n"
+   "sql": "-- =====================================================\n-- VIGNETTE DA2: AI SQL ON CUSTOMER FEEDBACK   (~45 min)\n-- Persona: Data Analyst\n-- Question: \"What are corporate clients actually complaining about, by\n--            scheme and by relationship manager - without reading 2,000 comments?\"\n-- Prereq:   setup/catchup/core_analytics.sql (for STG_* views), or DE1\n-- All functions run inside Snowflake: no data leaves the platform, no model training.\n-- =====================================================\n\nUSE ROLE HOL_PARTICIPANT;\nUSE SECONDARY ROLES NONE;   -- see exactly what an attendee sees\nUSE WAREHOUSE BARCLAYS_WH;\nUSE SCHEMA BARCLAYS_HOL.ANALYTICS;\n\n-- -----------------------------------------------------\n-- DA2.1 Overall and aspect-based sentiment\n-- AI_SENTIMENT scores the whole text and named aspects separately\n-- -----------------------------------------------------\nSELECT LEFT(FEEDBACK_TEXT, 90) AS FEEDBACK,\n       AI_SENTIMENT(FEEDBACK_TEXT, ['speed', 'communication', 'fees']) AS ASPECT_SENTIMENT\nFROM STG_FEEDBACK\nLIMIT 5;\n\n-- -----------------------------------------------------\n-- DA2.2 Build the enriched feedback table (score once, query many times)\n-- -----------------------------------------------------\nCREATE OR REPLACE TABLE FEEDBACK_ENRICHED AS\nWITH ai_scored AS (\n    SELECT f.*, c.CUSTOMER_NAME, c.SECTOR AS CUSTOMER_SECTOR, c.RM_NAME,\n           -- AI_SENTIMENT returns a label, so map the overall label to -1, 0 or 1\n           -- (legacy SNOWFLAKE.CORTEX.SENTIMENT is blocked on new accounts)\n           DECODE(GET(FILTER(AI_SENTIMENT(f.FEEDBACK_TEXT):categories, c -> c:name::STRING = 'overall'), 0):sentiment::STRING,\n                  'positive', 1, 'negative', -1, 0)::FLOAT AS SENTIMENT_SCORE,\n           AI_CLASSIFY(f.FEEDBACK_TEXT,\n               ['Performance Issue','Service Quality','Technical Problem',\n                'Positive Experience','Feature Request']) AS CLASSIFICATION_RESULT\n    FROM STG_FEEDBACK f\n    LEFT JOIN STG_CUSTOMERS c ON f.CUSTOMER_ID = c.CUSTOMER_ID\n)\nSELECT FEEDBACK_ID, FEEDBACK_DATE, CUSTOMER_ID, CUSTOMER_NAME, CUSTOMER_SECTOR, RM_NAME,\n       PAYMENT_ID, FEEDBACK_CHANNEL, FEEDBACK_TEXT, PAYMENT_TYPE, RATING, SENTIMENT_SCORE,\n       CASE WHEN SENTIMENT_SCORE >  0.3 THEN 'POSITIVE'\n            WHEN SENTIMENT_SCORE < -0.3 THEN 'NEGATIVE'\n            ELSE 'NEUTRAL' END                  AS SENTIMENT_LABEL,\n       CLASSIFICATION_RESULT:labels[0]::STRING  AS TOPIC_CATEGORY\nFROM ai_scored;\n\nSELECT PAYMENT_TYPE, COUNT(*) AS FEEDBACK,\n       ROUND(AVG(SENTIMENT_SCORE), 3) AS AVG_SENTIMENT,\n       ROUND(COUNT_IF(SENTIMENT_LABEL = 'NEGATIVE') / COUNT(*) * 100, 1) AS NEGATIVE_PCT\nFROM FEEDBACK_ENRICHED\nGROUP BY PAYMENT_TYPE ORDER BY AVG_SENTIMENT;\n\n-- -----------------------------------------------------\n-- DA2.3 AI_FILTER: natural-language WHERE clause\n-- -----------------------------------------------------\nSELECT CUSTOMER_NAME, PAYMENT_TYPE, LEFT(FEEDBACK_TEXT, 120) AS FEEDBACK\nFROM FEEDBACK_ENRICHED\nWHERE SENTIMENT_LABEL = 'NEGATIVE'\n  AND AI_FILTER(PROMPT('Does this feedback mention a risk of the client moving their business elsewhere? {0}', FEEDBACK_TEXT))\nLIMIT 10;\n\n-- -----------------------------------------------------\n-- DA2.4 AI_AGG: themes across many rows, per relationship manager\n-- One LLM summary per group - no row limit, no prompt stuffing\n-- -----------------------------------------------------\nCREATE OR REPLACE TABLE RM_FEEDBACK_THEMES AS\nSELECT RM_NAME,\n       COUNT(*) AS NEGATIVE_FEEDBACK,\n       AI_AGG(FEEDBACK_TEXT,\n              'You are briefing a corporate banking relationship manager. List the top 3 recurring complaint themes in this client feedback, each with a one-line recommended action. Be concise.') AS TOP_THEMES\nFROM FEEDBACK_ENRICHED\nWHERE SENTIMENT_LABEL = 'NEGATIVE' AND RM_NAME IS NOT NULL\nGROUP BY RM_NAME;\n\nSELECT RM_NAME, NEGATIVE_FEEDBACK, TOP_THEMES FROM RM_FEEDBACK_THEMES ORDER BY NEGATIVE_FEEDBACK DESC;\n\n-- -----------------------------------------------------\n-- DA2.5 AI_COMPLETE: draft a client-ready response for the worst item\n-- -----------------------------------------------------\nSELECT CUSTOMER_NAME, FEEDBACK_TEXT,\n       AI_COMPLETE('claude-sonnet-4-5',\n         'Draft a short, professional reply from a UK corporate bank to this client feedback. Acknowledge the issue, avoid admitting liability, offer a follow-up call. Feedback: ' || FEEDBACK_TEXT) AS DRAFT_REPLY\nFROM FEEDBACK_ENRICHED\nWHERE SENTIMENT_LABEL = 'NEGATIVE'\nORDER BY SENTIMENT_SCORE\nLIMIT 1;\n\n-- -----------------------------------------------------\n-- DA2.6 Cortex Code prompts\n--  \"Using FEEDBACK_ENRICHED, show me which customer sectors have worsening\n--   sentiment month over month and chart it.\"\n--  \"Use AI_EXTRACT on FEEDBACK_TEXT to pull out any payment reference or amount\n--   mentioned, into a new table FEEDBACK_ENTITIES.\"\n-- -----------------------------------------------------\n\nSELECT 'DA2 complete' AS STATUS;\n"
   },
   {
    "code": "OPS1",
@@ -440,15 +433,6 @@
    ],
    "steps": [
     {
-     "title": "Set your context",
-     "body": "",
-     "where": "payments-hol Workspace > **+ > SQL file**",
-     "prompt": "",
-     "sql": "USE ROLE HOL_PARTICIPANT;\nUSE SECONDARY ROLES NONE;\nUSE WAREHOUSE BARCLAYS_WH;\nUSE SCHEMA BARCLAYS_HOL.ANALYTICS;",
-     "expect": "",
-     "checkId": ""
-    },
-    {
      "title": "Feed negative sentiment to the escalation queue",
      "body": "",
      "where": "the Cortex Code sidebar",
@@ -504,15 +488,6 @@
     "Agent `BARCLAYS_HOL.AGENTS.PAYMENTS_INVESTIGATOR`"
    ],
    "steps": [
-    {
-     "title": "Set your context",
-     "body": "",
-     "where": "payments-hol Workspace > **+ > SQL file**",
-     "prompt": "",
-     "sql": "USE ROLE HOL_PARTICIPANT;\nUSE SECONDARY ROLES NONE;\nUSE WAREHOUSE BARCLAYS_WH;\nUSE SCHEMA BARCLAYS_HOL.AGENTS;",
-     "expect": "",
-     "checkId": ""
-    },
     {
      "title": "Build the payment lookup tool",
      "body": "Deterministic tools keep exact lookups exact: no text-to-SQL guessing.",
@@ -577,15 +552,6 @@
     "MCP server `BARCLAYS_HOL.AGENTS.PAYMENTS_MCP` with Analyst, Agent, UDF and knowledge-extension tools"
    ],
    "steps": [
-    {
-     "title": "Set your context",
-     "body": "",
-     "where": "payments-hol Workspace > **+ > SQL file**",
-     "prompt": "",
-     "sql": "USE ROLE HOL_PARTICIPANT;\nUSE SECONDARY ROLES NONE;\nUSE WAREHOUSE BARCLAYS_WH;\nUSE SCHEMA BARCLAYS_HOL.AGENTS;",
-     "expect": "",
-     "checkId": ""
-    },
     {
      "title": "Create the MCP server",
      "body": "One server, four governed tools, nothing to host. Every call runs as the caller's role.",
@@ -690,15 +656,6 @@
    ],
    "steps": [
     {
-     "title": "Set your context",
-     "body": "",
-     "where": "payments-hol Workspace > **+ > SQL file**",
-     "prompt": "",
-     "sql": "USE ROLE HOL_PARTICIPANT;\nUSE SECONDARY ROLES NONE;\nUSE WAREHOUSE BARCLAYS_WH;\nUSE SCHEMA BARCLAYS_HOL.GOVERNANCE;",
-     "expect": "",
-     "checkId": ""
-    },
-    {
      "title": "Let Snowflake find the sensitive data",
      "body": "",
      "where": "the Cortex Code sidebar",
@@ -769,18 +726,10 @@
    "question": "If a source Iceberg table changes, what breaks? And who - human or agent - has been reading client data?",
    "build": [
     "Lineage and access-history queries",
-    "Business comments on the SLA data product"
+    "Business comments on the SLA data product",
+    "A daily Cortex Code automation `RESTRICTED_COLUMN_WATCH` reporting new reads of restricted columns"
    ],
    "steps": [
-    {
-     "title": "Set your context",
-     "body": "",
-     "where": "payments-hol Workspace > **+ > SQL file**",
-     "prompt": "",
-     "sql": "USE ROLE HOL_PARTICIPANT;\nUSE SECONDARY ROLES NONE;\nUSE WAREHOUSE BARCLAYS_WH;\nUSE SCHEMA BARCLAYS_HOL.ANALYTICS;",
-     "expect": "",
-     "checkId": ""
-    },
     {
      "title": "Impact analysis on the Iceberg source",
      "body": "",
@@ -807,6 +756,15 @@
      "sql": "",
      "expect": "recent reads, including your GOV1 queries. ACCOUNT_USAGE can lag by up to about 3 hours, so this may be empty early in the day.",
      "checkId": ""
+    },
+    {
+     "title": "Turn the access check into a daily automation",
+     "body": "Cortex Code offers to run the access-history query as a daily **Cortex Code automation**: a scheduled, unattended Cortex Code run in a Snowflake-managed sandbox. Accept the offer, or ask for it:",
+     "where": "the Cortex Code sidebar (same chat as the step above)",
+     "prompt": "Set up a daily Cortex Code automation called RESTRICTED_COLUMN_WATCH that runs at 08:00 Europe/London. Each run: query SNOWFLAKE.ACCOUNT_USAGE.ACCESS_HISTORY for reads of the IBAN, ACCOUNT_NUMBER or SORT_CODE columns of any BARCLAYS_HOL object in the last 24 hours, and report who read them, when, and from which object. It runs unattended, so it must not ask questions and must stay read-only. Create it paused, run it once now so I can see the report, then start the schedule.",
+     "sql": "",
+     "expect": "Cortex Code summarises the automation (name, schedule, read-only), creates it paused, runs it once and shows the report, then asks before starting the schedule. See it under **Automations** in the Cortex Code sidebar. Each run uses your default role (`HOL_PARTICIPANT`), so it sees exactly what you see: masked values stay masked. Your lab login has no email address, so there's no emailed run report; read the report in the run's thread instead.",
+     "checkId": "gov2_automation"
     },
     {
      "title": "What are our agents doing?",
@@ -839,7 +797,7 @@
   {
    "name": "core analytics",
    "sqlPath": "setup/catchup/core_analytics.sql",
-   "sql": "-- =====================================================\n-- BARCLAYS PAYMENTS HOL v2 - CATCH-UP SCRIPT\n-- CORE ANALYTICS LAYER (pure SQL equivalent of the dbt project + AI enrichment)\n--\n-- Run this if your chosen vignette needs the analytics layer and you have\n-- not completed DE1 (dbt) / DA2 (AI enrichment). Safe to re-run.\n-- Objects match dbt/models exactly so later vignettes behave the same.\n-- =====================================================\n\nUSE ROLE HOL_PARTICIPANT;\nUSE SECONDARY ROLES NONE;   -- see exactly what an attendee sees\nUSE WAREHOUSE BARCLAYS_WH;\nUSE SCHEMA BARCLAYS_HOL.ANALYTICS;\n\n-- ---------- Staging views ----------\nCREATE OR REPLACE VIEW STG_PAYMENTS AS\nSELECT\n    PAYMENT_ID,\n    PAYMENT_DATE::TIMESTAMP                             AS PAYMENT_DATE,\n    DATE_TRUNC('DAY', PAYMENT_DATE::TIMESTAMP)          AS PAYMENT_DAY,\n    ORIGINATOR_ACCOUNT_ID,\n    BENEFICIARY_ACCOUNT_ID,\n    UPPER(TRIM(PAYMENT_TYPE))                           AS PAYMENT_TYPE,\n    UPPER(TRIM(CHANNEL))                                AS CHANNEL,\n    UPPER(TRIM(CURRENCY))                               AS CURRENCY,\n    AMOUNT::NUMBER(15,2)                                AS AMOUNT,\n    FX_RATE,\n    UPPER(TRIM(STATUS))                                 AS STATUS,\n    PROCESSING_TIME_MS::NUMBER                          AS PROCESSING_TIME_MS,\n    ERROR_CODE,\n    UPPER(TRIM(REGION))                                 AS REGION,\n    SETTLEMENT_DATE,\n    CASE WHEN STATUS = 'COMPLETED' THEN TRUE ELSE FALSE END  AS IS_SUCCESSFUL,\n    CASE WHEN STATUS = 'FAILED'    THEN TRUE ELSE FALSE END  AS IS_FAILED,\n    CASE WHEN ERROR_CODE IS NOT NULL THEN TRUE ELSE FALSE END AS HAS_ERROR\nFROM BARCLAYS_HOL.RAW_DATA.PAYMENTS;\n\nCREATE OR REPLACE VIEW STG_FEEDBACK AS\nSELECT\n    FEEDBACK_ID,\n    FEEDBACK_DATE::TIMESTAMP            AS FEEDBACK_DATE,\n    DATE_TRUNC('DAY', FEEDBACK_DATE)    AS FEEDBACK_DAY,\n    CUSTOMER_ID,\n    PAYMENT_ID,\n    UPPER(TRIM(FEEDBACK_CHANNEL))       AS FEEDBACK_CHANNEL,\n    TRIM(FEEDBACK_TEXT)                 AS FEEDBACK_TEXT,\n    UPPER(TRIM(PAYMENT_TYPE))           AS PAYMENT_TYPE,\n    RATING::NUMBER(1)                   AS RATING,\n    LENGTH(TRIM(FEEDBACK_TEXT))         AS FEEDBACK_LENGTH,\n    CASE WHEN RATING >= 4 THEN 'SATISFIED'\n         WHEN RATING = 3  THEN 'NEUTRAL'\n         ELSE 'DISSATISFIED' END        AS SATISFACTION_TIER\nFROM BARCLAYS_HOL.RAW_DATA.CUSTOMER_FEEDBACK\nWHERE FEEDBACK_TEXT IS NOT NULL AND LENGTH(TRIM(FEEDBACK_TEXT)) > 0;\n\nCREATE OR REPLACE VIEW STG_CUSTOMERS AS\nSELECT\n    c.CUSTOMER_ID,\n    UPPER(TRIM(c.CUSTOMER_NAME))        AS CUSTOMER_NAME,\n    UPPER(TRIM(c.SECTOR))               AS SECTOR,\n    c.COUNTRY,\n    c.ONBOARDING_DATE,\n    UPPER(TRIM(c.KYC_STATUS))           AS KYC_STATUS,\n    c.RM_ID,\n    r.RM_NAME,\n    r.TEAM                              AS RM_TEAM,\n    r.REGION                            AS RM_REGION\nFROM BARCLAYS_HOL.RAW_DATA.CUSTOMERS c\nLEFT JOIN BARCLAYS_HOL.RAW_DATA.RELATIONSHIP_MANAGERS r ON c.RM_ID = r.RM_ID;\n\nCREATE OR REPLACE VIEW STG_ACCOUNTS AS\nSELECT\n    a.ACCOUNT_ID, a.CUSTOMER_ID, a.SORT_CODE, a.ACCOUNT_NUMBER, a.IBAN, a.BIC,\n    UPPER(TRIM(a.CURRENCY))             AS CURRENCY,\n    UPPER(TRIM(a.ACCOUNT_TYPE))         AS ACCOUNT_TYPE,\n    UPPER(TRIM(a.STATUS))               AS STATUS,\n    a.OPENED_DATE,\n    c.CUSTOMER_NAME,\n    c.SECTOR                            AS CUSTOMER_SECTOR\nFROM BARCLAYS_HOL.RAW_DATA.ACCOUNTS a\nLEFT JOIN BARCLAYS_HOL.RAW_DATA.CUSTOMERS c ON a.CUSTOMER_ID = c.CUSTOMER_ID;\n\n-- ---------- Marts ----------\nCREATE OR REPLACE TABLE MART_PAYMENT_KPIS AS\nSELECT\n    p.PAYMENT_DAY, p.PAYMENT_TYPE, p.REGION, p.CHANNEL,\n    c.SECTOR AS CUSTOMER_SECTOR, c.RM_NAME, c.RM_TEAM,\n    COUNT(*)                                                   AS TOTAL_PAYMENTS,\n    SUM(p.AMOUNT)                                              AS TOTAL_VOLUME_GBP,\n    ROUND(AVG(p.AMOUNT), 2)                                    AS AVG_PAYMENT_AMOUNT,\n    COUNT(CASE WHEN p.IS_SUCCESSFUL THEN 1 END)                AS SUCCESSFUL_PAYMENTS,\n    COUNT(CASE WHEN p.IS_FAILED     THEN 1 END)                AS FAILED_PAYMENTS,\n    ROUND(COUNT(CASE WHEN p.IS_SUCCESSFUL THEN 1 END)::FLOAT / NULLIF(COUNT(*), 0) * 100, 2) AS SUCCESS_RATE_PCT,\n    ROUND(AVG(p.PROCESSING_TIME_MS), 0)                        AS AVG_PROCESSING_TIME_MS,\n    ROUND(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY p.PROCESSING_TIME_MS), 0) AS P95_PROCESSING_TIME_MS\nFROM STG_PAYMENTS p\nLEFT JOIN STG_ACCOUNTS  a ON p.ORIGINATOR_ACCOUNT_ID = a.ACCOUNT_ID\nLEFT JOIN STG_CUSTOMERS c ON a.CUSTOMER_ID = c.CUSTOMER_ID\nGROUP BY p.PAYMENT_DAY, p.PAYMENT_TYPE, p.REGION, p.CHANNEL, c.SECTOR, c.RM_NAME, c.RM_TEAM;\n\nCREATE OR REPLACE TABLE MART_SLA_COMPLIANCE AS\nWITH daily_scheme AS (\n    SELECT PAYMENT_DAY, PAYMENT_TYPE,\n           SUM(TOTAL_PAYMENTS) AS TOTAL_PAYMENTS,\n           SUM(SUCCESSFUL_PAYMENTS) AS SUCCESSFUL_PAYMENTS,\n           SUM(FAILED_PAYMENTS) AS FAILED_PAYMENTS,\n           ROUND(SUM(SUCCESSFUL_PAYMENTS)::FLOAT / NULLIF(SUM(TOTAL_PAYMENTS), 0) * 100, 2) AS SUCCESS_RATE_PCT,\n           MAX(P95_PROCESSING_TIME_MS) AS P95_PROCESSING_TIME_MS\n    FROM MART_PAYMENT_KPIS\n    GROUP BY PAYMENT_DAY, PAYMENT_TYPE\n)\nSELECT\n    d.PAYMENT_DAY, d.PAYMENT_TYPE, s.SLA_NAME,\n    s.TARGET_SUCCESS_RATE    AS SLA_TARGET_PCT,\n    s.MAX_PROCESSING_TIME_MS AS SLA_THRESHOLD_MS,\n    d.SUCCESS_RATE_PCT       AS ACTUAL_SUCCESS_RATE,\n    d.P95_PROCESSING_TIME_MS AS ACTUAL_P95_MS,\n    d.TOTAL_PAYMENTS, d.FAILED_PAYMENTS,\n    CASE WHEN d.SUCCESS_RATE_PCT >= s.TARGET_SUCCESS_RATE\n           AND d.P95_PROCESSING_TIME_MS <= s.MAX_PROCESSING_TIME_MS THEN 'COMPLIANT'\n         WHEN d.SUCCESS_RATE_PCT >= s.TARGET_SUCCESS_RATE * 0.95 THEN 'AT RISK'\n         ELSE 'BREACH' END   AS SLA_STATUS,\n    ROUND(d.SUCCESS_RATE_PCT - s.TARGET_SUCCESS_RATE, 2) AS RATE_GAP_PCT,\n    d.P95_PROCESSING_TIME_MS - s.MAX_PROCESSING_TIME_MS  AS TIME_GAP_MS\nFROM daily_scheme d\nJOIN BARCLAYS_HOL.RAW_DATA.SLA_DEFINITIONS s ON d.PAYMENT_TYPE = s.PAYMENT_TYPE;\n\n-- CoCo-built marts from the original lab (DE1 step 3), pre-built here\nCREATE OR REPLACE TABLE MART_CUSTOMER_PAYMENTS AS\nWITH base AS (\n    SELECT c.CUSTOMER_ID, c.CUSTOMER_NAME, c.SECTOR AS CUSTOMER_SECTOR, c.RM_NAME,\n           p.PAYMENT_TYPE, p.AMOUNT, p.IS_SUCCESSFUL, p.PROCESSING_TIME_MS\n    FROM STG_PAYMENTS p\n    JOIN STG_ACCOUNTS  a ON p.ORIGINATOR_ACCOUNT_ID = a.ACCOUNT_ID\n    JOIN STG_CUSTOMERS c ON a.CUSTOMER_ID = c.CUSTOMER_ID\n), top_scheme AS (\n    SELECT CUSTOMER_ID, PAYMENT_TYPE AS MOST_USED_SCHEME\n    FROM base GROUP BY CUSTOMER_ID, PAYMENT_TYPE\n    QUALIFY ROW_NUMBER() OVER (PARTITION BY CUSTOMER_ID ORDER BY COUNT(*) DESC) = 1\n)\nSELECT b.CUSTOMER_ID, b.CUSTOMER_NAME, b.CUSTOMER_SECTOR, b.RM_NAME,\n       COUNT(*)                                                   AS TOTAL_PAYMENTS,\n       SUM(b.AMOUNT)                                              AS TOTAL_VOLUME_GBP,\n       ROUND(COUNT_IF(b.IS_SUCCESSFUL)::FLOAT / COUNT(*) * 100, 2) AS SUCCESS_RATE_PCT,\n       ROUND(AVG(b.PROCESSING_TIME_MS), 0)                        AS AVG_PROCESSING_TIME_MS,\n       t.MOST_USED_SCHEME\nFROM base b JOIN top_scheme t USING (CUSTOMER_ID)\nGROUP BY b.CUSTOMER_ID, b.CUSTOMER_NAME, b.CUSTOMER_SECTOR, b.RM_NAME, t.MOST_USED_SCHEME;\n\n-- ---------- AI enrichment (DA2 builds this step by step) ----------\nCREATE OR REPLACE TABLE FEEDBACK_ENRICHED AS\nWITH ai_scored AS (\n    SELECT f.*, c.CUSTOMER_NAME, c.SECTOR AS CUSTOMER_SECTOR, c.RM_NAME,\n           ROUND(SNOWFLAKE.CORTEX.SENTIMENT(f.FEEDBACK_TEXT), 3) AS SENTIMENT_SCORE,\n           AI_CLASSIFY(f.FEEDBACK_TEXT,\n               ['Performance Issue','Service Quality','Technical Problem',\n                'Positive Experience','Feature Request']) AS CLASSIFICATION_RESULT\n    FROM STG_FEEDBACK f\n    LEFT JOIN STG_CUSTOMERS c ON f.CUSTOMER_ID = c.CUSTOMER_ID\n)\nSELECT FEEDBACK_ID, FEEDBACK_DATE, CUSTOMER_ID, CUSTOMER_NAME, CUSTOMER_SECTOR, RM_NAME,\n       PAYMENT_ID, FEEDBACK_CHANNEL, FEEDBACK_TEXT, PAYMENT_TYPE, RATING, SENTIMENT_SCORE,\n       CASE WHEN SENTIMENT_SCORE >  0.3 THEN 'POSITIVE'\n            WHEN SENTIMENT_SCORE < -0.3 THEN 'NEGATIVE'\n            ELSE 'NEUTRAL' END                      AS SENTIMENT_LABEL,\n       CLASSIFICATION_RESULT:labels[0]::STRING      AS TOPIC_CATEGORY\nFROM ai_scored;\n\nSELECT 'Core analytics catch-up complete' AS STATUS,\n       (SELECT COUNT(*) FROM MART_PAYMENT_KPIS)   AS KPI_ROWS,\n       (SELECT COUNT(*) FROM MART_SLA_COMPLIANCE) AS SLA_ROWS,\n       (SELECT COUNT(*) FROM FEEDBACK_ENRICHED)   AS FEEDBACK_ROWS;\n"
+   "sql": "-- =====================================================\n-- BARCLAYS PAYMENTS HOL v2 - CATCH-UP SCRIPT\n-- CORE ANALYTICS LAYER (pure SQL equivalent of the dbt project + AI enrichment)\n--\n-- Run this if your chosen vignette needs the analytics layer and you have\n-- not completed DE1 (dbt) / DA2 (AI enrichment). Safe to re-run.\n-- Objects match dbt/models exactly so later vignettes behave the same.\n-- =====================================================\n\nUSE ROLE HOL_PARTICIPANT;\nUSE SECONDARY ROLES NONE;   -- see exactly what an attendee sees\nUSE WAREHOUSE BARCLAYS_WH;\nUSE SCHEMA BARCLAYS_HOL.ANALYTICS;\n\n-- ---------- Staging views ----------\nCREATE OR REPLACE VIEW STG_PAYMENTS AS\nSELECT\n    PAYMENT_ID,\n    PAYMENT_DATE::TIMESTAMP                             AS PAYMENT_DATE,\n    DATE_TRUNC('DAY', PAYMENT_DATE::TIMESTAMP)          AS PAYMENT_DAY,\n    ORIGINATOR_ACCOUNT_ID,\n    BENEFICIARY_ACCOUNT_ID,\n    UPPER(TRIM(PAYMENT_TYPE))                           AS PAYMENT_TYPE,\n    UPPER(TRIM(CHANNEL))                                AS CHANNEL,\n    UPPER(TRIM(CURRENCY))                               AS CURRENCY,\n    AMOUNT::NUMBER(15,2)                                AS AMOUNT,\n    FX_RATE,\n    UPPER(TRIM(STATUS))                                 AS STATUS,\n    PROCESSING_TIME_MS::NUMBER                          AS PROCESSING_TIME_MS,\n    ERROR_CODE,\n    UPPER(TRIM(REGION))                                 AS REGION,\n    SETTLEMENT_DATE,\n    CASE WHEN STATUS = 'COMPLETED' THEN TRUE ELSE FALSE END  AS IS_SUCCESSFUL,\n    CASE WHEN STATUS = 'FAILED'    THEN TRUE ELSE FALSE END  AS IS_FAILED,\n    CASE WHEN ERROR_CODE IS NOT NULL THEN TRUE ELSE FALSE END AS HAS_ERROR\nFROM BARCLAYS_HOL.RAW_DATA.PAYMENTS;\n\nCREATE OR REPLACE VIEW STG_FEEDBACK AS\nSELECT\n    FEEDBACK_ID,\n    FEEDBACK_DATE::TIMESTAMP            AS FEEDBACK_DATE,\n    DATE_TRUNC('DAY', FEEDBACK_DATE)    AS FEEDBACK_DAY,\n    CUSTOMER_ID,\n    PAYMENT_ID,\n    UPPER(TRIM(FEEDBACK_CHANNEL))       AS FEEDBACK_CHANNEL,\n    TRIM(FEEDBACK_TEXT)                 AS FEEDBACK_TEXT,\n    UPPER(TRIM(PAYMENT_TYPE))           AS PAYMENT_TYPE,\n    RATING::NUMBER(1)                   AS RATING,\n    LENGTH(TRIM(FEEDBACK_TEXT))         AS FEEDBACK_LENGTH,\n    CASE WHEN RATING >= 4 THEN 'SATISFIED'\n         WHEN RATING = 3  THEN 'NEUTRAL'\n         ELSE 'DISSATISFIED' END        AS SATISFACTION_TIER\nFROM BARCLAYS_HOL.RAW_DATA.CUSTOMER_FEEDBACK\nWHERE FEEDBACK_TEXT IS NOT NULL AND LENGTH(TRIM(FEEDBACK_TEXT)) > 0;\n\nCREATE OR REPLACE VIEW STG_CUSTOMERS AS\nSELECT\n    c.CUSTOMER_ID,\n    UPPER(TRIM(c.CUSTOMER_NAME))        AS CUSTOMER_NAME,\n    UPPER(TRIM(c.SECTOR))               AS SECTOR,\n    c.COUNTRY,\n    c.ONBOARDING_DATE,\n    UPPER(TRIM(c.KYC_STATUS))           AS KYC_STATUS,\n    c.RM_ID,\n    r.RM_NAME,\n    r.TEAM                              AS RM_TEAM,\n    r.REGION                            AS RM_REGION\nFROM BARCLAYS_HOL.RAW_DATA.CUSTOMERS c\nLEFT JOIN BARCLAYS_HOL.RAW_DATA.RELATIONSHIP_MANAGERS r ON c.RM_ID = r.RM_ID;\n\nCREATE OR REPLACE VIEW STG_ACCOUNTS AS\nSELECT\n    a.ACCOUNT_ID, a.CUSTOMER_ID, a.SORT_CODE, a.ACCOUNT_NUMBER, a.IBAN, a.BIC,\n    UPPER(TRIM(a.CURRENCY))             AS CURRENCY,\n    UPPER(TRIM(a.ACCOUNT_TYPE))         AS ACCOUNT_TYPE,\n    UPPER(TRIM(a.STATUS))               AS STATUS,\n    a.OPENED_DATE,\n    c.CUSTOMER_NAME,\n    c.SECTOR                            AS CUSTOMER_SECTOR\nFROM BARCLAYS_HOL.RAW_DATA.ACCOUNTS a\nLEFT JOIN BARCLAYS_HOL.RAW_DATA.CUSTOMERS c ON a.CUSTOMER_ID = c.CUSTOMER_ID;\n\n-- ---------- Marts ----------\nCREATE OR REPLACE TABLE MART_PAYMENT_KPIS AS\nSELECT\n    p.PAYMENT_DAY, p.PAYMENT_TYPE, p.REGION, p.CHANNEL,\n    c.SECTOR AS CUSTOMER_SECTOR, c.RM_NAME, c.RM_TEAM,\n    COUNT(*)                                                   AS TOTAL_PAYMENTS,\n    SUM(p.AMOUNT)                                              AS TOTAL_VOLUME_GBP,\n    ROUND(AVG(p.AMOUNT), 2)                                    AS AVG_PAYMENT_AMOUNT,\n    COUNT(CASE WHEN p.IS_SUCCESSFUL THEN 1 END)                AS SUCCESSFUL_PAYMENTS,\n    COUNT(CASE WHEN p.IS_FAILED     THEN 1 END)                AS FAILED_PAYMENTS,\n    ROUND(COUNT(CASE WHEN p.IS_SUCCESSFUL THEN 1 END)::FLOAT / NULLIF(COUNT(*), 0) * 100, 2) AS SUCCESS_RATE_PCT,\n    ROUND(AVG(p.PROCESSING_TIME_MS), 0)                        AS AVG_PROCESSING_TIME_MS,\n    ROUND(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY p.PROCESSING_TIME_MS), 0) AS P95_PROCESSING_TIME_MS\nFROM STG_PAYMENTS p\nLEFT JOIN STG_ACCOUNTS  a ON p.ORIGINATOR_ACCOUNT_ID = a.ACCOUNT_ID\nLEFT JOIN STG_CUSTOMERS c ON a.CUSTOMER_ID = c.CUSTOMER_ID\nGROUP BY p.PAYMENT_DAY, p.PAYMENT_TYPE, p.REGION, p.CHANNEL, c.SECTOR, c.RM_NAME, c.RM_TEAM;\n\nCREATE OR REPLACE TABLE MART_SLA_COMPLIANCE AS\nWITH daily_scheme AS (\n    SELECT PAYMENT_DAY, PAYMENT_TYPE,\n           SUM(TOTAL_PAYMENTS) AS TOTAL_PAYMENTS,\n           SUM(SUCCESSFUL_PAYMENTS) AS SUCCESSFUL_PAYMENTS,\n           SUM(FAILED_PAYMENTS) AS FAILED_PAYMENTS,\n           ROUND(SUM(SUCCESSFUL_PAYMENTS)::FLOAT / NULLIF(SUM(TOTAL_PAYMENTS), 0) * 100, 2) AS SUCCESS_RATE_PCT,\n           MAX(P95_PROCESSING_TIME_MS) AS P95_PROCESSING_TIME_MS\n    FROM MART_PAYMENT_KPIS\n    GROUP BY PAYMENT_DAY, PAYMENT_TYPE\n)\nSELECT\n    d.PAYMENT_DAY, d.PAYMENT_TYPE, s.SLA_NAME,\n    s.TARGET_SUCCESS_RATE    AS SLA_TARGET_PCT,\n    s.MAX_PROCESSING_TIME_MS AS SLA_THRESHOLD_MS,\n    d.SUCCESS_RATE_PCT       AS ACTUAL_SUCCESS_RATE,\n    d.P95_PROCESSING_TIME_MS AS ACTUAL_P95_MS,\n    d.TOTAL_PAYMENTS, d.FAILED_PAYMENTS,\n    CASE WHEN d.SUCCESS_RATE_PCT >= s.TARGET_SUCCESS_RATE\n           AND d.P95_PROCESSING_TIME_MS <= s.MAX_PROCESSING_TIME_MS THEN 'COMPLIANT'\n         WHEN d.SUCCESS_RATE_PCT >= s.TARGET_SUCCESS_RATE * 0.95 THEN 'AT RISK'\n         ELSE 'BREACH' END   AS SLA_STATUS,\n    ROUND(d.SUCCESS_RATE_PCT - s.TARGET_SUCCESS_RATE, 2) AS RATE_GAP_PCT,\n    d.P95_PROCESSING_TIME_MS - s.MAX_PROCESSING_TIME_MS  AS TIME_GAP_MS\nFROM daily_scheme d\nJOIN BARCLAYS_HOL.RAW_DATA.SLA_DEFINITIONS s ON d.PAYMENT_TYPE = s.PAYMENT_TYPE;\n\n-- CoCo-built marts from the original lab (DE1 step 3), pre-built here\nCREATE OR REPLACE TABLE MART_CUSTOMER_PAYMENTS AS\nWITH base AS (\n    SELECT c.CUSTOMER_ID, c.CUSTOMER_NAME, c.SECTOR AS CUSTOMER_SECTOR, c.RM_NAME,\n           p.PAYMENT_TYPE, p.AMOUNT, p.IS_SUCCESSFUL, p.PROCESSING_TIME_MS\n    FROM STG_PAYMENTS p\n    JOIN STG_ACCOUNTS  a ON p.ORIGINATOR_ACCOUNT_ID = a.ACCOUNT_ID\n    JOIN STG_CUSTOMERS c ON a.CUSTOMER_ID = c.CUSTOMER_ID\n), top_scheme AS (\n    SELECT CUSTOMER_ID, PAYMENT_TYPE AS MOST_USED_SCHEME\n    FROM base GROUP BY CUSTOMER_ID, PAYMENT_TYPE\n    QUALIFY ROW_NUMBER() OVER (PARTITION BY CUSTOMER_ID ORDER BY COUNT(*) DESC) = 1\n)\nSELECT b.CUSTOMER_ID, b.CUSTOMER_NAME, b.CUSTOMER_SECTOR, b.RM_NAME,\n       COUNT(*)                                                   AS TOTAL_PAYMENTS,\n       SUM(b.AMOUNT)                                              AS TOTAL_VOLUME_GBP,\n       ROUND(COUNT_IF(b.IS_SUCCESSFUL)::FLOAT / COUNT(*) * 100, 2) AS SUCCESS_RATE_PCT,\n       ROUND(AVG(b.PROCESSING_TIME_MS), 0)                        AS AVG_PROCESSING_TIME_MS,\n       t.MOST_USED_SCHEME\nFROM base b JOIN top_scheme t USING (CUSTOMER_ID)\nGROUP BY b.CUSTOMER_ID, b.CUSTOMER_NAME, b.CUSTOMER_SECTOR, b.RM_NAME, t.MOST_USED_SCHEME;\n\n-- ---------- AI enrichment (DA2 builds this step by step) ----------\nCREATE OR REPLACE TABLE FEEDBACK_ENRICHED AS\nWITH ai_scored AS (\n    SELECT f.*, c.CUSTOMER_NAME, c.SECTOR AS CUSTOMER_SECTOR, c.RM_NAME,\n           -- AI_SENTIMENT returns a label, so map the overall label to -1, 0 or 1\n           -- (legacy SNOWFLAKE.CORTEX.SENTIMENT is blocked on new accounts)\n           DECODE(GET(FILTER(AI_SENTIMENT(f.FEEDBACK_TEXT):categories, c -> c:name::STRING = 'overall'), 0):sentiment::STRING,\n                  'positive', 1, 'negative', -1, 0)::FLOAT AS SENTIMENT_SCORE,\n           AI_CLASSIFY(f.FEEDBACK_TEXT,\n               ['Performance Issue','Service Quality','Technical Problem',\n                'Positive Experience','Feature Request']) AS CLASSIFICATION_RESULT\n    FROM STG_FEEDBACK f\n    LEFT JOIN STG_CUSTOMERS c ON f.CUSTOMER_ID = c.CUSTOMER_ID\n)\nSELECT FEEDBACK_ID, FEEDBACK_DATE, CUSTOMER_ID, CUSTOMER_NAME, CUSTOMER_SECTOR, RM_NAME,\n       PAYMENT_ID, FEEDBACK_CHANNEL, FEEDBACK_TEXT, PAYMENT_TYPE, RATING, SENTIMENT_SCORE,\n       CASE WHEN SENTIMENT_SCORE >  0.3 THEN 'POSITIVE'\n            WHEN SENTIMENT_SCORE < -0.3 THEN 'NEGATIVE'\n            ELSE 'NEUTRAL' END                      AS SENTIMENT_LABEL,\n       CLASSIFICATION_RESULT:labels[0]::STRING      AS TOPIC_CATEGORY\nFROM ai_scored;\n\nSELECT 'Core analytics catch-up complete' AS STATUS,\n       (SELECT COUNT(*) FROM MART_PAYMENT_KPIS)   AS KPI_ROWS,\n       (SELECT COUNT(*) FROM MART_SLA_COMPLIANCE) AS SLA_ROWS,\n       (SELECT COUNT(*) FROM FEEDBACK_ENRICHED)   AS FEEDBACK_ROWS;\n"
   },
   {
    "name": "semantic view and agent",

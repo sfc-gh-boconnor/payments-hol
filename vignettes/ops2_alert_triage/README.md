@@ -16,15 +16,6 @@
 - `ALERT_RECOMMENDATIONS` (AI next actions for the top 10)
 
 ## Steps
-### Set your context
-Where: payments-hol Workspace > **+ > SQL file**
-```sql
-USE ROLE HOL_PARTICIPANT;
-USE SECONDARY ROLES NONE;
-USE WAREHOUSE BARCLAYS_WH;
-USE SCHEMA BARCLAYS_HOL.ANALYTICS;
-```
-
 ### Feed negative sentiment to the escalation queue
 Where: the Cortex Code sidebar
 ```prompt

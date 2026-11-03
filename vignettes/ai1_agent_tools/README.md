@@ -15,15 +15,6 @@
 - Agent `BARCLAYS_HOL.AGENTS.PAYMENTS_INVESTIGATOR`
 
 ## Steps
-### Set your context
-Where: payments-hol Workspace > **+ > SQL file**
-```sql
-USE ROLE HOL_PARTICIPANT;
-USE SECONDARY ROLES NONE;
-USE WAREHOUSE BARCLAYS_WH;
-USE SCHEMA BARCLAYS_HOL.AGENTS;
-```
-
 ### Build the payment lookup tool
 Where: the Cortex Code sidebar
 Deterministic tools keep exact lookups exact: no text-to-SQL guessing.

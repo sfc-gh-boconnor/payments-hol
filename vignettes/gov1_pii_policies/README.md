@@ -16,15 +16,6 @@
 - Row access policy `RAP_ACCOUNT_REGION`
 
 ## Steps
-### Set your context
-Where: payments-hol Workspace > **+ > SQL file**
-```sql
-USE ROLE HOL_PARTICIPANT;
-USE SECONDARY ROLES NONE;
-USE WAREHOUSE BARCLAYS_WH;
-USE SCHEMA BARCLAYS_HOL.GOVERNANCE;
-```
-
 ### Let Snowflake find the sensitive data
 Where: the Cortex Code sidebar
 ```prompt

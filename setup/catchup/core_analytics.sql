@@ -151,7 +151,10 @@ GROUP BY b.CUSTOMER_ID, b.CUSTOMER_NAME, b.CUSTOMER_SECTOR, b.RM_NAME, t.MOST_US
 CREATE OR REPLACE TABLE FEEDBACK_ENRICHED AS
 WITH ai_scored AS (
     SELECT f.*, c.CUSTOMER_NAME, c.SECTOR AS CUSTOMER_SECTOR, c.RM_NAME,
-           ROUND(SNOWFLAKE.CORTEX.SENTIMENT(f.FEEDBACK_TEXT), 3) AS SENTIMENT_SCORE,
+           -- AI_SENTIMENT returns a label, so map the overall label to -1, 0 or 1
+           -- (legacy SNOWFLAKE.CORTEX.SENTIMENT is blocked on new accounts)
+           DECODE(GET(FILTER(AI_SENTIMENT(f.FEEDBACK_TEXT):categories, c -> c:name::STRING = 'overall'), 0):sentiment::STRING,
+                  'positive', 1, 'negative', -1, 0)::FLOAT AS SENTIMENT_SCORE,
            AI_CLASSIFY(f.FEEDBACK_TEXT,
                ['Performance Issue','Service Quality','Technical Problem',
                 'Positive Experience','Feature Request']) AS CLASSIFICATION_RESULT

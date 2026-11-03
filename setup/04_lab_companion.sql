@@ -27,4 +27,8 @@ CREATE TABLE IF NOT EXISTS BARCLAYS_HOL.LAB.LAB_PROGRESS (
 ) COMMENT = 'Every Check my work result from the Lab Companion app';
 
 -- Attendees never touch LAB directly - the app writes on their behalf
--- (owner's rights) and records who ran each check.
+-- (owner's rights) and records who ran each check. They still need USAGE on
+-- the schema to open the app in it; HOL_RESTRICTED is below HOL_PARTICIPANT
+-- in the hierarchy, so it needs its own grants.
+GRANT USAGE ON SCHEMA   BARCLAYS_HOL.LAB TO ROLE HOL_PARTICIPANT;
+GRANT USAGE ON SCHEMA   BARCLAYS_HOL.LAB TO ROLE HOL_RESTRICTED;

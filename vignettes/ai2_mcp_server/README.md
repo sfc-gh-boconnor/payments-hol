@@ -14,15 +14,6 @@
 - MCP server `BARCLAYS_HOL.AGENTS.PAYMENTS_MCP` with Analyst, Agent, UDF and knowledge-extension tools
 
 ## Steps
-### Set your context
-Where: payments-hol Workspace > **+ > SQL file**
-```sql
-USE ROLE HOL_PARTICIPANT;
-USE SECONDARY ROLES NONE;
-USE WAREHOUSE BARCLAYS_WH;
-USE SCHEMA BARCLAYS_HOL.AGENTS;
-```
-
 ### Create the MCP server
 Where: the Cortex Code sidebar
 One server, four governed tools, nothing to host. Every call runs as the caller's role.

@@ -10,7 +10,8 @@ import { InlineMd } from "@/components/lab/inline-md"
 import { PromptCard } from "@/components/lab/prompt-card"
 import { SqlBlock } from "@/components/lab/sql-block"
 import { CATCHUPS, MODULES, moduleByCode } from "@/lib/content"
-import { CHECKS } from "@/lib/checks"
+import { CHECKS, PREREQS } from "@/lib/checks"
+import { PrereqPanel } from "@/components/lab/prereq-panel"
 
 export const dynamic = "force-dynamic"
 
@@ -40,15 +41,25 @@ export default async function ModulePage({ params }: { params: Promise<{ code: s
             <CardHeader><CardTitle>What you'll build</CardTitle></CardHeader>
             <CardContent className="space-y-4 text-sm">
               <ul className="list-disc space-y-1 pl-5">{m.build.map((b) => <li key={b}><InlineMd text={b} /></li>)}</ul>
-              <div className="rounded-md bg-muted/60 p-3 text-xs">
-                <span className="font-semibold">Prerequisites: </span><InlineMd text={m.prerequisites} />
-              </div>
+              {!PREREQS[m.code] && (
+                <div className="rounded-md bg-muted/60 p-3 text-xs">
+                  <span className="font-semibold">Prerequisites: </span><InlineMd text={m.prerequisites} />
+                </div>
+              )}
             </CardContent>
           </Card>
+
+          {PREREQS[m.code] && <PrereqPanel code={m.code} prerequisites={m.prerequisites} />}
 
           <Card>
             <CardHeader><CardTitle>Steps</CardTitle></CardHeader>
             <CardContent>
+              <div className="mb-5 space-y-3">
+                <p className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs">
+                  <span className="font-semibold">Start a new Cortex Code chat for this module</span> (<span className="font-semibold">+</span> at the top of the sidebar) and paste this first, so Cortex Code doesn&apos;t have to look for a warehouse. A fresh chat keeps Cortex Code focused.
+                </p>
+                <PromptCard prompt={`For this chat, use role HOL_PARTICIPANT and warehouse BARCLAYS_WH, and work in database BARCLAYS_HOL. I'm working on lab module ${m.code}: ${m.title}.`} expect="Cortex Code confirms the role and warehouse, then waits for your first prompt." />
+              </div>
               <ol className="space-y-6">
                 {m.steps.map((s, i) => {
                   const check = CHECKS[m.code]?.find((c) => c.id === s.checkId)

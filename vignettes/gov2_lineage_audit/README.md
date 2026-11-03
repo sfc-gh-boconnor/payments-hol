@@ -13,17 +13,9 @@
 ## What you'll build
 - Lineage and access-history queries
 - Business comments on the SLA data product
+- A daily Cortex Code automation `RESTRICTED_COLUMN_WATCH` reporting new reads of restricted columns
 
 ## Steps
-### Set your context
-Where: payments-hol Workspace > **+ > SQL file**
-```sql
-USE ROLE HOL_PARTICIPANT;
-USE SECONDARY ROLES NONE;
-USE WAREHOUSE BARCLAYS_WH;
-USE SCHEMA BARCLAYS_HOL.ANALYTICS;
-```
-
 ### Impact analysis on the Iceberg source
 Where: the Cortex Code sidebar; also Snowsight > **Catalog > BARCLAYS_HOL > RAW_DATA > PAYMENTS > Lineage**
 ```prompt
@@ -42,6 +34,15 @@ Expect: the path back from the mart through dbt staging to the Iceberg sources
 From SNOWFLAKE.ACCOUNT_USAGE.ACCESS_HISTORY, show who accessed the IBAN, ACCOUNT_NUMBER or SORT_CODE columns of any BARCLAYS_HOL object in the last day, with time, user and object.
 ```
 Expect: recent reads, including your GOV1 queries. ACCOUNT_USAGE can lag by up to about 3 hours, so this may be empty early in the day.
+
+### Turn the access check into a daily automation
+Where: the Cortex Code sidebar (same chat as the step above)
+Cortex Code offers to run the access-history query as a daily **Cortex Code automation**: a scheduled, unattended Cortex Code run in a Snowflake-managed sandbox. Accept the offer, or ask for it:
+```prompt
+Set up a daily Cortex Code automation called RESTRICTED_COLUMN_WATCH that runs at 08:00 Europe/London. Each run: query SNOWFLAKE.ACCOUNT_USAGE.ACCESS_HISTORY for reads of the IBAN, ACCOUNT_NUMBER or SORT_CODE columns of any BARCLAYS_HOL object in the last 24 hours, and report who read them, when, and from which object. It runs unattended, so it must not ask questions and must stay read-only. Create it paused, run it once now so I can see the report, then start the schedule.
+```
+Expect: Cortex Code summarises the automation (name, schedule, read-only), creates it paused, runs it once and shows the report, then asks before starting the schedule. See it under **Automations** in the Cortex Code sidebar. Each run uses your default role (`HOL_PARTICIPANT`), so it sees exactly what you see: masked values stay masked. Your lab login has no email address, so there's no emailed run report; read the report in the run's thread instead.
+Check: gov2_automation
 
 ### What are our agents doing?
 Where: the Cortex Code sidebar; also Snowsight > **AI & ML > Agents > CORPORATE_PAYMENTS_360 > Monitoring**

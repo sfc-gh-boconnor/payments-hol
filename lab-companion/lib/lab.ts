@@ -2,7 +2,7 @@
 import { headers } from "next/headers"
 import { querySnowflake } from "@/lib/snowflake"
 import { callersRightsActive } from "@/lib/run-as"
-import { CHECKS } from "@/lib/checks"
+import { CHECKS, type Check } from "@/lib/checks"
 
 export type CheckResult = { id: string; label: string; ok: boolean; detail: string; hint: string }
 
@@ -30,12 +30,12 @@ export async function currentUser(): Promise<string> {
 }
 
 /** Run every check for a module (owner's rights) and record the results for `user`. */
-export async function runChecks(code: string, user: string): Promise<CheckResult[]> {
-  const checks = CHECKS[code] ?? []
+/** Run checks live and return the results, without recording anything. */
+export async function evaluateChecks(checks: Check[]): Promise<CheckResult[]> {
   const results: CheckResult[] = []
   for (const c of checks) {
     try {
-      const [row] = await querySnowflake(c.sql)
+      const [row] = await querySnowflake(c.sql, c.asCaller && callersRightsActive() ? { callersRights: true } : {})
       results.push({ id: c.id, label: c.label, ok: row?.OK === true, detail: String(row?.DETAIL ?? ""), hint: c.hint })
     } catch (e) {
       // A missing object is the usual reason - report it as a failed check, not an app error.
@@ -43,6 +43,11 @@ export async function runChecks(code: string, user: string): Promise<CheckResult
       results.push({ id: c.id, label: c.label, ok: false, detail: msg.split("\n")[0].slice(0, 200), hint: c.hint })
     }
   }
+  return results
+}
+
+export async function runChecks(code: string, user: string): Promise<CheckResult[]> {
+  const results = await evaluateChecks(CHECKS[code] ?? [])
   for (const r of results) {
     await querySnowflake(
       `INSERT INTO ${PROGRESS} (USER_NAME, CHECK_ID, MODULE_CODE, PASSED, DETAIL) VALUES (?, ?, ?, ?, ?)`,

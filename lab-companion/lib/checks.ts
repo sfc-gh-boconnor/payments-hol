@@ -11,6 +11,8 @@ export type Check = {
   label: string
   sql: string
   hint: string
+  /** Run with the attendee's own rights, for objects in their personal USER$ database. */
+  asCaller?: boolean
 }
 
 const exists = (schema: string, name: string, extra = "") =>
@@ -44,7 +46,7 @@ export const CHECKS: Record<string, Check[]> = {
       id: "de1_staging",
       label: "dbt staging views built (STG_PAYMENTS)",
       sql: exists("ANALYTICS", "STG_PAYMENTS"),
-      hint: "Step 2: open the dbt tab in the bottom panel, choose build from the Run dropdown and run it. Or run the reference SQL.",
+      hint: "In the dbt tab of the bottom panel, click the arrow next to Run > Build > Execute. Or run the reference SQL.",
     },
     {
       id: "de1_kpi_mart",
@@ -54,15 +56,21 @@ export const CHECKS: Record<string, Check[]> = {
     },
     {
       id: "de1_coco_marts",
-      label: "Cortex Code built MART_RM_PERFORMANCE",
+      label: "MART_RM_PERFORMANCE built and tested",
       sql: exists("ANALYTICS", "MART_RM_PERFORMANCE"),
-      hint: "Steps 3 and 4: paste both mart prompts into Cortex Code, then run build from the dbt pane.",
+      hint: "The table only exists after a build. In the dbt pane click the arrow next to Run > Build > Execute.",
+    },
+    {
+      id: "de1_task",
+      label: "Nightly dbt build task scheduled (suspended)",
+      sql: `SHOW TASKS LIKE 'TSK_DBT_NIGHTLY_BUILD' IN SCHEMA BARCLAYS_HOL.ANALYTICS ->> SELECT COUNT(*) > 0 AS OK, COALESCE(MAX("state") || ', ' || MAX("schedule"), 'TSK_DBT_NIGHTLY_BUILD not found') AS DETAIL FROM $1`,
+      hint: "Paste the schedule prompt into Cortex Code. The task must be TSK_DBT_NIGHTLY_BUILD in BARCLAYS_HOL.ANALYTICS.",
     },
     {
       id: "de1_iceberg_product",
       label: "DP_SLA_COMPLIANCE published back to the lake as Iceberg",
       sql: exists("ANALYTICS", "DP_SLA_COMPLIANCE", "AND IS_ICEBERG = 'YES'"),
-      hint: "Step 6: paste the Iceberg data product prompt into Cortex Code.",
+      hint: "Paste the Iceberg data product prompt into Cortex Code.",
     },
   ],
   DE2: [
@@ -73,13 +81,13 @@ export const CHECKS: Record<string, Check[]> = {
             FROM BARCLAYS_HOL.INFORMATION_SCHEMA.TABLES
             WHERE TABLE_SCHEMA = 'ANALYTICS' AND IS_DYNAMIC = 'YES'
               AND TABLE_NAME IN ('DT_LIVE_SLA_BREACHES', 'DT_FAILED_PAYMENT_TRIAGE', 'DT_RETRYABLE_SUMMARY')`,
-      hint: "Steps 2 and 3: paste the dynamic table prompts into Cortex Code, using these exact names. Prereq: setup/catchup/core_analytics.sql.",
+      hint: "Paste the dynamic table prompts into Cortex Code, using these exact names. Prereq: setup/catchup/core_analytics.sql.",
     },
     {
       id: "de2_dt_refreshed",
       label: "DT_RETRYABLE_SUMMARY has refreshed with data",
       sql: rows("BARCLAYS_HOL.ANALYTICS.DT_RETRYABLE_SUMMARY"),
-      hint: "Step 4: wait a minute for the first refresh, or ask Cortex Code to refresh DT_RETRYABLE_SUMMARY.",
+      hint: "Wait a minute for the first refresh, or ask Cortex Code to refresh DT_RETRYABLE_SUMMARY.",
     },
     {
       id: "de2_dmfs",
@@ -87,7 +95,13 @@ export const CHECKS: Record<string, Check[]> = {
       sql: `SELECT COUNT(*) >= 3 AS OK, COUNT(*) || ' DMFs attached' AS DETAIL
             FROM TABLE(BARCLAYS_HOL.INFORMATION_SCHEMA.DATA_METRIC_FUNCTION_REFERENCES(
               REF_ENTITY_NAME => 'BARCLAYS_HOL.ANALYTICS.MART_CUSTOMER_PAYMENTS', REF_ENTITY_DOMAIN => 'TABLE'))`,
-      hint: "Step 5: paste the data quality prompt into Cortex Code. MART_CUSTOMER_PAYMENTS must exist (DE1 or the catch-up).",
+      hint: "Paste the data quality prompt into Cortex Code. MART_CUSTOMER_PAYMENTS must exist (DE1 or the catch-up).",
+    },
+    {
+      id: "de2_pipeline",
+      label: "Pipeline Builder project created in ANALYTICS",
+      sql: `SHOW DCM PROJECTS IN SCHEMA BARCLAYS_HOL.ANALYTICS ->> SELECT COUNT(*) > 0 AS OK, COALESCE(NULLIF(LISTAGG("name", ', '), ''), 'no Pipeline Builder project in ANALYTICS') AS DETAIL FROM $1`,
+      hint: "+ > Pipeline Builder, schema BARCLAYS_HOL.ANALYTICS (not RAW_DATA), then Deploy.",
     },
   ],
   DA1: [
@@ -95,7 +109,7 @@ export const CHECKS: Record<string, Check[]> = {
       id: "da1_semantic_view",
       label: "Semantic view SV_CLIENT_360 created",
       sql: show("SHOW SEMANTIC VIEWS LIKE 'SV_CLIENT_360' IN SCHEMA BARCLAYS_HOL.ANALYTICS", "SV_CLIENT_360"),
-      hint: "Step 3: create SV_CLIENT_360 with the semantic view prompt. Prereq: setup/catchup/core_analytics.sql.",
+      hint: "Create SV_CLIENT_360 with the semantic view prompt. Prereq: setup/catchup/core_analytics.sql.",
     },
     {
       id: "da1_semantic_query",
@@ -112,14 +126,14 @@ export const CHECKS: Record<string, Check[]> = {
       sql: `SELECT COUNT(*) >= 1000 AND COUNT_IF(TOPIC_CATEGORY IS NULL) = 0 AS OK,
                    COUNT(*) || ' rows, ' || COUNT(DISTINCT TOPIC_CATEGORY) || ' topics' AS DETAIL
             FROM BARCLAYS_HOL.ANALYTICS.FEEDBACK_ENRICHED`,
-      hint: "Step 3: paste the enrichment prompt into Cortex Code.",
+      hint: "Paste the enrichment prompt into Cortex Code.",
     },
     {
       id: "da2_rm_themes",
       label: "AI_AGG complaint themes generated per RM",
       sql: `SELECT COUNT(*) >= 5 AND COUNT_IF(LENGTH(TOP_THEMES) > 50) = COUNT(*) AS OK, COUNT(*) || ' RMs with themes' AS DETAIL
             FROM BARCLAYS_HOL.ANALYTICS.RM_FEEDBACK_THEMES`,
-      hint: "Step 5: paste the AI_AGG themes prompt into Cortex Code.",
+      hint: "Paste the AI_AGG themes prompt into Cortex Code.",
     },
   ],
   OPS1: [
@@ -127,7 +141,7 @@ export const CHECKS: Record<string, Check[]> = {
       id: "ops1_agent",
       label: "Corporate Payments 360 agent published",
       sql: show("SHOW AGENTS LIKE 'CORPORATE_PAYMENTS_360' IN SCHEMA SNOWFLAKE_INTELLIGENCE.AGENTS", "Agent"),
-      hint: "Step 1: + > Agent > Create with CoCo, using the exact name CORPORATE_PAYMENTS_360 in SNOWFLAKE_INTELLIGENCE.AGENTS. Prereqs: DA1 and setup/catchup/semantic_view_and_agent.sql.",
+      hint: "+ > Agent > Create with CoCo, using the exact name CORPORATE_PAYMENTS_360 in SNOWFLAKE_INTELLIGENCE.AGENTS. Prereqs: DA1 and setup/catchup/semantic_view_and_agent.sql.",
     },
   ],
   OPS2: [
@@ -135,13 +149,13 @@ export const CHECKS: Record<string, Check[]> = {
       id: "ops2_queue",
       label: "Prioritised triage queue built",
       sql: rows("BARCLAYS_HOL.ANALYTICS.V_ALERT_TRIAGE_QUEUE", 10),
-      hint: "Steps 2 and 3: paste the feed and triage queue prompts into Cortex Code.",
+      hint: "Paste the feed and triage queue prompts into Cortex Code.",
     },
     {
       id: "ops2_recommendations",
       label: "AI recommendations generated for the top alerts",
       sql: rows("BARCLAYS_HOL.ANALYTICS.ALERT_RECOMMENDATIONS", 5),
-      hint: "Step 4: paste the AI next actions prompt into Cortex Code.",
+      hint: "Paste the AI next actions prompt into Cortex Code.",
     },
   ],
   AI1: [
@@ -150,13 +164,13 @@ export const CHECKS: Record<string, Check[]> = {
       label: "SCHEME_RULES tool returns CHAPS rules",
       sql: `SELECT BARCLAYS_HOL.AGENTS.SCHEME_RULES('CHAPS'):cutoff_time_uk::STRING = '15:45:00' AS OK,
                    'CHAPS cutoff ' || BARCLAYS_HOL.AGENTS.SCHEME_RULES('CHAPS'):cutoff_time_uk::STRING AS DETAIL`,
-      hint: "Step 3: paste the scheme rules prompt into Cortex Code.",
+      hint: "Paste the scheme rules prompt into Cortex Code.",
     },
     {
       id: "ai1_agent",
       label: "PAYMENTS_INVESTIGATOR agent created",
       sql: show("SHOW AGENTS LIKE 'PAYMENTS_INVESTIGATOR' IN SCHEMA BARCLAYS_HOL.AGENTS", "Agent"),
-      hint: "Step 4: + > Agent > Create with CoCo, using the exact name PAYMENTS_INVESTIGATOR in BARCLAYS_HOL.AGENTS.",
+      hint: "+ > Agent > Create with CoCo, using the exact name PAYMENTS_INVESTIGATOR in BARCLAYS_HOL.AGENTS.",
     },
   ],
   AI2: [
@@ -164,7 +178,7 @@ export const CHECKS: Record<string, Check[]> = {
       id: "ai2_mcp",
       label: "PAYMENTS_MCP server created",
       sql: show("SHOW MCP SERVERS LIKE 'PAYMENTS_MCP' IN SCHEMA BARCLAYS_HOL.AGENTS", "MCP server"),
-      hint: "Step 2: paste the MCP server prompt into Cortex Code. Prereqs: DA1, OPS1 and AI1.",
+      hint: "Paste the MCP server prompt into Cortex Code. Prereqs: DA1, OPS1 and AI1.",
     },
   ],
   AI3: [
@@ -178,7 +192,7 @@ export const CHECKS: Record<string, Check[]> = {
       id: "ai3_agent",
       label: "Payments Platform Copilot agent created",
       sql: show("SHOW AGENTS LIKE 'PAYMENTS_PLATFORM_COPILOT' IN SCHEMA SNOWFLAKE_INTELLIGENCE.AGENTS", "Agent"),
-      hint: "Step 3: + > Agent > Create with CoCo, using the exact name PAYMENTS_PLATFORM_COPILOT in SNOWFLAKE_INTELLIGENCE.AGENTS.",
+      hint: "+ > Agent > Create with CoCo, using the exact name PAYMENTS_PLATFORM_COPILOT in SNOWFLAKE_INTELLIGENCE.AGENTS.",
     },
   ],
   GOV1: [
@@ -188,7 +202,7 @@ export const CHECKS: Record<string, Check[]> = {
       sql: `SELECT COUNT(*) > 0 AS OK, COALESCE(MAX(TAG_VALUE), 'no DATA_SENSITIVITY tag') AS DETAIL
             FROM TABLE(BARCLAYS_HOL.INFORMATION_SCHEMA.TAG_REFERENCES_ALL_COLUMNS('BARCLAYS_HOL.GOVERNANCE.ACCOUNT_REGISTER', 'table'))
             WHERE COLUMN_NAME = 'IBAN' AND TAG_NAME = 'DATA_SENSITIVITY' AND TAG_VALUE = 'RESTRICTED'`,
-      hint: "Steps 2 and 3: paste the classify and tag prompts into Cortex Code.",
+      hint: "Paste the classify and tag prompts into Cortex Code.",
     },
     {
       id: "gov1_policies",
@@ -197,7 +211,7 @@ export const CHECKS: Record<string, Check[]> = {
                    LISTAGG(DISTINCT POLICY_KIND, ', ') AS DETAIL
             FROM TABLE(BARCLAYS_HOL.INFORMATION_SCHEMA.POLICY_REFERENCES(
               REF_ENTITY_NAME => 'BARCLAYS_HOL.GOVERNANCE.ACCOUNT_REGISTER', REF_ENTITY_DOMAIN => 'TABLE'))`,
-      hint: "Steps 4 and 5: paste the masking and row access prompts into Cortex Code.",
+      hint: "Paste the masking and row access prompts into Cortex Code.",
     },
   ],
   GOV2: [
@@ -206,9 +220,85 @@ export const CHECKS: Record<string, Check[]> = {
       label: "MART_SLA_COMPLIANCE documented for consumers",
       sql: `SELECT COUNT_IF(COMMENT ILIKE '%Owner:%') > 0 AS OK, COALESCE(LEFT(MAX(COMMENT), 80), 'no comment') AS DETAIL
             FROM BARCLAYS_HOL.INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'ANALYTICS' AND TABLE_NAME = 'MART_SLA_COMPLIANCE'`,
-      hint: "Step 6: paste the documentation prompt into Cortex Code (the comment must include \"Owner:\").",
+      hint: "Paste the documentation prompt into Cortex Code (the comment must include \"Owner:\").",
+    },
+    {
+      id: "gov2_automation",
+      label: "Daily Cortex Code automation watches restricted-column access",
+      sql: `SHOW AGENT TASKS LIKE 'COCO_ROUTINE_%' IN SCHEMA "USER$".PUBLIC ->> SELECT COUNT(*) > 0 AS OK, COALESCE(NULLIF(LISTAGG("name" || ' (' || "state" || ')', ', '), ''), 'no Cortex Code automation yet') AS DETAIL FROM $1`,
+      hint: "Ask Cortex Code to set up the daily automation, and say yes when it offers to create it.",
+      asCaller: true,
     },
   ],
 }
 
 export const ALL_CHECK_IDS = Object.values(CHECKS).flat().map((c) => c.id)
+
+// Prerequisites: what a module needs before you start it. Run live from the module
+// page and never recorded as progress, so they don't count towards completion.
+const views = (names: string[]) =>
+  `SELECT COUNT(*) = ${names.length} AS OK, COUNT(*) || ' of ${names.length} found: ' || COALESCE(LISTAGG(TABLE_NAME, ', ') WITHIN GROUP (ORDER BY TABLE_NAME), 'none') AS DETAIL
+     FROM BARCLAYS_HOL.INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'ANALYTICS' AND TABLE_NAME IN (${names.map((n) => `'${n}'`).join(", ")})`
+
+const columns = (table: string, cols: string[]) =>
+  `SELECT COUNT(*) = ${cols.length} AS OK, COUNT(*) || ' of ${cols.length} columns: ' || COALESCE(LISTAGG(COLUMN_NAME, ', ') WITHIN GROUP (ORDER BY COLUMN_NAME), 'table not found') AS DETAIL
+     FROM BARCLAYS_HOL.INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'ANALYTICS' AND TABLE_NAME = '${table}' AND COLUMN_NAME IN (${cols.map((c) => `'${c}'`).join(", ")})`
+
+const CATCHUP = "Or run setup/catchup/core_analytics.sql (Lab Companion > this module > catch-up script)."
+const STAGING = ["STG_ACCOUNTS", "STG_CUSTOMERS", "STG_FEEDBACK", "STG_PAYMENTS"]
+
+const pre = {
+  staging: { id: "pre_staging", label: "dbt staging views exist", sql: views(STAGING), hint: `Run Build from the dbt pane (DE1). ${CATCHUP}` },
+  slaMart: { id: "pre_sla_mart", label: "MART_SLA_COMPLIANCE has data", sql: rows("BARCLAYS_HOL.ANALYTICS.MART_SLA_COMPLIANCE"), hint: `Run Build from the dbt pane (DE1). ${CATCHUP}` },
+  customerMart: {
+    id: "pre_customer_mart",
+    label: "MART_CUSTOMER_PAYMENTS has the columns DE2 needs",
+    sql: columns("MART_CUSTOMER_PAYMENTS", ["CUSTOMER_ID", "RM_NAME", "SUCCESS_RATE_PCT"]),
+    hint: `Finish DE1's mart and Build steps (keep the column names in the prompt). ${CATCHUP}`,
+  },
+  feedback: { id: "pre_feedback", label: "FEEDBACK_ENRICHED exists (sentiment and topics)", sql: views(["FEEDBACK_ENRICHED"]), hint: `Run DA2's enrichment step. ${CATCHUP}` },
+  svPayments: {
+    id: "pre_sv_payments",
+    label: "Worked-example semantic view SV_PAYMENTS exists",
+    sql: show("SHOW SEMANTIC VIEWS LIKE 'SV_PAYMENTS' IN SCHEMA BARCLAYS_HOL.ANALYTICS", "SV_PAYMENTS"),
+    hint: "Run setup/catchup/semantic_view_and_agent.sql (Lab Companion > this module > catch-up script).",
+  },
+  svClient360: {
+    id: "pre_sv_client_360",
+    label: "SV_CLIENT_360 exists (DA1)",
+    sql: show("SHOW SEMANTIC VIEWS LIKE 'SV_CLIENT_360' IN SCHEMA BARCLAYS_HOL.ANALYTICS", "SV_CLIENT_360"),
+    hint: "Create SV_CLIENT_360 in DA1, or run the DA1 reference SQL.",
+  },
+  agent360: {
+    id: "pre_agent_360",
+    label: "CORPORATE_PAYMENTS_360 agent exists (OPS1)",
+    sql: show("SHOW AGENTS LIKE 'CORPORATE_PAYMENTS_360' IN SCHEMA SNOWFLAKE_INTELLIGENCE.AGENTS", "Agent"),
+    hint: "Create the agent in OPS1, or run the OPS1 reference SQL.",
+  },
+  lookup: {
+    id: "pre_payment_lookup",
+    label: "PAYMENT_LOOKUP tool exists (AI1)",
+    sql: show("SHOW USER FUNCTIONS LIKE 'PAYMENT_LOOKUP' IN SCHEMA BARCLAYS_HOL.AGENTS", "PAYMENT_LOOKUP"),
+    hint: "Build the payment lookup tool in AI1, or run the AI1 reference SQL.",
+  },
+  cke: {
+    id: "pre_cke",
+    label: "Marketplace knowledge extension installed",
+    sql: show("SHOW CORTEX SEARCH SERVICES IN DATABASE SNOWFLAKE_DOCS_CKE", "Knowledge extension"),
+    hint: "Ask the facilitator - setup/00 installs SNOWFLAKE_DOCS_CKE from the Marketplace.",
+  },
+} satisfies Record<string, Check>
+
+export const PREREQS: Record<string, Check[]> = {
+  DE1: [CHECKS.C1[0]],
+  DE2: [pre.staging, pre.slaMart, pre.customerMart],
+  DA1: [pre.staging, pre.feedback, pre.svPayments],
+  DA2: [pre.staging],
+  OPS1: [pre.svClient360, pre.svPayments],
+  OPS2: [pre.staging, pre.feedback],
+  AI1: [pre.staging, pre.svPayments],
+  AI2: [pre.svClient360, pre.agent360, pre.lookup, pre.cke],
+  AI3: [pre.cke, pre.svClient360],
+  GOV1: [pre.staging],
+  GOV2: [pre.staging, pre.slaMart],
+}
