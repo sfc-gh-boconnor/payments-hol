@@ -1,6 +1,17 @@
 import content from "@/lib/content.generated.json"
 import { CHECKS } from "@/lib/checks"
 
+/** One step of a module. prompt is pasted into Cortex Code; sql is a small snippet to run. */
+export type Step = {
+  title: string
+  body: string
+  where: string
+  prompt: string
+  sql: string
+  expect: string
+  checkId: string
+}
+
 export type Module = {
   code: string
   title: string
@@ -9,8 +20,7 @@ export type Module = {
   prerequisites: string
   question: string
   build: string[]
-  steps: string[]
-  prompts: string[]
+  steps: Step[]
   check: string
   note: string
   kind: "core" | "vignette"

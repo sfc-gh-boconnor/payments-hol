@@ -28,7 +28,7 @@ Choose your pathway, start with **C1**, and press **Check my work** at the end o
 
 ### 4. Open the lab Workspace
 
-In Snowsight go to **Projects > Workspaces** and open **payments-hol**. It already contains the lab SQL and the dbt project; use it to run the SQL and work with Cortex Code.
+In Snowsight go to **Projects > Workspaces**, click the **My Workspace** dropdown at the top left and choose **payments-hol**. It already contains the dbt project and the reference SQL. You build each module from here, pasting the Lab Companion's prompts into the **Cortex Code** sidebar.
 
 ---
 

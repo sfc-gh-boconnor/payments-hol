@@ -5,25 +5,70 @@
    "title": "Explore the Iceberg data product",
    "persona": "All personas",
    "minutes": 25,
-   "kind": "core",
    "prerequisites": "Facilitator setup complete",
    "question": "What has the platform team published to us, and what can we (not) do with it?",
    "build": [
-    "Nothing - you explore the nine read-only Snowflake-managed Iceberg tables"
+    "Nothing yet: you explore the nine read-only Snowflake-managed Iceberg tables with Cortex Code, and get to know the Workspace you'll build everything else in."
    ],
    "steps": [
-    "Show the Iceberg tables and their metadata",
-    "Prove the read-only guard-rails",
-    "Profile the payments mix by scheme",
-    "Write a first corporate client 360 query",
-    "Ask Cortex Code to explain the data model"
-   ],
-   "prompts": [
-    "Describe the tables in BARCLAYS_HOL.RAW_DATA and how they join together.",
-    "Which customers have the highest payment failure rate? Write the SQL and run it."
+    {
+     "title": "Open the payments-hol Workspace",
+     "body": "This shared Workspace is where you'll build every module. Take a quick tour: **Home** and the **+** button list everything you can create here (SQL file, Notebook, dbt Project, Streamlit App, Agent, Semantic view, Pipeline Builder). The file explorer on the left holds the lab project (`dbt/`, `vignettes/`). The bottom panel has Query History and, later, the dbt pane.",
+     "where": "Snowsight > **Projects > Workspaces**, then the **My Workspace** dropdown (top left) > **payments-hol**",
+     "prompt": "",
+     "sql": "",
+     "expect": "the payments-hol Workspace open, with `dbt/` and `vignettes/` in the file explorer",
+     "checkId": ""
+    },
+    {
+     "title": "Open Cortex Code and set your context",
+     "body": "Open the Cortex Code sidebar from the right-hand side of the Workspace. You'll paste every prompt in this lab into it. First, run this in a new SQL file so you work as an attendee:",
+     "where": "payments-hol Workspace > **+ > SQL file**, then the Cortex Code sidebar (right-hand panel)",
+     "prompt": "",
+     "sql": "USE ROLE HOL_PARTICIPANT;\nUSE SECONDARY ROLES NONE;\nUSE WAREHOUSE BARCLAYS_WH;",
+     "expect": "",
+     "checkId": ""
+    },
+    {
+     "title": "See what has been published",
+     "body": "",
+     "where": "",
+     "prompt": "List the Iceberg tables in BARCLAYS_HOL.RAW_DATA with their row counts, and show the Iceberg metadata location for BARCLAYS_HOL.RAW_DATA.PAYMENTS. Explain what Snowflake-managed Iceberg means for other engines reading this data.",
+     "sql": "",
+     "expect": "nine Iceberg tables (PAYMENTS has 50,000 rows) and a metadata JSON location",
+     "checkId": "c1_iceberg_published"
+    },
+    {
+     "title": "Prove the guard-rails",
+     "body": "",
+     "where": "",
+     "prompt": "Try to insert a test row into BARCLAYS_HOL.RAW_DATA.PAYMENTS using my current role, then explain the error and why the platform team set it up this way.",
+     "sql": "",
+     "expect": "an \"Insufficient privileges\" error. That's intentional: sources are read-only.",
+     "checkId": "c1_payments_rows"
+    },
+    {
+     "title": "Learn the data model",
+     "body": "",
+     "where": "",
+     "prompt": "Describe the tables in BARCLAYS_HOL.RAW_DATA and how they join together. Draw the relationships as a simple text diagram.",
+     "sql": "",
+     "expect": "customers -> relationship managers, customers -> accounts -> payments (via ORIGINATOR_ACCOUNT_ID), plus feedback, alerts, schemes, SLAs and error codes",
+     "checkId": ""
+    },
+    {
+     "title": "Profile payments and build a first client 360",
+     "body": "",
+     "where": "",
+     "prompt": "Using BARCLAYS_HOL.RAW_DATA, show payment count, volume in GBP millions and success rate by PAYMENT_TYPE. Then list the 10 corporate clients with the most failed payments, with their RM, sector, account count and feedback count. Run both queries.",
+     "sql": "",
+     "expect": "six payment schemes, then a top-10 client table you can sanity-check against the reference SQL",
+     "checkId": ""
+    }
    ],
    "check": "Your role can read all nine Iceberg tables but cannot insert into them.",
    "note": "At Barclays the same tables sit on the bank's own object storage via an external volume; the SQL is identical.",
+   "kind": "core",
    "sqlPath": "core/C1_explore_iceberg.sql",
    "sql": "-- =====================================================\n-- BARCLAYS PAYMENTS HOL v2 - SHARED CORE\n-- C1: EXPLORE THE PUBLISHED ICEBERG DATA PRODUCT  (~25 min, all personas)\n--\n-- Business context: you are part of Payments Operations for Corporate\n-- Banking. The platform team has published nine source tables to the\n-- enterprise data platform as Iceberg tables. You can read them but you\n-- cannot load or change them - exactly like Barclayflake.\n-- =====================================================\n\nUSE ROLE HOL_PARTICIPANT;\nUSE SECONDARY ROLES NONE;   -- see exactly what an attendee sees\nUSE WAREHOUSE BARCLAYS_WH;\nUSE SCHEMA BARCLAYS_HOL.RAW_DATA;\n\n-- C1.1 What has been published to us?\nSHOW ICEBERG TABLES IN SCHEMA BARCLAYS_HOL.RAW_DATA;\n-- Note the catalog (SNOWFLAKE) and that storage is Snowflake-managed.\n-- At Barclays the same tables sit on the bank's own object storage\n-- via an external volume; the SQL you write is identical.\n\n-- C1.2 Iceberg tables keep open metadata - this is what lets other engines\n-- (Spark, Trino, etc.) read the same data with no copy.\nSELECT SYSTEM$GET_ICEBERG_TABLE_INFORMATION('BARCLAYS_HOL.RAW_DATA.PAYMENTS') AS ICEBERG_METADATA;\n\n-- C1.3 Prove the guard-rails: attendees cannot load or modify source data.\n-- Expect: \"Insufficient privileges\". This is intentional.\n-- INSERT INTO PAYMENTS (PAYMENT_ID) VALUES ('TEST');\n\n-- C1.4 Get to know the data model (see docs/data_sources.md for the ERD)\nSELECT 'PAYMENTS' AS TABLE_NAME, COUNT(*) AS ROW_COUNT FROM PAYMENTS\nUNION ALL SELECT 'CUSTOMER_FEEDBACK',     COUNT(*) FROM CUSTOMER_FEEDBACK\nUNION ALL SELECT 'OPERATIONAL_ALERTS',    COUNT(*) FROM OPERATIONAL_ALERTS\nUNION ALL SELECT 'CUSTOMERS',             COUNT(*) FROM CUSTOMERS\nUNION ALL SELECT 'ACCOUNTS',              COUNT(*) FROM ACCOUNTS\nUNION ALL SELECT 'RELATIONSHIP_MANAGERS', COUNT(*) FROM RELATIONSHIP_MANAGERS\nORDER BY ROW_COUNT DESC;\n\n-- C1.5 Payments mix by scheme - the six UK/international rails\nSELECT PAYMENT_TYPE,\n       COUNT(*)                                        AS PAYMENTS,\n       ROUND(SUM(AMOUNT) / 1e6, 1)                     AS VOLUME_M,\n       ROUND(COUNT_IF(STATUS = 'COMPLETED') / COUNT(*) * 100, 2) AS SUCCESS_RATE_PCT\nFROM PAYMENTS\nGROUP BY PAYMENT_TYPE\nORDER BY PAYMENTS DESC;\n\n-- C1.6 A corporate client 360 in one query: customer -> RM -> accounts -> payments -> feedback\nSELECT c.CUSTOMER_NAME, c.SECTOR, r.RM_NAME, r.TEAM,\n       COUNT(DISTINCT a.ACCOUNT_ID)                    AS ACCOUNTS,\n       COUNT(DISTINCT p.PAYMENT_ID)                    AS PAYMENTS,\n       COUNT(DISTINCT IFF(p.STATUS = 'FAILED', p.PAYMENT_ID, NULL)) AS FAILED,\n       COUNT(DISTINCT f.FEEDBACK_ID)                   AS FEEDBACK_ITEMS\nFROM CUSTOMERS c\nJOIN RELATIONSHIP_MANAGERS r ON c.RM_ID = r.RM_ID\nJOIN ACCOUNTS a              ON a.CUSTOMER_ID = c.CUSTOMER_ID\nLEFT JOIN PAYMENTS p         ON p.ORIGINATOR_ACCOUNT_ID = a.ACCOUNT_ID\nLEFT JOIN CUSTOMER_FEEDBACK f ON f.CUSTOMER_ID = c.CUSTOMER_ID\nGROUP BY ALL\nORDER BY FAILED DESC\nLIMIT 10;\n\n-- C1.7 Iceberg time travel works too: what did PAYMENTS look like an hour ago?\n-- (Uncomment once the tables are at least a few minutes old.)\n-- SELECT COUNT(*) FROM PAYMENTS AT (OFFSET => -60*5);\n\n-- C1.8 Ask Cortex Code (CoCo panel in your Workspace):\n--   \"Describe the tables in BARCLAYS_HOL.RAW_DATA and how they join together.\"\n--   \"Which customers have the highest payment failure rate? Write the SQL and run it.\"\n\nSELECT 'Core C1 complete - pick your pathway in pathways/' AS STATUS;\n"
   },
@@ -35,28 +80,73 @@
    "prerequisites": "Core C1 only",
    "question": "Turn the published Iceberg sources into governed, tested data products - and publish them back to the lake as Iceberg.",
    "build": [
-    "dbt Project on Snowflake `BARCLAYS_DBT` (4 staging views, 2 marts, 27 tests)",
-    "Two CoCo-built marts: `mart_customer_payments`, `mart_rm_performance`",
+    "The dbt project in the Workspace (4 staging views, 2 marts, pre-written tests), run from the Workspace dbt pane",
+    "Two Cortex Code-built marts: `mart_customer_payments`, `mart_rm_performance`",
     "Nightly task `TSK_DBT_NIGHTLY_BUILD` (suspended)",
     "Iceberg data product `DP_SLA_COMPLIANCE`"
    ],
    "steps": [
-    "Open the lab Workspace **payments-hol** (**Projects > Workspaces**) and walk `dbt/` - sources point at `RAW_DATA` Iceberg tables with no code changes.",
-    "Deploy `dbt/` as a dbt Project and run `build` (Workspace **Deploy/Run**, or `EXECUTE DBT PROJECT`).",
-    "Use the two Cortex Code prompts to generate the missing marts; re-run `build` until the pre-written tests pass.",
-    "Schedule the project with a task.",
-    "Publish `MART_SLA_COMPLIANCE` back out as an Iceberg table."
+    {
+     "title": "Open the dbt project in the Workspace",
+     "body": "Open `dbt/models/staging/schema.yml`: the sources point straight at the `RAW_DATA` Iceberg tables. dbt reads Iceberg exactly like native tables.",
+     "where": "Snowsight > **Projects > Workspaces** > **My Workspace** dropdown > **payments-hol**, then `dbt/` in the file explorer",
+     "prompt": "Walk me through the dbt project in the dbt/ folder of this Workspace: what each staging and mart model does, where the sources come from, and which models are defined in models/marts/schema.yml but have no .sql file yet.",
+     "sql": "",
+     "expect": "4 staging models and 2 marts (`mart_payment_kpis`, `mart_sla_compliance`). `mart_customer_payments` and `mart_rm_performance` have tests in `schema.yml` but no SQL yet. Those are the two you'll build.",
+     "checkId": ""
+    },
+    {
+     "title": "Run dbt build from the dbt pane",
+     "body": "Open the **dbt** tab in the bottom panel. It shows Profile **dev** and a **Run** button. Open the dropdown next to Run, choose **build** (not run), and run it. `build` runs the models and the tests; `run` only runs the models.",
+     "where": "the bottom panel of the Workspace > **dbt** tab (next to Query History)",
+     "prompt": "",
+     "sql": "",
+     "expect": "the Output tab ends with every model and test passing (`ERROR=0`). Open the **DAG** tab to see the lineage from the Iceberg sources to the marts.",
+     "checkId": "de1_staging"
+    },
+    {
+     "title": "Generate mart_customer_payments with Cortex Code",
+     "body": "",
+     "where": "the Cortex Code sidebar, with the payments-hol Workspace open",
+     "prompt": "Create a dbt mart model dbt/models/marts/mart_customer_payments.sql that summarises payment activity per customer. Join stg_payments -> stg_accounts (on originator_account_id) -> stg_customers and follow the patterns in mart_payment_kpis.sql. Output one row per customer with these columns: customer_id, customer_name, customer_sector, rm_name, total_payments, total_volume_gbp, success_rate_pct (a float percentage, 0-100), avg_processing_time_ms and most_used_scheme. Keep the column names and tests already defined for this model in models/marts/schema.yml.",
+     "sql": "",
+     "expect": "a new file `dbt/models/marts/mart_customer_payments.sql`. DE2 builds on this mart, so keep these column names.",
+     "checkId": ""
+    },
+    {
+     "title": "Generate mart_rm_performance and make the tests pass",
+     "body": "",
+     "where": "the Cortex Code sidebar, then the **dbt** pane",
+     "prompt": "Create dbt/models/marts/mart_rm_performance.sql: one row per relationship manager with rm_id, rm_name, client_count, total_volume_gbp, avg_success_rate_pct and the name of their client with the lowest success rate. Build it from mart_customer_payments and stg_customers, and keep the column names and tests in models/marts/schema.yml. Then tell me to run dbt build from the dbt pane, and fix any failing tests I paste back to you.",
+     "sql": "",
+     "expect": "run **build** from the dbt pane again. You should now see 8 models, with the new tests passing. If a test fails, paste the error into Cortex Code and ask it to fix the model.",
+     "checkId": "de1_coco_marts"
+    },
+    {
+     "title": "Schedule the project",
+     "body": "",
+     "where": "",
+     "prompt": "Create a task BARCLAYS_HOL.ANALYTICS.TSK_DBT_NIGHTLY_BUILD on warehouse BARCLAYS_WH that runs EXECUTE DBT PROJECT BARCLAYS_HOL.ANALYTICS.BARCLAYS_DBT ARGS = 'build' every day at 05:00 Europe/London. Leave it suspended.",
+     "sql": "",
+     "expect": "the task created and suspended. In production you'd resume it. No external orchestrator needed.",
+     "checkId": ""
+    },
+    {
+     "title": "Publish the data product back to the lake as Iceberg",
+     "body": "",
+     "where": "",
+     "prompt": "Create a Snowflake-managed Iceberg table BARCLAYS_HOL.ANALYTICS.DP_SLA_COMPLIANCE (CATALOG = 'SNOWFLAKE') from MART_SLA_COMPLIANCE, casting PAYMENT_DAY to TIMESTAMP_NTZ(6) because Iceberg stores microseconds. Add a comment describing it as a data product, then show its Iceberg metadata location.",
+     "sql": "",
+     "expect": "`DP_SLA_COMPLIANCE` listed by `SHOW ICEBERG TABLES IN SCHEMA BARCLAYS_HOL.ANALYTICS`, with a metadata location other engines can read",
+     "checkId": "de1_iceberg_product"
+    }
    ],
-   "prompts": [
-    "Create a dbt mart model mart_customer_payments ... (full prompt in de1.sql)",
-    "Create mart_rm_performance ... then run dbt build and fix any failing tests."
-   ],
-   "check": "`EXECUTE DBT PROJECT` reports `PASS=27 ERROR=0` (more once the CoCo marts exist); `SHOW ICEBERG TABLES IN SCHEMA ANALYTICS` lists `DP_SLA_COMPLIANCE`.",
+   "check": "`dbt build` in the dbt pane passes with `ERROR=0` once the two Cortex Code marts exist, and `DP_SLA_COMPLIANCE` is an Iceberg table in `ANALYTICS`.",
    "note": "Production Iceberg tables use the bank's external volume (one volume, one IAM role across accounts) rather than Snowflake-managed storage. dbt models and SQL are otherwise identical.",
    "kind": "vignette",
    "track": "Data Engineer",
    "sqlPath": "vignettes/de1_iceberg_dbt_pipeline/de1.sql",
-   "sql": "-- =====================================================\n-- VIGNETTE DE1: ICEBERG + dbt PIPELINE WITH CORTEX CODE   (~60 min)\n-- Persona: Data Engineer\n-- Question: \"Turn the published Iceberg sources into governed, tested\n--            data products - and publish them back to the lake as Iceberg.\"\n-- Prereq:   Core C1 only. (Produces everything core_analytics.sql would.)\n--\n-- Work in the lab Workspace payments-hol (Projects > Workspaces), which is\n-- already in your account. On your own account, create one from\n-- https://github.com/sfc-gh-boconnor/payments-hol (Projects > Workspaces >\n-- From Git repository).\n-- =====================================================\n\nUSE ROLE HOL_PARTICIPANT;\nUSE SECONDARY ROLES NONE;   -- see exactly what an attendee sees\nUSE WAREHOUSE BARCLAYS_WH;\nUSE SCHEMA BARCLAYS_HOL.ANALYTICS;\n\n-- -----------------------------------------------------\n-- DE1.1 Walk the dbt project (Workspace file explorer: dbt/)\n--   models/staging/schema.yml  - sources point at BARCLAYS_HOL.RAW_DATA (Iceberg)\n--   models/staging/*.sql       - 4 views: cast, clean, denormalise\n--   models/marts/*.sql         - mart_payment_kpis, mart_sla_compliance\n--   macros/generate_schema_name.sql - land models in ANALYTICS, not ANALYTICS_ANALYTICS\n-- dbt reads Iceberg sources exactly like native tables. No code changes.\n-- -----------------------------------------------------\n\n-- -----------------------------------------------------\n-- DE1.2 Deploy and run as a dbt Project on Snowflake\n-- In the Workspace: select dbt/ > Deploy > name BARCLAYS_DBT, then Run > build.\n-- Or from SQL / a task (this is how you would schedule it in production):\n-- (Facilitator: the project object is created by `snow dbt deploy` or the Workspace.)\n-- -----------------------------------------------------\nEXECUTE DBT PROJECT BARCLAYS_HOL.ANALYTICS.BARCLAYS_DBT ARGS = 'build';\n-- Expect: Done. PASS=27 WARN=0 ERROR=0\n\n-- Schedule it - one task, no external orchestrator\nCREATE OR REPLACE TASK TSK_DBT_NIGHTLY_BUILD\n    WAREHOUSE = BARCLAYS_WH\n    SCHEDULE  = 'USING CRON 0 5 * * * Europe/London'\nAS\n    EXECUTE DBT PROJECT BARCLAYS_HOL.ANALYTICS.BARCLAYS_DBT ARGS = 'build';\n-- Left suspended for the lab. In production: ALTER TASK TSK_DBT_NIGHTLY_BUILD RESUME;\n\n-- -----------------------------------------------------\n-- DE1.3 Accelerate with Cortex Code (CoCo panel in the Workspace)\n-- Prompt 1:\n--   \"Create a dbt mart model mart_customer_payments in dbt/models/marts that\n--    summarises payment activity per customer: total payments, total volume,\n--    success rate and most-used payment scheme. Join stg_payments -> stg_accounts\n--    -> stg_customers and follow the patterns in mart_payment_kpis.sql.\"\n-- Prompt 2:\n--   \"Create mart_rm_performance: one row per relationship manager with rm_id,\n--    rm_name, client_count, total volume, average success rate and their client\n--    with the lowest success rate. Then run dbt build and fix any failing tests.\"\n-- The tests for both models already exist in models/marts/schema.yml, so\n-- `dbt build` proves CoCo's code is correct.\n-- -----------------------------------------------------\n\n-- -----------------------------------------------------\n-- DE1.4 Validate\n-- -----------------------------------------------------\nSELECT 'STG_PAYMENTS' AS OBJ, COUNT(*) AS ROWS_ FROM STG_PAYMENTS\nUNION ALL SELECT 'MART_PAYMENT_KPIS',   COUNT(*) FROM MART_PAYMENT_KPIS\nUNION ALL SELECT 'MART_SLA_COMPLIANCE', COUNT(*) FROM MART_SLA_COMPLIANCE;\n\nSELECT SLA_STATUS, COUNT(*) AS SCHEME_DAYS\nFROM MART_SLA_COMPLIANCE GROUP BY SLA_STATUS ORDER BY SCHEME_DAYS DESC;\n\n-- -----------------------------------------------------\n-- DE1.5 Publish the data product back to the lake as Iceberg\n-- Consumers on other engines (Spark, Trino, etc.) can now read the mart with no copy.\n-- Iceberg stores microsecond precision, so timestamps are cast to scale 6.\n-- -----------------------------------------------------\nCREATE OR REPLACE ICEBERG TABLE DP_SLA_COMPLIANCE\n    CATALOG = 'SNOWFLAKE'\n    COMMENT = 'Data product: daily SLA compliance per payment scheme (Iceberg)'\nAS SELECT * REPLACE (PAYMENT_DAY::TIMESTAMP_NTZ(6) AS PAYMENT_DAY)\n   FROM MART_SLA_COMPLIANCE;\n\nSELECT SYSTEM$GET_ICEBERG_TABLE_INFORMATION('BARCLAYS_HOL.ANALYTICS.DP_SLA_COMPLIANCE') AS METADATA_LOCATION;\n\n-- Barclayflake note: in production the Iceberg table would use the bank's\n-- EXTERNAL_VOLUME (one volume and one IAM role, shared across accounts)\n-- instead of Snowflake-managed storage. The SQL above is otherwise unchanged.\n\nSELECT 'DE1 complete' AS STATUS;\n"
+   "sql": "-- =====================================================\n-- VIGNETTE DE1: ICEBERG + dbt PIPELINE WITH CORTEX CODE   (~60 min)\n-- Persona: Data Engineer\n-- Question: \"Turn the published Iceberg sources into governed, tested\n--            data products - and publish them back to the lake as Iceberg.\"\n-- Prereq:   Core C1 only. (Produces everything core_analytics.sql would.)\n--\n-- Work in the lab Workspace payments-hol (Projects > Workspaces), which is\n-- already in your account. On your own account, create one from\n-- https://github.com/sfc-gh-boconnor/payments-hol (Projects > Workspaces >\n-- From Git repository).\n-- =====================================================\n\nUSE ROLE HOL_PARTICIPANT;\nUSE SECONDARY ROLES NONE;   -- see exactly what an attendee sees\nUSE WAREHOUSE BARCLAYS_WH;\nUSE SCHEMA BARCLAYS_HOL.ANALYTICS;\n\n-- -----------------------------------------------------\n-- DE1.1 Walk the dbt project (Workspace file explorer: dbt/)\n--   models/staging/schema.yml  - sources point at BARCLAYS_HOL.RAW_DATA (Iceberg)\n--   models/staging/*.sql       - 4 views: cast, clean, denormalise\n--   models/marts/*.sql         - mart_payment_kpis, mart_sla_compliance\n--   macros/generate_schema_name.sql - land models in ANALYTICS, not ANALYTICS_ANALYTICS\n-- dbt reads Iceberg sources exactly like native tables. No code changes.\n-- -----------------------------------------------------\n\n-- -----------------------------------------------------\n-- DE1.2 Deploy and run as a dbt Project on Snowflake\n-- In the Workspace: open the dbt tab in the bottom panel, choose build from the\n-- Run dropdown and run it.\n-- Or from SQL / a task (this is how you would schedule it in production):\n-- -----------------------------------------------------\nEXECUTE DBT PROJECT BARCLAYS_HOL.ANALYTICS.BARCLAYS_DBT ARGS = 'build';\n-- Expect: Done. PASS=27 WARN=0 ERROR=0\n\n-- Schedule it - one task, no external orchestrator\nCREATE OR REPLACE TASK TSK_DBT_NIGHTLY_BUILD\n    WAREHOUSE = BARCLAYS_WH\n    SCHEDULE  = 'USING CRON 0 5 * * * Europe/London'\nAS\n    EXECUTE DBT PROJECT BARCLAYS_HOL.ANALYTICS.BARCLAYS_DBT ARGS = 'build';\n-- Left suspended for the lab. In production: ALTER TASK TSK_DBT_NIGHTLY_BUILD RESUME;\n\n-- -----------------------------------------------------\n-- DE1.3 Accelerate with Cortex Code (CoCo panel in the Workspace)\n-- Prompt 1:\n--   \"Create a dbt mart model mart_customer_payments in dbt/models/marts that\n--    summarises payment activity per customer: total payments, total volume,\n--    success rate and most-used payment scheme. Join stg_payments -> stg_accounts\n--    -> stg_customers and follow the patterns in mart_payment_kpis.sql.\"\n-- Prompt 2:\n--   \"Create mart_rm_performance: one row per relationship manager with rm_id,\n--    rm_name, client_count, total volume, average success rate and their client\n--    with the lowest success rate. Then run dbt build and fix any failing tests.\"\n-- The tests for both models already exist in models/marts/schema.yml, so\n-- `dbt build` proves CoCo's code is correct.\n-- -----------------------------------------------------\n\n-- -----------------------------------------------------\n-- DE1.4 Validate\n-- -----------------------------------------------------\nSELECT 'STG_PAYMENTS' AS OBJ, COUNT(*) AS ROWS_ FROM STG_PAYMENTS\nUNION ALL SELECT 'MART_PAYMENT_KPIS',   COUNT(*) FROM MART_PAYMENT_KPIS\nUNION ALL SELECT 'MART_SLA_COMPLIANCE', COUNT(*) FROM MART_SLA_COMPLIANCE;\n\nSELECT SLA_STATUS, COUNT(*) AS SCHEME_DAYS\nFROM MART_SLA_COMPLIANCE GROUP BY SLA_STATUS ORDER BY SCHEME_DAYS DESC;\n\n-- -----------------------------------------------------\n-- DE1.5 Publish the data product back to the lake as Iceberg\n-- Consumers on other engines (Spark, Trino, etc.) can now read the mart with no copy.\n-- Iceberg stores microsecond precision, so timestamps are cast to scale 6.\n-- -----------------------------------------------------\nCREATE OR REPLACE ICEBERG TABLE DP_SLA_COMPLIANCE\n    CATALOG = 'SNOWFLAKE'\n    COMMENT = 'Data product: daily SLA compliance per payment scheme (Iceberg)'\nAS SELECT * REPLACE (PAYMENT_DAY::TIMESTAMP_NTZ(6) AS PAYMENT_DAY)\n   FROM MART_SLA_COMPLIANCE;\n\nSELECT SYSTEM$GET_ICEBERG_TABLE_INFORMATION('BARCLAYS_HOL.ANALYTICS.DP_SLA_COMPLIANCE') AS METADATA_LOCATION;\n\n-- Barclayflake note: in production the Iceberg table would use the bank's\n-- EXTERNAL_VOLUME (one volume and one IAM role, shared across accounts)\n-- instead of Snowflake-managed storage. The SQL above is otherwise unchanged.\n\nSELECT 'DE1 complete' AS STATUS;\n"
   },
   {
    "code": "DE2",
@@ -71,15 +161,62 @@
     "System and custom data metric functions with an expectation on `MART_CUSTOMER_PAYMENTS`"
    ],
    "steps": [
-    "Create the three dynamic tables and inspect the pipeline graph in **Monitoring > Dynamic Tables**.",
-    "Attach `NULL_COUNT` and `DUPLICATE_COUNT` DMFs and a custom `INVALID_SUCCESS_RATE_COUNT` DMF.",
-    "Add an expectation and run the checks on demand."
+    {
+     "title": "Set your context",
+     "body": "",
+     "where": "payments-hol Workspace > **+ > SQL file**",
+     "prompt": "",
+     "sql": "USE ROLE HOL_PARTICIPANT;\nUSE SECONDARY ROLES NONE;\nUSE WAREHOUSE BARCLAYS_WH;\nUSE SCHEMA BARCLAYS_HOL.ANALYTICS;",
+     "expect": "",
+     "checkId": ""
+    },
+    {
+     "title": "Build the SLA breach monitor",
+     "body": "",
+     "where": "the Cortex Code sidebar",
+     "prompt": "Create a dynamic table BARCLAYS_HOL.ANALYTICS.DT_LIVE_SLA_BREACHES with TARGET_LAG = '1 minute' on warehouse BARCLAYS_WH. From MART_SLA_COMPLIANCE where SLA_STATUS = 'BREACH', group by PAYMENT_TYPE and return total payments, breached (failed) payments, breach rate % and the earliest and latest breach day.",
+     "sql": "",
+     "expect": "one row per payment scheme with breaches",
+     "checkId": ""
+    },
+    {
+     "title": "Build the failed-payment triage feed straight off Iceberg",
+     "body": "",
+     "where": "",
+     "prompt": "Create a dynamic table BARCLAYS_HOL.ANALYTICS.DT_FAILED_PAYMENT_TRIAGE with TARGET_LAG = DOWNSTREAM on BARCLAYS_WH. Read directly from the Iceberg tables in BARCLAYS_HOL.RAW_DATA: PAYMENTS with STATUS FAILED or RETURNED, joined to ERROR_CODES, ACCOUNTS (on ORIGINATOR_ACCOUNT_ID), CUSTOMERS and RELATIONSHIP_MANAGERS. Include payment id, date, type, amount, currency, error code, description, category, IS_RETRYABLE, customer name, sector and RM name. Then create DT_RETRYABLE_SUMMARY with TARGET_LAG = '5 minutes' that groups DT_FAILED_PAYMENT_TRIAGE by PAYMENT_TYPE, ERROR_CATEGORY and IS_RETRYABLE with a payment count and VALUE_AT_RISK (sum of amount).",
+     "sql": "",
+     "expect": "two chained dynamic tables. In Snowsight, **Monitoring > Dynamic Tables > DT_RETRYABLE_SUMMARY > Graph** shows the pipeline from the Iceberg sources.",
+     "checkId": "de2_dynamic_tables"
+    },
+    {
+     "title": "Watch them refresh",
+     "body": "",
+     "where": "",
+     "prompt": "Show me the refresh history for the DT_ dynamic tables in BARCLAYS_HOL.ANALYTICS, and how many rows DT_RETRYABLE_SUMMARY has. If it has not refreshed yet, refresh it.",
+     "sql": "",
+     "expect": "successful refreshes and rows in `DT_RETRYABLE_SUMMARY`",
+     "checkId": "de2_dt_refreshed"
+    },
+    {
+     "title": "Add data quality checks",
+     "body": "",
+     "where": "",
+     "prompt": "On BARCLAYS_HOL.ANALYTICS.MART_CUSTOMER_PAYMENTS: set DATA_METRIC_SCHEDULE = 'TRIGGER_ON_CHANGES', attach SNOWFLAKE.CORE.NULL_COUNT on RM_NAME and SNOWFLAKE.CORE.DUPLICATE_COUNT on CUSTOMER_ID, create a custom data metric function INVALID_SUCCESS_RATE_COUNT that counts rows where SUCCESS_RATE_PCT (FLOAT) is null, below 0 or above 100, and attach it. Add an expectation NO_DUPLICATE_CUSTOMERS (VALUE = 0) on the duplicate check. Then run all three checks on demand.",
+     "sql": "",
+     "expect": "three data metric functions attached, and the on-demand checks return `0, 0, 0`",
+     "checkId": "de2_dmfs"
+    },
+    {
+     "title": "Optional: explore Pipeline Builder",
+     "body": "Pipeline Builder is a new, visual way to build pipelines in the Workspace. Open it and see how it lays out sources, transformations and targets. Your dynamic tables above stay the source of truth for this module.",
+     "where": "payments-hol Workspace > **+ > Pipeline Builder** (Preview)",
+     "prompt": "",
+     "sql": "",
+     "expect": "",
+     "checkId": ""
+    }
    ],
-   "prompts": [
-    "Add a dynamic table DT_HIGH_VALUE_FAILURES ... refreshing every 2 minutes.",
-    "Add a data metric function to MART_PAYMENT_KPIS that counts rows where P95 < average, and attach it."
-   ],
-   "check": "`SELECT * FROM DT_RETRYABLE_SUMMARY` returns rows; the on-demand DMF query returns `0, 0, 0`.",
+   "check": "`SELECT * FROM DT_RETRYABLE_SUMMARY` returns rows; the on-demand data metric checks return `0, 0, 0`.",
    "note": "Real-time payments streaming is out of scope at Barclays today; dynamic tables give near-real-time freshness over data the platform already lands.",
    "kind": "vignette",
    "track": "Data Engineer",
@@ -88,24 +225,61 @@
   },
   {
    "code": "DA1",
-   "title": "Build a semantic view + ask Cortex Analyst",
+   "title": "Semantic view + Cortex Analyst",
    "persona": "Data Analyst",
    "minutes": 60,
    "prerequisites": "`setup/catchup/core_analytics.sql`",
    "question": "Give RMs and ops a single, trusted definition of a corporate client's payments health that anyone can query in plain English.",
    "build": [
     "Contract views `V_CLIENT_PAYMENT_SUMMARY`, `V_CLIENT_ALERTS`",
-    "Semantic view `SV_CLIENT_360` (4 tables, 3 relationships, 9 metrics, 2 verified queries)"
+    "Semantic view `SV_CLIENT_360` (4 tables, 3 relationships, metrics and verified queries)"
    ],
    "steps": [
-    "Compare with the worked example `SV_PAYMENTS` in `setup/catchup/semantic_view_and_agent.sql`.",
-    "Create the contract views, then the semantic view (DDL, Snowsight UI, or CoCo).",
-    "Query it with `SEMANTIC_VIEW(...)` SQL.",
-    "Ask questions in Cortex Analyst and read the generated SQL."
-   ],
-   "prompts": [
-    "Create a semantic view over STG_CUSTOMERS, V_CLIENT_PAYMENT_SUMMARY, FEEDBACK_ENRICHED and V_CLIENT_ALERTS joined on CUSTOMER_ID.",
-    "Add a verified query to SV_CLIENT_360 for 'clients with negative sentiment and success rate below 96%'."
+    {
+     "title": "Set your context",
+     "body": "",
+     "where": "payments-hol Workspace > **+ > SQL file**",
+     "prompt": "",
+     "sql": "USE ROLE HOL_PARTICIPANT;\nUSE SECONDARY ROLES NONE;\nUSE WAREHOUSE BARCLAYS_WH;\nUSE SCHEMA BARCLAYS_HOL.ANALYTICS;",
+     "expect": "",
+     "checkId": ""
+    },
+    {
+     "title": "Build stable contract views",
+     "body": "Semantic views should sit on contracts, not raw tables.",
+     "where": "the Cortex Code sidebar",
+     "prompt": "In BARCLAYS_HOL.ANALYTICS create two views. V_CLIENT_PAYMENT_SUMMARY: one row per CUSTOMER_ID from STG_PAYMENTS joined to STG_ACCOUNTS (on ORIGINATOR_ACCOUNT_ID), with TOTAL_PAYMENTS, SUCCESSFUL_PAYMENTS, FAILED_PAYMENTS, TOTAL_VOLUME_GBP and FAILED_VOLUME_GBP. V_CLIENT_ALERTS: one row per ALERT_ID from BARCLAYS_HOL.RAW_DATA.OPERATIONAL_ALERTS joined through STG_PAYMENTS and STG_ACCOUNTS to get CUSTOMER_ID, with SEVERITY, ALERT_STATUS, ALERT_TIME and RESOLUTION_TIME_MIN. Show 5 rows from each.",
+     "sql": "",
+     "expect": "two views, with one row per client in the summary view",
+     "checkId": ""
+    },
+    {
+     "title": "Create the semantic view with Cortex Code",
+     "body": "Compare with the worked example `SV_PAYMENTS` if you want a pattern to follow.",
+     "where": "payments-hol Workspace > **+ > Semantic view**, or the Cortex Code sidebar",
+     "prompt": "Create a semantic view BARCLAYS_HOL.ANALYTICS.SV_CLIENT_360 with four logical tables: clients (STG_CUSTOMERS, key CUSTOMER_ID), payments (V_CLIENT_PAYMENT_SUMMARY, key CUSTOMER_ID), feedback (FEEDBACK_ENRICHED, key FEEDBACK_ID) and alerts (V_CLIENT_ALERTS, key ALERT_ID), with payments, feedback and alerts each related to clients on CUSTOMER_ID. Add dimensions including clients.customer_name, clients.sector and clients.rm_name (synonyms \"relationship manager\", \"RM\"), and metrics including payments.payment_volume (sum of total volume GBP), payments.success_rate_pct, feedback.avg_sentiment, alerts.open_alert_count (status not RESOLVED) and alerts.critical_alert_count. Add business comments and synonyms, then deploy it.",
+     "sql": "",
+     "expect": "`SV_CLIENT_360` exists. Keep the logical names `clients`, `payments`, `rm_name` and `payment_volume`: the check queries them.",
+     "checkId": "da1_semantic_view"
+    },
+    {
+     "title": "Query it with SQL - no joins to remember",
+     "body": "",
+     "where": "",
+     "prompt": "Query SV_CLIENT_360 with the SEMANTIC_VIEW function: payment volume, success rate and open alert count by RM name, ordered by open alerts.",
+     "sql": "",
+     "expect": "one row per RM with volume, success rate and open alerts",
+     "checkId": "da1_semantic_query"
+    },
+    {
+     "title": "Ask in plain English and add a verified query",
+     "body": "Ask Cortex Analyst \"Which clients have negative sentiment and a success rate below 96%?\" and read the SQL it generates.",
+     "where": "Snowsight > **AI & ML > Cortex Analyst** > `SV_CLIENT_360`, then the Cortex Code sidebar",
+     "prompt": "Add a verified query to SV_CLIENT_360 for \"clients with negative sentiment and success rate below 96%\", using the SQL Cortex Analyst generated if it is correct.",
+     "sql": "",
+     "expect": "the verified query saved, so Analyst and agents answer that question the same way every time",
+     "checkId": ""
+    }
    ],
    "check": "The `SEMANTIC_VIEW` query returns one row per RM with volume, success rate and open alerts.",
    "note": "Semantic views, Analyst and agents are approved for rollout at Barclays this quarter.",
@@ -126,15 +300,69 @@
     "`RM_FEEDBACK_THEMES` (AI_AGG themes and actions per RM)"
    ],
    "steps": [
-    "Aspect sentiment with `AI_SENTIMENT`.",
-    "Enrich all feedback with sentiment and `AI_CLASSIFY` topics.",
-    "Natural-language filtering with `AI_FILTER` (churn risk).",
-    "Per-RM complaint themes with `AI_AGG`.",
-    "Draft a client reply with `AI_COMPLETE`."
-   ],
-   "prompts": [
-    "Show which customer sectors have worsening sentiment month over month and chart it.",
-    "Use AI_EXTRACT on FEEDBACK_TEXT to pull out payment references or amounts into FEEDBACK_ENTITIES."
+    {
+     "title": "Set your context",
+     "body": "",
+     "where": "payments-hol Workspace > **+ > SQL file** (or **+ > Notebook**)",
+     "prompt": "",
+     "sql": "USE ROLE HOL_PARTICIPANT;\nUSE SECONDARY ROLES NONE;\nUSE WAREHOUSE BARCLAYS_WH;\nUSE SCHEMA BARCLAYS_HOL.ANALYTICS;",
+     "expect": "",
+     "checkId": ""
+    },
+    {
+     "title": "Score sentiment by aspect",
+     "body": "",
+     "where": "the Cortex Code sidebar",
+     "prompt": "Using AI_SENTIMENT, score 5 rows of FEEDBACK_TEXT from BARCLAYS_HOL.ANALYTICS.STG_FEEDBACK overall and for the aspects speed, communication and fees. Explain what the output means.",
+     "sql": "",
+     "expect": "an overall score plus a separate sentiment for each aspect",
+     "checkId": ""
+    },
+    {
+     "title": "Enrich all feedback once",
+     "body": "",
+     "where": "",
+     "prompt": "Create a table BARCLAYS_HOL.ANALYTICS.FEEDBACK_ENRICHED from STG_FEEDBACK left-joined to STG_CUSTOMERS. Keep the feedback columns plus CUSTOMER_NAME, CUSTOMER_SECTOR and RM_NAME. Add SENTIMENT_SCORE (rounded to 3 dp), SENTIMENT_LABEL (POSITIVE above 0.3, NEGATIVE below -0.3, otherwise NEUTRAL) and TOPIC_CATEGORY from AI_CLASSIFY into one of: Performance Issue, Service Quality, Technical Problem, Positive Experience, Feature Request. Then show average sentiment and % negative by PAYMENT_TYPE.",
+     "sql": "",
+     "expect": "about 2,000 scored rows, every one with a topic. Score once, query many times.",
+     "checkId": "da2_enriched"
+    },
+    {
+     "title": "Find churn risk in plain English",
+     "body": "",
+     "where": "",
+     "prompt": "Use AI_FILTER on FEEDBACK_ENRICHED to find negative feedback that mentions a risk of the client moving their business elsewhere. Show customer, payment type and the first 120 characters of the feedback.",
+     "sql": "",
+     "expect": "a short list of at-risk clients, found by meaning rather than keywords",
+     "checkId": ""
+    },
+    {
+     "title": "Summarise complaint themes per RM",
+     "body": "",
+     "where": "",
+     "prompt": "Create a table BARCLAYS_HOL.ANALYTICS.RM_FEEDBACK_THEMES with one row per RM_NAME from the NEGATIVE rows of FEEDBACK_ENRICHED: NEGATIVE_FEEDBACK (count) and TOP_THEMES using AI_AGG with the instruction \"You are briefing a corporate banking relationship manager. List the top 3 recurring complaint themes in this client feedback, each with a one-line recommended action. Be concise.\"",
+     "sql": "",
+     "expect": "one row per RM with three themes and actions",
+     "checkId": "da2_rm_themes"
+    },
+    {
+     "title": "Draft a client reply",
+     "body": "",
+     "where": "",
+     "prompt": "Use AI_COMPLETE to draft a short, professional reply from a UK corporate bank to the most negative item in FEEDBACK_ENRICHED: acknowledge the issue, avoid admitting liability and offer a follow-up call.",
+     "sql": "",
+     "expect": "a client-ready draft for a human to review",
+     "checkId": ""
+    },
+    {
+     "title": "Go further",
+     "body": "",
+     "where": "",
+     "prompt": "Using FEEDBACK_ENRICHED, show me which customer sectors have worsening sentiment month over month and chart it.",
+     "sql": "",
+     "expect": "a month-by-sector trend and a chart in the sidebar",
+     "checkId": ""
+    }
    ],
    "check": "`RM_FEEDBACK_THEMES` has one row per RM with three themes and actions.",
    "note": "AI functions run inside Snowflake's security boundary - no data leaves the platform and nothing is vectorised or stored by the model.",
@@ -154,12 +382,42 @@
     "Agent `SNOWFLAKE_INTELLIGENCE.AGENTS.CORPORATE_PAYMENTS_360` with two Analyst tools and charting"
    ],
    "steps": [
-    "Create the agent (SQL or Snowsight **AI & ML > Agents**).",
-    "Open Snowflake Intelligence / CoWork and run the four sample questions.",
-    "Expand **Show details** to see which tool and SQL were used."
-   ],
-   "prompts": [
-    "Add a sample question to CORPORATE_PAYMENTS_360 for weekly CHAPS volume and update its orchestration instructions."
+    {
+     "title": "Create the agent with Cortex Code",
+     "body": "Name the new agent file `corporate_payments_360` straight away (it opens as \"Untitled\"). Cortex Code then guides you through the configuration; paste this as your brief.",
+     "where": "payments-hol Workspace > **+ > Agent** > **Create with CoCo** (recommended)",
+     "prompt": "Create a Cortex Agent SNOWFLAKE_INTELLIGENCE.AGENTS.CORPORATE_PAYMENTS_360 with display name \"Corporate Payments 360\". It supports Payments Operations and Relationship Managers in a UK corporate bank. Tools: a Cortex Analyst tool Client360 on semantic view BARCLAYS_HOL.ANALYTICS.SV_CLIENT_360 (client health, alerts, sentiment), a Cortex Analyst tool PaymentsOps on BARCLAYS_HOL.ANALYTICS.SV_PAYMENTS (scheme volumes and SLAs), both on warehouse BARCLAYS_WH, plus charting. Response instructions: lead with a one-line summary, format money in GBP with thousands separators and percentages to 1 dp, and when briefing on a client always cover payment volume and success rate, failed value, open and critical alerts, and feedback sentiment with the main topic. Sample questions: \"Brief me on the client with the most failed payment value\", \"Which relationship managers have the most open critical alerts?\", \"Which payment schemes breached SLA most often in the last 30 days?\", \"Show weekly payment volume for CHAPS as a chart\". Deploy it.",
+     "sql": "",
+     "expect": "the agent deployed as `CORPORATE_PAYMENTS_360` in `SNOWFLAKE_INTELLIGENCE.AGENTS`",
+     "checkId": "ops1_agent"
+    },
+    {
+     "title": "Ask it in Snowflake Intelligence",
+     "body": "Run the four sample questions. Start with \"Brief me on the client with the most failed payment value\".",
+     "where": "Snowsight > **AI & ML > Snowflake Intelligence** (or CoWork) > **Corporate Payments 360**",
+     "prompt": "",
+     "sql": "",
+     "expect": "a briefing naming the client, failed value, open and critical alerts, and the main feedback topic. The CHAPS question returns a chart.",
+     "checkId": ""
+    },
+    {
+     "title": "See how it answered",
+     "body": "Expand **Show details** on an answer to see which tool it chose and the SQL that ran.",
+     "where": "",
+     "prompt": "",
+     "sql": "",
+     "expect": "client questions go to `Client360`, scheme questions to `PaymentsOps`",
+     "checkId": ""
+    },
+    {
+     "title": "Improve it",
+     "body": "",
+     "where": "the Cortex Code sidebar, with `corporate_payments_360` open",
+     "prompt": "Add a sample question to CORPORATE_PAYMENTS_360 for weekly CHAPS volume and update its orchestration instructions so scheme and SLA questions always use the PaymentsOps tool. Redeploy it.",
+     "sql": "",
+     "expect": "the new sample question appears in Snowflake Intelligence",
+     "checkId": ""
+    }
    ],
    "check": "\"Brief me on the client with the most failed payment value\" returns a briefing naming the client, failed value, open/critical alerts and feedback topic.",
    "note": "Agents run with the caller's role, so RM-level entitlements (GOV1) apply automatically.",
@@ -170,7 +428,7 @@
   },
   {
    "code": "OPS2",
-   "title": "Alert triage + negative sentiment feed",
+   "title": "Alert triage with AI next actions",
    "persona": "Payments Ops analyst / team lead",
    "minutes": 30,
    "prerequisites": "`setup/catchup/core_analytics.sql`",
@@ -181,13 +439,51 @@
     "`ALERT_RECOMMENDATIONS` (AI next actions for the top 10)"
    ],
    "steps": [
-    "Create the negative-sentiment dynamic table.",
-    "Build and review the prioritised triage queue.",
-    "Generate recommended actions with `AI_COMPLETE`.",
-    "Optionally add a Triage page to the Streamlit dashboard with CoCo."
-   ],
-   "prompts": [
-    "Add a 'Triage' page to the Streamlit app showing V_ALERT_TRIAGE_QUEUE with ALERT_RECOMMENDATIONS alongside."
+    {
+     "title": "Set your context",
+     "body": "",
+     "where": "payments-hol Workspace > **+ > SQL file**",
+     "prompt": "",
+     "sql": "USE ROLE HOL_PARTICIPANT;\nUSE SECONDARY ROLES NONE;\nUSE WAREHOUSE BARCLAYS_WH;\nUSE SCHEMA BARCLAYS_HOL.ANALYTICS;",
+     "expect": "",
+     "checkId": ""
+    },
+    {
+     "title": "Feed negative sentiment to the escalation queue",
+     "body": "",
+     "where": "the Cortex Code sidebar",
+     "prompt": "Create a dynamic table BARCLAYS_HOL.ANALYTICS.DT_NEGATIVE_SENTIMENT_FEED with TARGET_LAG = '5 minutes' on BARCLAYS_WH, selecting the NEGATIVE rows of FEEDBACK_ENRICHED with feedback id, date, customer id, name, sector, RM name, payment id, payment type, feedback text, sentiment score and topic.",
+     "sql": "",
+     "expect": "a dynamic table of negative feedback that stays fresh on its own",
+     "checkId": ""
+    },
+    {
+     "title": "Build the prioritised triage queue",
+     "body": "",
+     "where": "",
+     "prompt": "Create a view BARCLAYS_HOL.ANALYTICS.V_ALERT_TRIAGE_QUEUE of open alerts (STATUS <> 'RESOLVED') from BARCLAYS_HOL.RAW_DATA.OPERATIONAL_ALERTS, joined to STG_PAYMENTS, RAW_DATA.ERROR_CODES, STG_ACCOUNTS (on ORIGINATOR_ACCOUNT_ID), STG_CUSTOMERS and DT_NEGATIVE_SENTIMENT_FEED. Include alert, payment, error and client columns (ALERT_ID, SEVERITY, PAYMENT_TYPE, ALERT_DESCRIPTION, AMOUNT, CURRENCY, ERROR_DESCRIPTION, ERROR_CATEGORY, IS_RETRYABLE, CUSTOMER_NAME, RM_NAME), CLIENT_NEGATIVE_FEEDBACK (count) and an explainable PRIORITY_SCORE: severity CRITICAL 40 / HIGH 25 / MEDIUM 10, plus 30 for amounts of 1m or more or 15 for 100k or more, plus negative feedback count capped at 20, plus 10 for COMPLIANCE errors. Show the top 10.",
+     "sql": "",
+     "expect": "the queue ordered by `PRIORITY_SCORE`, with critical, high-value alerts for unhappy clients at the top",
+     "checkId": "ops2_queue"
+    },
+    {
+     "title": "Generate AI next actions",
+     "body": "",
+     "where": "",
+     "prompt": "Create a table BARCLAYS_HOL.ANALYTICS.ALERT_RECOMMENDATIONS for the top 10 alerts in V_ALERT_TRIAGE_QUEUE by PRIORITY_SCORE, keeping ALERT_ID, SEVERITY, PAYMENT_TYPE, CUSTOMER_NAME, RM_NAME and PRIORITY_SCORE, with a RECOMMENDED_ACTION column from AI_COMPLETE (claude-sonnet-4-5) acting as a senior payments operations analyst at a UK bank: at most 3 short bullets covering whether to retry the payment and whether to contact the client or their RM, based on the alert, scheme, error, retryability, amount and negative feedback count.",
+     "sql": "",
+     "expect": "10 recommendations. A critical compliance-hold alert should say not to retry and to escalate.",
+     "checkId": "ops2_recommendations"
+    },
+    {
+     "title": "Optional: hand it to the business as an app",
+     "body": "",
+     "where": "payments-hol Workspace > **+ > Streamlit App**, then the Cortex Code sidebar",
+     "prompt": "Build a Streamlit app called Alert Triage that shows V_ALERT_TRIAGE_QUEUE ordered by PRIORITY_SCORE, with the matching ALERT_RECOMMENDATIONS alongside each alert and a filter by severity.",
+     "sql": "",
+     "expect": "a triage app your team lead could use on the ops floor",
+     "checkId": ""
+    }
    ],
    "check": "The top recommendation for a critical compliance-hold alert says not to retry and to escalate.",
    "note": "Recommendations are decision support for an analyst, not automated actions.",
@@ -208,12 +504,60 @@
     "Agent `BARCLAYS_HOL.AGENTS.PAYMENTS_INVESTIGATOR`"
    ],
    "steps": [
-    "Create and test the two UDFs.",
-    "Create the agent with generic (function) tools plus Analyst.",
-    "Test in the agent playground with a real failed payment ID."
-   ],
-   "prompts": [
-    "Add a third tool to PAYMENTS_INVESTIGATOR that lists open alerts for a customer name, using a new UDF."
+    {
+     "title": "Set your context",
+     "body": "",
+     "where": "payments-hol Workspace > **+ > SQL file**",
+     "prompt": "",
+     "sql": "USE ROLE HOL_PARTICIPANT;\nUSE SECONDARY ROLES NONE;\nUSE WAREHOUSE BARCLAYS_WH;\nUSE SCHEMA BARCLAYS_HOL.AGENTS;",
+     "expect": "",
+     "checkId": ""
+    },
+    {
+     "title": "Build the payment lookup tool",
+     "body": "Deterministic tools keep exact lookups exact: no text-to-SQL guessing.",
+     "where": "the Cortex Code sidebar",
+     "prompt": "In BARCLAYS_HOL.AGENTS create a SQL table function GET_PAYMENT_DETAILS(PAYMENT_ID_IN VARCHAR) that returns one payment from BARCLAYS_HOL.ANALYTICS.STG_PAYMENTS (matching UPPER(TRIM(PAYMENT_ID_IN))) with its date, type, amount, currency, status, processing time, error code, error description and IS_RETRYABLE (from RAW_DATA.ERROR_CODES), customer name and RM name (via STG_ACCOUNTS and STG_CUSTOMERS), and its count of open alerts. Agent tools need a scalar return, so also create PAYMENT_LOOKUP(PAYMENT_ID VARCHAR) RETURNS VARIANT that returns that row as a JSON object, or {\"error\": \"No payment found with ID ...\"}. Test it on the first FAILED payment.",
+     "sql": "",
+     "expect": "a JSON object for one failed payment, including its error and retryability",
+     "checkId": ""
+    },
+    {
+     "title": "Build the scheme rules tool",
+     "body": "",
+     "where": "",
+     "prompt": "In BARCLAYS_HOL.AGENTS create SCHEME_RULES(SCHEME VARCHAR) RETURNS VARIANT: look up BARCLAYS_HOL.RAW_DATA.PAYMENT_SCHEMES by SCHEME_CODE (UPPER, spaces replaced by underscores) joined to SLA_DEFINITIONS on PAYMENT_TYPE, and return a JSON object with scheme, name, settlement_cycle, domestic, max_value_gbp, cutoff_time_uk (CUTOFF_TIME as a string), currency, sla_target_success_rate and sla_max_p95_ms. For unknown schemes return an error listing the valid ones. Test it with 'chaps'.",
+     "sql": "",
+     "expect": "CHAPS rules with `cutoff_time_uk` of `15:45:00`",
+     "checkId": "ai1_tool"
+    },
+    {
+     "title": "Create the agent with Cortex Code",
+     "body": "Name the new agent file `payments_investigator` straight away, then paste this brief.",
+     "where": "payments-hol Workspace > **+ > Agent** > **Create with CoCo** (recommended)",
+     "prompt": "Create a Cortex Agent BARCLAYS_HOL.AGENTS.PAYMENTS_INVESTIGATOR with display name \"Payments Investigator\". Tools: a generic function tool PaymentLookup on BARCLAYS_HOL.AGENTS.PAYMENT_LOOKUP (input payment_id string), a generic function tool SchemeRules on BARCLAYS_HOL.AGENTS.SCHEME_RULES (input scheme string), and a Cortex Analyst tool PaymentsOps on BARCLAYS_HOL.ANALYTICS.SV_PAYMENTS, all on warehouse BARCLAYS_WH. Orchestration: for a specific payment ID call PaymentLookup; for a scheme's cutoff, limit, settlement cycle or SLA call SchemeRules; use PaymentsOps for aggregate KPI questions. Deploy it.",
+     "sql": "",
+     "expect": "`PAYMENTS_INVESTIGATOR` deployed in `BARCLAYS_HOL.AGENTS`",
+     "checkId": "ai1_agent"
+    },
+    {
+     "title": "Test it on a real payment",
+     "body": "",
+     "where": "Snowsight > **AI & ML > Agents > PAYMENTS_INVESTIGATOR** > Playground",
+     "prompt": "Give me the ID of one failed CHAPS payment from BARCLAYS_HOL.RAW_DATA.PAYMENTS.",
+     "sql": "",
+     "expect": "a payment ID. Ask the agent \"What happened to payment <ID>, can it be retried, and can I still send a CHAPS payment today?\". It should call `PaymentLookup`, then `SchemeRules`, and report retryability and the 15:45 cutoff.",
+     "checkId": ""
+    },
+    {
+     "title": "Go further",
+     "body": "",
+     "where": "the Cortex Code sidebar",
+     "prompt": "Add a third tool to PAYMENTS_INVESTIGATOR that lists open alerts for a customer name, using a new UDF in BARCLAYS_HOL.AGENTS. Redeploy the agent and test it.",
+     "sql": "",
+     "expect": "the agent answers \"What open alerts does <client> have?\" with the new tool",
+     "checkId": ""
+    }
    ],
    "check": "Asking about a failed CHAPS payment calls `PaymentLookup` then `SchemeRules` and reports retryability and the 15:45 cutoff.",
    "note": "Deterministic tools for lookups keep answers exact and auditable; text-to-SQL is reserved for analytical questions.",
@@ -233,12 +577,42 @@
     "MCP server `BARCLAYS_HOL.AGENTS.PAYMENTS_MCP` with Analyst, Agent, UDF and knowledge-extension tools"
    ],
    "steps": [
-    "Create the MCP server.",
-    "Get the endpoint URL and create a short-lived PAT for `HOL_PARTICIPANT`.",
-    "Connect Cortex Code (or another MCP client) and call the tools."
-   ],
-   "prompts": [
-    "Using the barclays-payments tools, which clients have open critical alerts?"
+    {
+     "title": "Set your context",
+     "body": "",
+     "where": "payments-hol Workspace > **+ > SQL file**",
+     "prompt": "",
+     "sql": "USE ROLE HOL_PARTICIPANT;\nUSE SECONDARY ROLES NONE;\nUSE WAREHOUSE BARCLAYS_WH;\nUSE SCHEMA BARCLAYS_HOL.AGENTS;",
+     "expect": "",
+     "checkId": ""
+    },
+    {
+     "title": "Create the MCP server",
+     "body": "One server, four governed tools, nothing to host. Every call runs as the caller's role.",
+     "where": "the Cortex Code sidebar",
+     "prompt": "Create a Snowflake-managed MCP server BARCLAYS_HOL.AGENTS.PAYMENTS_MCP with four tools: \"client-360-analyst\" (CORTEX_ANALYST_MESSAGE on BARCLAYS_HOL.ANALYTICS.SV_CLIENT_360), \"payments-360-agent\" (CORTEX_AGENT_RUN on SNOWFLAKE_INTELLIGENCE.AGENTS.CORPORATE_PAYMENTS_360, read-only), \"payment-lookup\" (GENERIC function tool on BARCLAYS_HOL.AGENTS.PAYMENT_LOOKUP, warehouse BARCLAYS_WH, input payment_id string, read-only and idempotent) and \"snowflake-docs\" (CORTEX_SEARCH_SERVICE_QUERY on SNOWFLAKE_DOCS_CKE.SHARED.CKE_SNOWFLAKE_DOCS_SERVICE). Then describe it.",
+     "sql": "",
+     "expect": "`PAYMENTS_MCP` listed by `SHOW MCP SERVERS IN SCHEMA BARCLAYS_HOL.AGENTS` with four tools",
+     "checkId": "ai2_mcp"
+    },
+    {
+     "title": "Get the endpoint",
+     "body": "",
+     "where": "",
+     "prompt": "Give me the MCP endpoint URL for BARCLAYS_HOL.AGENTS.PAYMENTS_MCP in this account (https://<account_url>/api/v2/databases/BARCLAYS_HOL/schemas/AGENTS/mcp-servers/PAYMENTS_MCP), and the MCP client JSON config for a server called barclays-payments using a bearer token.",
+     "sql": "",
+     "expect": "your account's endpoint URL and a ready-to-paste config",
+     "checkId": ""
+    },
+    {
+     "title": "Connect a client and call the tools",
+     "body": "Create a short-lived programmatic access token restricted to `HOL_PARTICIPANT` (Snowsight: **Settings > Authentication > Programmatic access tokens**). Add the config to an MCP client such as Cortex Code Desktop or CLI, then ask it:",
+     "where": "",
+     "prompt": "Using the barclays-payments tools, which clients have open critical alerts?",
+     "sql": "",
+     "expect": "your client lists `client-360-analyst`, `payments-360-agent`, `payment-lookup` and `snowflake-docs`, and answers using them",
+     "checkId": ""
+    }
    ],
    "check": "Your MCP client lists `client-360-analyst`, `payments-360-agent`, `payment-lookup` and `snowflake-docs`.",
    "note": "MCP is approved this quarter. Control reach with `GRANT USAGE ON MCP SERVER`; every call runs as the caller's role.",
@@ -249,7 +623,7 @@
   },
   {
    "code": "AI3",
-   "title": "Marketplace knowledge extension (instead of Cortex Search)",
+   "title": "Marketplace knowledge extension",
    "persona": "AI Builder",
    "minutes": 30,
    "prerequisites": "Facilitator setup 00 (installs `SNOWFLAKE_DOCS_CKE`), DA1",
@@ -258,13 +632,42 @@
     "Agent `SNOWFLAKE_INTELLIGENCE.AGENTS.PAYMENTS_PLATFORM_COPILOT` combining `SV_CLIENT_360` with a provider-hosted search service"
    ],
    "steps": [
-    "Inspect the installed Cortex Knowledge Extension - note you did not build it.",
-    "Query it with `SEARCH_PREVIEW`.",
-    "Create an agent that uses both internal data and the extension.",
-    "Ask a question that needs both."
-   ],
-   "prompts": [
-    "Which 3 clients have the most open critical alerts, and how could I build a dynamic table to keep that list up to date?"
+    {
+     "title": "See what came from the Marketplace",
+     "body": "Browse the knowledge extension listings (finance publishers are there too). Then, in the payments-hol Workspace:",
+     "where": "Snowsight > **Data Products > Marketplace**, search \"Cortex Knowledge Extension\"; then the Cortex Code sidebar",
+     "prompt": "Show the Cortex Search services in database SNOWFLAKE_DOCS_CKE and explain what a Cortex Knowledge Extension is: who built and hosts it, what we can see of its source data, and how we pay for it.",
+     "sql": "",
+     "expect": "the `CKE_SNOWFLAKE_DOCS_SERVICE` search service. You didn't build it and can't see its source table.",
+     "checkId": "ai3_extension"
+    },
+    {
+     "title": "Query it directly",
+     "body": "",
+     "where": "",
+     "prompt": "Use SNOWFLAKE.CORTEX.SEARCH_PREVIEW on SNOWFLAKE_DOCS_CKE.SHARED.CKE_SNOWFLAKE_DOCS_SERVICE to answer \"How do I apply a masking policy to a column?\", returning DOCUMENT_TITLE, SOURCE_URL and the first 200 characters of CHUNK for the top 3 results.",
+     "sql": "",
+     "expect": "three documentation excerpts with their URLs",
+     "checkId": ""
+    },
+    {
+     "title": "Create an agent that uses both",
+     "body": "Name the new agent file `payments_platform_copilot` straight away, then paste this brief.",
+     "where": "payments-hol Workspace > **+ > Agent** > **Create with CoCo** (recommended)",
+     "prompt": "Create a Cortex Agent SNOWFLAKE_INTELLIGENCE.AGENTS.PAYMENTS_PLATFORM_COPILOT with display name \"Payments Platform Copilot\". Tools: a Cortex Analyst tool Client360 on BARCLAYS_HOL.ANALYTICS.SV_CLIENT_360 (warehouse BARCLAYS_WH) for client, alert and sentiment data, and a Cortex Search tool PlatformDocs on SNOWFLAKE_DOCS_CKE.SHARED.CKE_SNOWFLAKE_DOCS_SERVICE (max 4 results, title column DOCUMENT_TITLE, id column SOURCE_URL) for how-to questions about Snowflake. Instructions: use Client360 for data questions, PlatformDocs for how-to questions, both when a question needs both, and cite documentation URLs. Deploy it.",
+     "sql": "",
+     "expect": "`PAYMENTS_PLATFORM_COPILOT` deployed in `SNOWFLAKE_INTELLIGENCE.AGENTS`",
+     "checkId": "ai3_agent"
+    },
+    {
+     "title": "Ask a question that needs both",
+     "body": "Ask \"Which 3 clients have the most open critical alerts, and how could I build a dynamic table to keep that list up to date?\"",
+     "where": "Snowsight > **AI & ML > Snowflake Intelligence** > **Payments Platform Copilot**",
+     "prompt": "",
+     "sql": "",
+     "expect": "the agent calls both `Client360` and `PlatformDocs`, names three clients and cites documentation URLs",
+     "checkId": ""
+    }
    ],
    "check": "The agent calls both `Client360` and `PlatformDocs` and cites documentation URLs.",
    "note": "Cortex Search over internal data is not approved at Barclays. Knowledge extensions are built and hosted by the provider; no bank data is indexed. Finance publishers (e.g. Investopedia, FactSet) offer extensions too - personalised listings must be requested by the account admin.",
@@ -275,7 +678,7 @@
   },
   {
    "code": "GOV1",
-   "title": "Classify, tag, mask and filter PII",
+   "title": "PII policies",
    "persona": "Governance / Risk",
    "minutes": 45,
    "prerequisites": "`setup/catchup/core_analytics.sql`",
@@ -286,14 +689,69 @@
     "Row access policy `RAP_ACCOUNT_REGION`"
    ],
    "steps": [
-    "Auto-classify with `SYSTEM$CLASSIFY`.",
-    "Apply the bank's sensitivity tags.",
-    "Attach a masking policy to the tag (protects every tagged column).",
-    "Add a row access policy by currency/region.",
-    "Query as builder, restricted UK desk and data owner."
-   ],
-   "prompts": [
-    "Show me every column in BARCLAYS_HOL tagged DATA_SENSITIVITY and the masking policy protecting it."
+    {
+     "title": "Set your context",
+     "body": "",
+     "where": "payments-hol Workspace > **+ > SQL file**",
+     "prompt": "",
+     "sql": "USE ROLE HOL_PARTICIPANT;\nUSE SECONDARY ROLES NONE;\nUSE WAREHOUSE BARCLAYS_WH;\nUSE SCHEMA BARCLAYS_HOL.GOVERNANCE;",
+     "expect": "",
+     "checkId": ""
+    },
+    {
+     "title": "Let Snowflake find the sensitive data",
+     "body": "",
+     "where": "the Cortex Code sidebar",
+     "prompt": "Create a table BARCLAYS_HOL.GOVERNANCE.ACCOUNT_REGISTER as a copy of BARCLAYS_HOL.ANALYTICS.STG_ACCOUNTS, run SYSTEM$CLASSIFY on it with auto_tag true, and show which columns were tagged and with what.",
+     "sql": "",
+     "expect": "Snowflake's classifier flags identifier columns such as IBAN and account number",
+     "checkId": ""
+    },
+    {
+     "title": "Apply the bank's sensitivity tags",
+     "body": "",
+     "where": "",
+     "prompt": "In BARCLAYS_HOL.GOVERNANCE create (or replace) a tag DATA_SENSITIVITY with allowed values PUBLIC, INTERNAL, CONFIDENTIAL, RESTRICTED. On ACCOUNT_REGISTER set IBAN and ACCOUNT_NUMBER to RESTRICTED, SORT_CODE to CONFIDENTIAL and BIC to INTERNAL.",
+     "sql": "",
+     "expect": "four tagged columns, with `IBAN` = `RESTRICTED`",
+     "checkId": "gov1_tagged"
+    },
+    {
+     "title": "Mask every tagged column with one policy",
+     "body": "",
+     "where": "",
+     "prompt": "Create a masking policy BARCLAYS_HOL.GOVERNANCE.MASK_RESTRICTED_STRING for strings: HOL_ADMIN (the data owner) sees the real value; CONFIDENTIAL values (read with SYSTEM$GET_TAG_ON_CURRENT_COLUMN on BARCLAYS_HOL.GOVERNANCE.DATA_SENSITIVITY) keep their shape with digits replaced by *; everything else shows '****' plus the last 4 characters. Attach it to the DATA_SENSITIVITY tag, then remove the tag from BIC so it stays readable.",
+     "sql": "",
+     "expect": "one policy that protects every column carrying the tag, now and in future",
+     "checkId": ""
+    },
+    {
+     "title": "Filter rows by region",
+     "body": "",
+     "where": "",
+     "prompt": "Create a mapping table BARCLAYS_HOL.GOVERNANCE.REGION_ENTITLEMENTS (ROLE_NAME, CURRENCY) with HOL_RESTRICTED mapped to GBP. Create a row access policy RAP_ACCOUNT_REGION on a currency column: HOL_PARTICIPANT sees all rows, otherwise only currencies mapped to a role in the session. Add it to ACCOUNT_REGISTER on CURRENCY and grant SELECT on ACCOUNT_REGISTER to HOL_RESTRICTED.",
+     "sql": "",
+     "expect": "the row access policy attached to `ACCOUNT_REGISTER`",
+     "checkId": "gov1_policies"
+    },
+    {
+     "title": "Test as each persona",
+     "body": "",
+     "where": "",
+     "prompt": "Show 8 rows (ACCOUNT_ID, CUSTOMER_NAME, CURRENCY, SORT_CODE, ACCOUNT_NUMBER, IBAN) and the row count of BARCLAYS_HOL.GOVERNANCE.ACCOUNT_REGISTER, first as my current role and then as HOL_RESTRICTED, and explain the difference. Switch back to HOL_PARTICIPANT at the end.",
+     "sql": "",
+     "expect": "as the builder, 36 rows with masked identifiers; as `HOL_RESTRICTED`, 23 GBP-only masked rows",
+     "checkId": ""
+    },
+    {
+     "title": "Policies follow the data into AI",
+     "body": "",
+     "where": "",
+     "prompt": "Show me every column in BARCLAYS_HOL tagged DATA_SENSITIVITY and the masking policy protecting it. Then tell me the IBAN for any client in ACCOUNT_REGISTER.",
+     "sql": "",
+     "expect": "Cortex Code runs as your role, so it only ever sees and returns the masked IBAN",
+     "checkId": ""
+    }
    ],
    "check": "Builder sees 36 masked rows; `HOL_RESTRICTED` sees 23 GBP-only masked rows; `HOL_ADMIN` sees full IBANs.",
    "note": "In production, central governance applies tags and policies to the Iceberg source tables so every downstream object and agent inherits them.",
@@ -314,15 +772,60 @@
     "Business comments on the SLA data product"
    ],
    "steps": [
-    "Downstream impact of `RAW_DATA.PAYMENTS` with `GET_LINEAGE`.",
-    "Upstream lineage of `MART_SLA_COMPLIANCE`.",
-    "Access history on restricted columns.",
-    "Query history for semantic view / agent usage.",
-    "Document the data product."
-   ],
-   "prompts": [
-    "If I drop PROCESSING_TIME_MS from RAW_DATA.PAYMENTS, which downstream objects and agents break?",
-    "Produce a one-page data product card for MART_SLA_COMPLIANCE."
+    {
+     "title": "Set your context",
+     "body": "",
+     "where": "payments-hol Workspace > **+ > SQL file**",
+     "prompt": "",
+     "sql": "USE ROLE HOL_PARTICIPANT;\nUSE SECONDARY ROLES NONE;\nUSE WAREHOUSE BARCLAYS_WH;\nUSE SCHEMA BARCLAYS_HOL.ANALYTICS;",
+     "expect": "",
+     "checkId": ""
+    },
+    {
+     "title": "Impact analysis on the Iceberg source",
+     "body": "",
+     "where": "the Cortex Code sidebar; also Snowsight > **Catalog > BARCLAYS_HOL > RAW_DATA > PAYMENTS > Lineage**",
+     "prompt": "If I drop the column PROCESSING_TIME_MS from BARCLAYS_HOL.RAW_DATA.PAYMENTS, which downstream objects and agents break? Use SNOWFLAKE.CORE.GET_LINEAGE downstream to 3 levels, and explain any objects shown as ***.***.***.",
+     "sql": "",
+     "expect": "the staging views, marts, dynamic tables and `SV_CLIENT_360`. Masked rows are objects your role can't see: lineage never leaks them.",
+     "checkId": ""
+    },
+    {
+     "title": "Where does the data product come from?",
+     "body": "",
+     "where": "",
+     "prompt": "Show the upstream lineage of BARCLAYS_HOL.ANALYTICS.MART_SLA_COMPLIANCE to 3 levels, and list object dependencies in BARCLAYS_HOL from SNOWFLAKE.ACCOUNT_USAGE.OBJECT_DEPENDENCIES.",
+     "sql": "",
+     "expect": "the path back from the mart through dbt staging to the Iceberg sources",
+     "checkId": ""
+    },
+    {
+     "title": "Who read restricted columns?",
+     "body": "",
+     "where": "",
+     "prompt": "From SNOWFLAKE.ACCOUNT_USAGE.ACCESS_HISTORY, show who accessed the IBAN, ACCOUNT_NUMBER or SORT_CODE columns of any BARCLAYS_HOL object in the last day, with time, user and object.",
+     "sql": "",
+     "expect": "recent reads, including your GOV1 queries. ACCOUNT_USAGE can lag by up to about 3 hours, so this may be empty early in the day.",
+     "checkId": ""
+    },
+    {
+     "title": "What are our agents doing?",
+     "body": "",
+     "where": "the Cortex Code sidebar; also Snowsight > **AI & ML > Agents > CORPORATE_PAYMENTS_360 > Monitoring**",
+     "prompt": "From SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY, show queries in the last day against BARCLAYS_HOL that used SEMANTIC_VIEW, with user, role, start time, duration and a preview of the SQL.",
+     "sql": "",
+     "expect": "the queries your agents and Cortex Analyst generated, attributed to the user who asked",
+     "checkId": ""
+    },
+    {
+     "title": "Document the data product",
+     "body": "",
+     "where": "",
+     "prompt": "Add a table comment to BARCLAYS_HOL.ANALYTICS.MART_SLA_COMPLIANCE that starts \"Daily SLA compliance per payment scheme. Owner: Payments Operations.\" and states its grain (day x scheme) and source, plus a column comment on SLA_STATUS explaining COMPLIANT, AT RISK and BREACH. Then produce a one-page data product card for it: owner, grain, lineage, quality checks, sensitivity tags and consumers.",
+     "sql": "",
+     "expect": "the comments saved, so humans and AI find the right table, and a data product card in the sidebar",
+     "checkId": "gov2_documented"
+    }
    ],
    "check": "Downstream lineage lists the staging views, marts, dynamic tables and `SV_CLIENT_360`.",
    "note": "ACCOUNT_USAGE views have up to ~3 hours latency - run history queries at the end of the session.",

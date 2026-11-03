@@ -47,4 +47,4 @@ You will use **two windows** for this lab: the **Lab Companion** (your lab guide
 ### Then
 
 1. **Lab Companion:** sign in with the login above, choose your pathway and follow the steps. Press **Check my work** at the end of each module.
-2. **Snowflake:** sign in with the same login, then switch to the role `HOL_PARTICIPANT` (your name, bottom left, then **Switch role**). Open the **payments-hol** Workspace (**Projects > Workspaces**) to run the lab SQL.
+2. **Snowflake:** sign in with the same login, then switch to the role `HOL_PARTICIPANT` (your name, bottom left, then **Switch role**). Open the **payments-hol** Workspace (**Projects > Workspaces**, then the **My Workspace** dropdown at the top left > **payments-hol**) and the **Cortex Code** sidebar. The Lab Companion gives you a prompt to paste for each step.

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { CheckPanel } from "@/components/lab/check-panel"
 import { InlineMd } from "@/components/lab/inline-md"
+import { PromptCard } from "@/components/lab/prompt-card"
 import { SqlBlock } from "@/components/lab/sql-block"
 import { CATCHUPS, MODULES, moduleByCode } from "@/lib/content"
 import { CHECKS } from "@/lib/checks"
@@ -48,20 +49,37 @@ export default async function ModulePage({ params }: { params: Promise<{ code: s
           <Card>
             <CardHeader><CardTitle>Steps</CardTitle></CardHeader>
             <CardContent>
-              <ol className="list-decimal space-y-1.5 pl-5 text-sm">{m.steps.map((s) => <li key={s}><InlineMd text={s} /></li>)}</ol>
+              <ol className="space-y-6">
+                {m.steps.map((s, i) => {
+                  const check = CHECKS[m.code]?.find((c) => c.id === s.checkId)
+                  return (
+                    <li key={s.title} className="min-w-0 space-y-3">
+                      <div className="flex items-start gap-3">
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">{i + 1}</span>
+                        <div className="min-w-0 space-y-1">
+                          <div className="font-medium"><InlineMd text={s.title} /></div>
+                          {s.where && <div className="text-xs text-muted-foreground"><span className="font-semibold">Where: </span><InlineMd text={s.where} /></div>}
+                          {s.body && <p className="text-sm"><InlineMd text={s.body} /></p>}
+                        </div>
+                      </div>
+                      <div className="space-y-3 pl-9">
+                        {s.prompt && <PromptCard prompt={s.prompt} expect={s.expect} />}
+                        {s.sql && <SqlBlock sql={s.sql} path="Run in a SQL file in the Workspace" />}
+                        {!s.prompt && s.expect && <p className="text-xs"><span className="font-semibold">What you should see: </span><InlineMd text={s.expect} /></p>}
+                        {check && <p className="text-xs text-muted-foreground">Then press <span className="font-semibold">Check my work</span>: {check.label}</p>}
+                      </div>
+                    </li>
+                  )
+                })}
+              </ol>
             </CardContent>
           </Card>
 
-          <SqlBlock sql={m.sql} path={m.sqlPath} />
-
-          {m.prompts.length > 0 && (
-            <Card>
-              <CardHeader><CardTitle>Try in Cortex Code</CardTitle></CardHeader>
-              <CardContent className="space-y-2">
-                {m.prompts.map((p) => <blockquote key={p} className="border-l-4 border-primary bg-muted/40 px-3 py-2 text-sm italic">{p}</blockquote>)}
-              </CardContent>
-            </Card>
-          )}
+          <details className="rounded-lg border bg-card p-4">
+            <summary className="cursor-pointer text-sm font-medium">Stuck? Run the reference SQL</summary>
+            <p className="mt-2 text-xs text-muted-foreground">The tested script that builds everything in this module. Use it if a prompt doesn&apos;t give you a working result.</p>
+            <div className="mt-3"><SqlBlock sql={m.sql} path={m.sqlPath} /></div>
+          </details>
 
           {relevantCatchups.map((c) => (
             <details key={c.sqlPath} className="rounded-lg border bg-card p-4">

@@ -5,7 +5,7 @@
 --            data products - and publish them back to the lake as Iceberg."
 -- Prereq:   Core C1 only. (Produces everything core_analytics.sql would.)
 --
--- Work in the lab Workspace payments-hol (Projects > Workspaces), which is
+-- Work in the lab Workspace payments-hol (Projects > Workspaces > My Workspace dropdown), which is
 -- already in your account. On your own account, create one from
 -- https://github.com/sfc-gh-boconnor/payments-hol (Projects > Workspaces >
 -- From Git repository).
@@ -27,9 +27,9 @@ USE SCHEMA BARCLAYS_HOL.ANALYTICS;
 
 -- -----------------------------------------------------
 -- DE1.2 Deploy and run as a dbt Project on Snowflake
--- In the Workspace: select dbt/ > Deploy > name BARCLAYS_DBT, then Run > build.
+-- In the Workspace: open the dbt tab in the bottom panel, choose build from the
+-- Run dropdown and run it.
 -- Or from SQL / a task (this is how you would schedule it in production):
--- (Facilitator: the project object is created by `snow dbt deploy` or the Workspace.)
 -- -----------------------------------------------------
 EXECUTE DBT PROJECT BARCLAYS_HOL.ANALYTICS.BARCLAYS_DBT ARGS = 'build';
 -- Expect: Done. PASS=27 WARN=0 ERROR=0

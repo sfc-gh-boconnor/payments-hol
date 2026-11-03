@@ -125,7 +125,7 @@ The provisioning script prints the app URL at the end.
 
 1. Log in and switch to role `HOL_PARTICIPANT`.
 2. Open the **Lab Companion** app (URL from the facilitator) and choose your pathway.
-3. Open the lab Workspace **payments-hol** (**Projects > Workspaces**) to run the SQL and use Cortex Code. DataOps accounts have it already; on any other account, create it from this repo with **Projects > Workspaces > From Git repository**.
+3. Open the lab Workspace **payments-hol** (**Projects > Workspaces**, then the **My Workspace** dropdown > **payments-hol**) and the **Cortex Code** sidebar. Each Lab Companion step gives a prompt to paste; the module SQL is a fallback. DataOps accounts have it already; on any other account, create it from this repo with **Projects > Workspaces > From Git repository**.
 4. Start with C1, then press **Check my work** at the end of each module.
 
 Every attendee script starts with `USE SECONDARY ROLES NONE` so facilitators testing with admin rights see exactly what attendees see.

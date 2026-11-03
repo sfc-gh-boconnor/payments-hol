@@ -14,6 +14,33 @@ const ROOT = dirname(APP)
 const ORDER = ["de", "da", "ops", "ai", "gov"]
 const PERSONA_OF = { de: "Data Engineer", da: "Data Analyst", ops: "Payments Ops", ai: "AI Builder", gov: "Governance" }
 
+// "## Steps" holds one "### Title" block per step. Inside a block:
+//   Where: <where in Snowsight to work>     Expect: <what you should see>
+//   Check: <check id from lib/checks.ts>    ```prompt ...``` (paste into Cortex Code)
+//   ```sql ...``` (a small snippet to run)  any other lines are the step's text.
+function parseSteps(lines) {
+  const steps = []
+  let s = null
+  let fence = null
+  for (const l of lines) {
+    if (fence) {
+      if (/^```\s*$/.test(l)) { s[fence.kind] = fence.buf.join("\n").trim(); fence = null }
+      else fence.buf.push(l)
+      continue
+    }
+    const h = l.match(/^### (.*)$/)
+    if (h) { s = { title: h[1].trim(), body: "", where: "", prompt: "", sql: "", expect: "", checkId: "" }; steps.push(s); continue }
+    if (!s) continue
+    const f = l.match(/^```(prompt|sql)\s*$/)
+    if (f) { fence = { kind: f[1], buf: [] }; continue }
+    const kv = l.match(/^(Where|Expect|Check): (.*)$/)
+    if (kv) { s[{ Where: "where", Expect: "expect", Check: "checkId" }[kv[1]]] = kv[2].trim(); continue }
+    if (l.trim()) s.body = s.body ? `${s.body} ${l.trim()}` : l.trim()
+  }
+  if (fence) throw new Error(`Unclosed code fence in step "${s.title}"`)
+  return steps
+}
+
 function parseReadme(md) {
   const lines = md.split("\n")
   const [, code, title] = lines[0].match(/^# (\w+): (.*)$/)
@@ -40,8 +67,7 @@ function parseReadme(md) {
     prerequisites: meta.prerequisites ?? "",
     question: text("Business question"),
     build: list("What you'll build"),
-    steps: list("Steps"),
-    prompts: list("Cortex Code prompts"),
+    steps: parseSteps(sections.Steps ?? []),
     check: text("Check your work"),
     note: text("Barclayflake note"),
   }
@@ -50,14 +76,7 @@ function parseReadme(md) {
 const modules = []
 
 modules.push({
-  code: "C1", title: "Explore the Iceberg data product", persona: "All personas", minutes: 25, kind: "core",
-  prerequisites: "Facilitator setup complete",
-  question: "What has the platform team published to us, and what can we (not) do with it?",
-  build: ["Nothing - you explore the nine read-only Snowflake-managed Iceberg tables"],
-  steps: ["Show the Iceberg tables and their metadata", "Prove the read-only guard-rails", "Profile the payments mix by scheme", "Write a first corporate client 360 query", "Ask Cortex Code to explain the data model"],
-  prompts: ["Describe the tables in BARCLAYS_HOL.RAW_DATA and how they join together.", "Which customers have the highest payment failure rate? Write the SQL and run it."],
-  check: "Your role can read all nine Iceberg tables but cannot insert into them.",
-  note: "At Barclays the same tables sit on the bank's own object storage via an external volume; the SQL is identical.",
+  ...parseReadme(readFileSync(join(ROOT, "core/C1_README.md"), "utf8")), kind: "core",
   sqlPath: "core/C1_explore_iceberg.sql",
   sql: readFileSync(join(ROOT, "core/C1_explore_iceberg.sql"), "utf8"),
 })
