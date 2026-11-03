@@ -47,3 +47,23 @@ curl -X PATCH -H "Authorization: Bearer $DATAOPS_TOKEN" -H "Content-Type: applic
 ```
 
 The page only reads variables from the **Configure Attendee Account** job's dotenv, so the HOL v2 install (which exports `LAB_COMPANION_URL`) runs inside that job.
+
+## Create a new event (admin API)
+
+`POST https://admin.dataops.live/api/v1/event_management/<event-slug>` with a JSON body, then `POST .../<event-slug>/approve`. Tested settings:
+
+| Field | Value |
+|---|---|
+| `dataops_configure_project_path` | `snowflake/hands-on-lab-drafts/RO-barclays-test` |
+| `dataops_configure_project_pipe_file` | `full-ci.yml` |
+| `dataops_top_level_group_path` | `event` (the only value accepted; `snowflake` is rejected) |
+| `organization_account_identifier` | `SFSEHOL-SFSEHOL_ADMIN` |
+| `snowflake_account_region_group` / `snowflake_account_edition` | `aws_us_west_2` / `ENTERPRISE` |
+| `instructions` | contents of `event_instructions.md` |
+| `initial_pool_size`, `name`, `build_date`, `start_date`, `end_date`, `decommission_date` | per event |
+
+A fresh account takes about 15 minutes from creation to `ready` (about 13 of them in Configure Attendee Account, mostly the first Lab Companion build). Let every account reach `ready` before attendees register: an account's instructions values are captured when it is allocated.
+
+## End an event
+
+There is no delete endpoint. Decommission each account (`POST .../events/<slug>/accounts/<id>/decommission?remain_allocated=false`; irreversible) and `PATCH` the event's `end_date` and `decommission_date` to now.
