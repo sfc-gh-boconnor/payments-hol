@@ -48,6 +48,10 @@ curl -X PATCH -H "Authorization: Bearer $DATAOPS_TOKEN" -H "Content-Type: applic
 
 The page only reads variables from the **Configure Attendee Account** job's dotenv, so the HOL v2 install (which exports `LAB_COMPANION_URL`) runs inside that job.
 
+## Open Instructions box
+
+The event page shows an **Open Instructions** box only when the account has a DataOps lab homepage, which the **Build Homepage** job publishes. This project doesn't include that job (the Lab Companion is the guide), so new events show only our instructions. There is no event setting for it: don't add the job back unless you want the box.
+
 ## Create a new event (admin API)
 
 `POST https://admin.dataops.live/api/v1/event_management/<event-slug>` with a JSON body, then `POST .../<event-slug>/approve`. Tested settings:
