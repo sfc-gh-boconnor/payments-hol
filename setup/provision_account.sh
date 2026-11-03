@@ -45,6 +45,9 @@ step "4/7 dbt project (BARCLAYS_HOL.ANALYTICS.BARCLAYS_DBT)"
 snow dbt deploy BARCLAYS_DBT --source dbt --database BARCLAYS_HOL --schema ANALYTICS --role HOL_PARTICIPANT -c "$CONN" > /tmp/hol_dbt.log 2>&1 \
   || { echo "FAILED: dbt deploy (see /tmp/hol_dbt.log)"; exit 1; }
 
+step "4a GOV2 audit pack (BARCLAYS_HOL.AUDIT_PACK)"
+run_sql setup/06_audit_pack.sql
+
 if [[ "$REFERENCE_BUILD" == "--with-reference-build" ]]; then
   step "4b Reference build (catch-up scripts, DA1, OPS1)"
   run_sql setup/catchup/core_analytics.sql

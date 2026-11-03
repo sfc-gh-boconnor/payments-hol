@@ -41,6 +41,7 @@ EXECUTE IMMEDIATE FROM @BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/setup/g
 -- -----------------------------------------------------
 -- 3. Lab Companion prerequisites and wake procedures
 -- -----------------------------------------------------
+EXECUTE IMMEDIATE FROM @BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/setup/06_audit_pack.sql;   -- GOV2 audit pack
 EXECUTE IMMEDIATE FROM @BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/setup/04_lab_companion.sql;
 EXECUTE IMMEDIATE FROM @BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/setup/05_wake_schedule.sql;
 

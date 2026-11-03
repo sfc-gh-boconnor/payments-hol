@@ -217,9 +217,9 @@ export const CHECKS: Record<string, Check[]> = {
   GOV2: [
     {
       id: "gov2_documented",
-      label: "MART_SLA_COMPLIANCE documented for consumers",
+      label: "PAYMENT_SLA_DAILY documented for consumers",
       sql: `SELECT COUNT_IF(COMMENT ILIKE '%Owner:%') > 0 AS OK, COALESCE(LEFT(MAX(COMMENT), 80), 'no comment') AS DETAIL
-            FROM BARCLAYS_HOL.INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'ANALYTICS' AND TABLE_NAME = 'MART_SLA_COMPLIANCE'`,
+            FROM BARCLAYS_HOL.INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'AUDIT_PACK' AND TABLE_NAME = 'PAYMENT_SLA_DAILY'`,
       hint: "Paste the documentation prompt into Cortex Code (the comment must include \"Owner:\").",
     },
     {
@@ -263,6 +263,12 @@ const pre = {
     sql: show("SHOW SEMANTIC VIEWS LIKE 'SV_PAYMENTS' IN SCHEMA BARCLAYS_HOL.ANALYTICS", "SV_PAYMENTS"),
     hint: "Run setup/catchup/semantic_view_and_agent.sql (Lab Companion > this module > catch-up script).",
   },
+  auditPack: {
+    id: "pre_audit_pack",
+    label: "GOV2 audit pack ready (PAYMENTS_AUDIT_AGENT)",
+    sql: show("SHOW AGENTS LIKE 'PAYMENTS_AUDIT_AGENT' IN SCHEMA BARCLAYS_HOL.AUDIT_PACK", "PAYMENTS_AUDIT_AGENT"),
+    hint: "The audit pack is built at provisioning. Ask your facilitator to run setup/06_audit_pack.sql.",
+  },
   svClient360: {
     id: "pre_sv_client_360",
     label: "SV_CLIENT_360 exists (DA1)",
@@ -300,5 +306,5 @@ export const PREREQS: Record<string, Check[]> = {
   AI2: [pre.svClient360, pre.agent360, pre.lookup, pre.cke],
   AI3: [pre.cke, pre.svClient360],
   GOV1: [pre.staging],
-  GOV2: [pre.staging, pre.slaMart, pre.svClient360, pre.agent360],
+  GOV2: [pre.auditPack],
 }

@@ -4,7 +4,7 @@
 |---|---|
 | **Persona** | Governance / Risk / Audit |
 | **Time** | ~30 min |
-| **Prerequisites** | DE1 or catch-up, plus at least one agent run |
+| **Prerequisites** | C1 only. GOV2 uses a ready-made audit pack in `BARCLAYS_HOL.AUDIT_PACK`, so it doesn't depend on any other module |
 | **Reference SQL** | [`gov2.sql`](gov2.sql) |
 
 ## Business question
@@ -17,32 +17,32 @@
 
 ## Steps
 ### Ask the agent a few questions first
-Where: Snowsight > **AI & ML > Agents > CORPORATE_PAYMENTS_360** (the chat on the right), or Snowflake Intelligence
-Do this now, at the start of the module: agent usage takes up to about 45 minutes to reach ACCOUNT_USAGE, so the queries you ask here are what you'll audit in "What are our agents doing?" later. Ask the agent three questions, one at a time: paste the first from the card below, then ask "What is the payment success rate by payment scheme?" and "Which relationship managers have the most clients with failed payments?"
-Paste: the **CORPORATE_PAYMENTS_360** agent chat (not the Cortex Code sidebar)
+Where: Snowsight > **AI & ML > Agents > PAYMENTS_AUDIT_AGENT** (the chat on the right)
+GOV2 audits a ready-made **audit pack** in `BARCLAYS_HOL.AUDIT_PACK`, built on the Iceberg sources: a daily SLA data product (`PAYMENT_SLA_DAILY`), a client accounts view with restricted columns (`CLIENT_ACCOUNTS`), a semantic view (`SV_PAYMENTS_AUDIT`) and an agent (`PAYMENTS_AUDIT_AGENT`). It's separate from everything the other modules build, so you can still do those afterwards. Do this now, at the start of the module: agent usage takes up to about 45 minutes to reach ACCOUNT_USAGE, so the queries you ask here are what you'll audit in "What are our agents doing?" later. Ask the agent three questions, one at a time: paste the first from the card below, then ask "What is the success rate by payment scheme?" and "How many client accounts does each relationship manager look after?"
+Paste: the **PAYMENTS_AUDIT_AGENT** chat (not the Cortex Code sidebar)
 ```prompt
-Which 5 clients had the highest payment volume last month, and who is their relationship manager?
+Which payment scheme had the most SLA breach days?
 ```
-Expect: an answer to each question, with the SQL the agent ran over SV_CLIENT_360. Carry on with the next steps while the usage data arrives.
+Expect: an answer to each question, with the SQL the agent ran over SV_PAYMENTS_AUDIT. Carry on with the next steps while the usage data arrives.
 
 ### Impact analysis on the Iceberg source
 Where: the Cortex Code sidebar; also Snowsight > **Catalog > BARCLAYS_HOL > RAW_DATA > PAYMENTS > Lineage**
 ```prompt
 If I drop the column PROCESSING_TIME_MS from BARCLAYS_HOL.RAW_DATA.PAYMENTS, which downstream objects and agents break? Use SNOWFLAKE.CORE.GET_LINEAGE downstream to 3 levels, and explain any objects shown as ***.***.***.
 ```
-Expect: the staging views, marts, dynamic tables and `SV_CLIENT_360`. Masked rows are objects your role can't see: lineage never leaks them.
+Expect: the audit pack chain `PAYMENT_SLA_DAILY` > `SV_PAYMENTS_AUDIT` > `PAYMENTS_AUDIT_AGENT`, so the agent breaks, plus any staging views, marts and dynamic tables you built in other modules. Masked rows are objects your role can't see: lineage never leaks them.
 
 ### Where does the data product come from?
 ```prompt
-Show the upstream lineage of BARCLAYS_HOL.ANALYTICS.MART_SLA_COMPLIANCE to 3 levels, and list object dependencies in BARCLAYS_HOL from SNOWFLAKE.ACCOUNT_USAGE.OBJECT_DEPENDENCIES.
+Show the upstream lineage of the agent BARCLAYS_HOL.AUDIT_PACK.PAYMENTS_AUDIT_AGENT to 3 levels (use OBJECT_DOMAIN CORTEX_AGENT), so I can see which semantic view, tables and Iceberg sources its answers come from.
 ```
-Expect: the path back from the mart through dbt staging to the Iceberg sources
+Expect: the path back from the agent through `SV_PAYMENTS_AUDIT` and `PAYMENT_SLA_DAILY` to the Iceberg tables in `RAW_DATA`
 
 ### Who read restricted columns?
 ```prompt
 From SNOWFLAKE.ACCOUNT_USAGE.ACCESS_HISTORY, show who accessed the IBAN, ACCOUNT_NUMBER or SORT_CODE columns of any BARCLAYS_HOL object in the last day, with time, user and object.
 ```
-Expect: recent reads, including your GOV1 queries. ACCOUNT_USAGE can lag by up to about 3 hours, so this may be empty early in the day.
+Expect: recent reads, including your GOV1 queries if you did GOV1. To be sure there's something to find, first run `SELECT * FROM BARCLAYS_HOL.AUDIT_PACK.CLIENT_ACCOUNTS LIMIT 5`. ACCOUNT_USAGE can lag by up to about 3 hours, so this may be empty early in the day.
 
 ### Turn the access check into a daily automation
 Where: the Cortex Code sidebar (same chat as the step above)
@@ -54,7 +54,7 @@ Expect: Cortex Code summarises the automation (name, schedule, read-only), creat
 Check: gov2_automation
 
 ### What are our agents doing?
-Where: the Cortex Code sidebar; also Snowsight > **AI & ML > Agents > CORPORATE_PAYMENTS_360 > Monitoring**
+Where: the Cortex Code sidebar; also Snowsight > **AI & ML > Agents > PAYMENTS_AUDIT_AGENT > Monitoring**
 ```prompt
 From SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY, show queries in the last day against BARCLAYS_HOL that used SEMANTIC_VIEW, with user, role, start time, duration and a preview of the SQL.
 ```
@@ -62,13 +62,13 @@ Expect: the queries your agents and Cortex Analyst generated, including the thre
 
 ### Document the data product
 ```prompt
-Add a table comment to BARCLAYS_HOL.ANALYTICS.MART_SLA_COMPLIANCE that starts "Daily SLA compliance per payment scheme. Owner: Payments Operations." and states its grain (day x scheme) and source, plus a column comment on SLA_STATUS explaining COMPLIANT, AT RISK and BREACH. Then produce a one-page data product card for it: owner, grain, lineage, quality checks, sensitivity tags and consumers.
+Add a table comment to BARCLAYS_HOL.AUDIT_PACK.PAYMENT_SLA_DAILY that starts "Daily SLA compliance per payment scheme. Owner: Payments Operations." and states its grain (day x scheme) and source, plus a column comment on SLA_STATUS explaining COMPLIANT, AT RISK and BREACH. Then produce a one-page data product card for it: owner, grain, lineage, quality checks, sensitivity tags and consumers.
 ```
 Expect: the comments saved, so humans and AI find the right table, and a data product card in the sidebar
 Check: gov2_documented
 
 ## Check your work
-Downstream lineage lists the staging views, marts, dynamic tables and `SV_CLIENT_360`.
+Downstream lineage from `RAW_DATA.PAYMENTS` reaches `PAYMENTS_AUDIT_AGENT`, the agent's questions show in query history, and `PAYMENT_SLA_DAILY` is documented.
 
 ## Barclayflake note
 ACCOUNT_USAGE views have up to ~3 hours latency - run history queries at the end of the session.
