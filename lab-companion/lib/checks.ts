@@ -300,5 +300,5 @@ export const PREREQS: Record<string, Check[]> = {
   AI2: [pre.svClient360, pre.agent360, pre.lookup, pre.cke],
   AI3: [pre.cke, pre.svClient360],
   GOV1: [pre.staging],
-  GOV2: [pre.staging, pre.slaMart],
+  GOV2: [pre.staging, pre.slaMart, pre.svClient360, pre.agent360],
 }

@@ -16,6 +16,15 @@
 - A daily Cortex Code automation `RESTRICTED_COLUMN_WATCH` reporting new reads of restricted columns
 
 ## Steps
+### Ask the agent a few questions first
+Where: Snowsight > **AI & ML > Agents > CORPORATE_PAYMENTS_360** (the chat on the right), or Snowflake Intelligence
+Do this now, at the start of the module: agent usage takes up to about 45 minutes to reach ACCOUNT_USAGE, so the queries you ask here are what you'll audit in "What are our agents doing?" later. Ask the agent three questions, one at a time: paste the first from the card below, then ask "What is the payment success rate by payment scheme?" and "Which relationship managers have the most clients with failed payments?"
+Paste: the **CORPORATE_PAYMENTS_360** agent chat (not the Cortex Code sidebar)
+```prompt
+Which 5 clients had the highest payment volume last month, and who is their relationship manager?
+```
+Expect: an answer to each question, with the SQL the agent ran over SV_CLIENT_360. Carry on with the next steps while the usage data arrives.
+
 ### Impact analysis on the Iceberg source
 Where: the Cortex Code sidebar; also Snowsight > **Catalog > BARCLAYS_HOL > RAW_DATA > PAYMENTS > Lineage**
 ```prompt
@@ -49,7 +58,7 @@ Where: the Cortex Code sidebar; also Snowsight > **AI & ML > Agents > CORPORATE_
 ```prompt
 From SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY, show queries in the last day against BARCLAYS_HOL that used SEMANTIC_VIEW, with user, role, start time, duration and a preview of the SQL.
 ```
-Expect: the queries your agents and Cortex Analyst generated, attributed to the user who asked
+Expect: the queries your agents and Cortex Analyst generated, including the three questions you asked at the start, attributed to the user who asked. If they aren't there yet, usage can take up to about 45 minutes to appear: carry on with the last step and come back to this one.
 
 ### Document the data product
 ```prompt
