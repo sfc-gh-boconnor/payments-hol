@@ -74,7 +74,7 @@ export default async function ModulePage({ params }: { params: Promise<{ code: s
                         </div>
                       </div>
                       <div className="space-y-3 pl-9">
-                        {s.prompt && <PromptCard prompt={s.prompt} expect={s.expect} />}
+                        {s.prompt && <PromptCard prompt={s.prompt} expect={s.expect} pasteInto={s.pasteInto} />}
                         {s.sql && <SqlBlock sql={s.sql} path="Run in a SQL file in the Workspace" />}
                         {!s.prompt && s.expect && <p className="text-xs"><span className="font-semibold">What you should see: </span><InlineMd text={s.expect} /></p>}
                         {check && <p className="text-xs text-muted-foreground">Then press <span className="font-semibold">Check my work</span>: {check.label}</p>}

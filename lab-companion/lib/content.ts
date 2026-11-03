@@ -10,6 +10,8 @@ export type Step = {
   sql: string
   expect: string
   checkId: string
+  /** Where the prompt is pasted when it isn't the Cortex Code sidebar */
+  pasteInto: string
 }
 
 export type Module = {

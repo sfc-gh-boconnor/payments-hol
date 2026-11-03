@@ -15,6 +15,7 @@ const ORDER = ["de", "da", "ops", "ai", "gov"]
 const PERSONA_OF = { de: "Data Engineer", da: "Data Analyst", ops: "Payments Ops", ai: "AI Builder", gov: "Governance" }
 
 // "## Steps" holds one "### Title" block per step. Inside a block:
+//   Paste: <where the prompt goes, if not the Cortex Code sidebar>
 //   Where: <where in Snowsight to work>     Expect: <what you should see>
 //   Check: <check id from lib/checks.ts>    ```prompt ...``` (paste into Cortex Code)
 //   ```sql ...``` (a small snippet to run)  any other lines are the step's text.
@@ -29,12 +30,12 @@ function parseSteps(lines) {
       continue
     }
     const h = l.match(/^### (.*)$/)
-    if (h) { s = { title: h[1].trim(), body: "", where: "", prompt: "", sql: "", expect: "", checkId: "" }; steps.push(s); continue }
+    if (h) { s = { title: h[1].trim(), body: "", where: "", prompt: "", sql: "", expect: "", checkId: "", pasteInto: "" }; steps.push(s); continue }
     if (!s) continue
     const f = l.match(/^```(prompt|sql)\s*$/)
     if (f) { fence = { kind: f[1], buf: [] }; continue }
-    const kv = l.match(/^(Where|Expect|Check): (.*)$/)
-    if (kv) { s[{ Where: "where", Expect: "expect", Check: "checkId" }[kv[1]]] = kv[2].trim(); continue }
+    const kv = l.match(/^(Where|Expect|Check|Paste): (.*)$/)
+    if (kv) { s[{ Where: "where", Expect: "expect", Check: "checkId", Paste: "pasteInto" }[kv[1]]] = kv[2].trim(); continue }
     if (l.trim()) s.body = s.body ? `${s.body} ${l.trim()}` : l.trim()
   }
   if (fence) throw new Error(`Unclosed code fence in step "${s.title}"`)

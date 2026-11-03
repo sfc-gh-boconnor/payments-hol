@@ -316,3 +316,8 @@ Each issue: where it happened, what went wrong, what was expected, and severity
 
 ## 25. DA2 as a Notebook (charts) — FIXED locally
 The Cortex Code sidebar can't render charts, so DA2 is now built in a Workspace Notebook `da2_feedback_analysis` (+ > Notebook, NOTEBOOK_POOL + BARCLAYS_WH). Each prompt asks Cortex Code to add and run a named cell; new step "Chart sentiment by sector" adds an altair line chart. Needs: USAGE on NOTEBOOK_POOL for HOL_PARTICIPANT (in DataOps deploy_workspace.yml) and CREATE NOTEBOOK on ANALYTICS (in setup). First pool start takes 1–2 min — consider resuming NOTEBOOK_POOL just before the session. Pool is max 1 node XS: check sizing for a full room (one notebook kernel per attendee).
+
+## 26. Pipeline Builder deploy fixes (DE2) — FIXED locally
+- Generate with Cortex deployed the tasks **started**, despite "keep suspended" in the prompt. A second build then failed: "cannot change orchestration model while PIPE_DBT_BUILD is not suspended". Fixed in LKRTFH by suspending PIPE_DBT_BUILD. The step now has a troubleshooting note for this.
+- The plan then failed because the graph-wide warehouse default would remove each task's own warehouse, which makes a task serverless and needs EXECUTE MANAGED TASK (not granted to HOL_PARTICIPANT). Cortex Code fixed it by setting `warehouse: BARCLAYS_WH` on each task.
+- The prompt now asks for a warehouse on each task (no graph default) and desired state Suspended. Steps also cover Workspace Home > Pipeline Builder, the Prompt box + Generate, Proceed/Modify/Cancel, Deploy, and reopening the pipeline.

@@ -6,8 +6,8 @@ import { copyText } from "@/lib/clipboard"
 import { Button } from "@/components/ui/button"
 import { InlineMd } from "@/components/lab/inline-md"
 
-/** A prompt to paste into the Cortex Code sidebar, with what the attendee should see back. */
-export function PromptCard({ prompt, expect }: { prompt: string; expect?: string }) {
+/** A prompt to paste into Cortex Code (the sidebar unless `pasteInto` names another box), with what the attendee should see back. */
+export function PromptCard({ prompt, expect, pasteInto }: { prompt: string; expect?: string; pasteInto?: string }) {
   const [copied, setCopied] = useState(false)
   return (
     <div className="min-w-0 overflow-hidden rounded-lg border border-primary/30 bg-primary/5">
@@ -16,7 +16,7 @@ export function PromptCard({ prompt, expect }: { prompt: string; expect?: string
           <Sparkles className="h-4 w-4 shrink-0 text-primary" />
           <div className="min-w-0">
             <div className="text-xs font-semibold">Paste into Cortex Code</div>
-            <div className="truncate text-[11px] text-muted-foreground">Open the Cortex Code sidebar in Snowsight (right-hand panel)</div>
+            <div className={`${pasteInto ? "" : "truncate "}text-[11px] text-muted-foreground`}>{pasteInto ? <InlineMd text={pasteInto} /> : "Open the Cortex Code sidebar in Snowsight (right-hand panel)"}</div>
           </div>
         </div>
         <Button
