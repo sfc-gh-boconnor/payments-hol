@@ -39,13 +39,13 @@ Check: da2_enriched
 ```prompt
 Add a SQL cell named churn_risk that uses AI_FILTER on BARCLAYS_HOL.ANALYTICS.FEEDBACK_ENRICHED with exactly this question: 'Does the client in this feedback explicitly state that they will or may leave the bank, move their business to another bank, review other banking providers, or tender their banking? Complaints without a stated intention to leave do not count. Feedback: {0}'. Show customer, payment type and the first 120 characters of the feedback, grouped by distinct feedback text with a count. Run it.
 ```
-Expect: a short list - three distinct churn statements (reviewing other providers, moving to another bank, tendering their banking) - found by meaning rather than keywords. Ordinary complaints about delays or outages are left out. That's the difference between AI_FILTER and a sentiment score
+Expect: a short list - three distinct churn statements (reviewing other providers, moving to another bank, tendering their banking) - found by meaning rather than keywords. Ordinary complaints about delays or outages are left out. That's the difference between AI_FILTER and a sentiment score. They all come from Logistics clients, which the next step explains
 
 ### Chart sentiment by sector
 ```prompt
 Add a SQL cell named sector_trend with one row per complete month and customer sector from BARCLAYS_HOL.ANALYTICS.FEEDBACK_ENRICHED: MONTH, CUSTOMER_SECTOR, AVG_SENTIMENT and FEEDBACK_COUNT, excluding the current partial month. Then add a Python cell that plots sector_trend as an altair line chart (MONTH on x, AVG_SENTIMENT on y, one line per CUSTOMER_SECTOR, tooltip with the count). Run both and tell me which sectors are getting worse.
 ```
-Expect: a line chart under the Python cell, one line per sector, and Cortex Code's summary of which sectors are worsening. Hover over a point to see its feedback count.
+Expect: a line chart under the Python cell, one line per sector. Logistics falls clearly over the last four months (the same clients who talk about leaving), while Pharmaceuticals improves; other sectors move around without a trend. Hover over a point to see its feedback count.
 
 ### Summarise complaint themes per RM
 ```prompt

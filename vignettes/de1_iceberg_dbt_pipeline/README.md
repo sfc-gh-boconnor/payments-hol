@@ -51,6 +51,13 @@ Writing or compiling a model doesn't create its table: only a build does. Click 
 Expect: the Output shows 8 models and every test passing (`ERROR=0`), including the tests for both Cortex Code marts. If a test fails, paste the error into Cortex Code, ask it to fix the model, and Build again.
 Check: de1_coco_marts
 
+### Deploy the project
+The Workspace is where you develop; the deployed project object `BARCLAYS_HOL.ANALYTICS.BARCLAYS_DBT` is what production runs. It was deployed when the lab was set up, so it doesn't have the marts you just wrote yet.
+```prompt
+Deploy the dbt project in my payments-hol Workspace (snow://workspace/DEFAULT_DATABASE.PUBLIC."payments-hol"/versions/live/dbt) to the existing dbt project object BARCLAYS_HOL.ANALYTICS.BARCLAYS_DBT with ALTER DBT PROJECT ... ADD VERSION FROM. Then list the models in the deployed project to confirm MART_CUSTOMER_PAYMENTS and MART_RM_PERFORMANCE are included.
+```
+Expect: "Successfully deployed new files", and both Cortex Code marts listed in the deployed project. The nightly task in the next step now builds what you developed.
+
 ### Schedule the project
 ```prompt
 Create a task BARCLAYS_HOL.ANALYTICS.TSK_DBT_NIGHTLY_BUILD on warehouse BARCLAYS_WH that runs EXECUTE DBT PROJECT BARCLAYS_HOL.ANALYTICS.BARCLAYS_DBT ARGS = 'build' every day at 05:00 Europe/London. Leave it suspended.

@@ -333,10 +333,37 @@ pay_arr AS (
     SELECT ARRAY_AGG(PAYMENT_ID) AS IDS, COUNT(*) AS CNT
     FROM (SELECT PAYMENT_ID FROM PAYMENTS WHERE STATUS IN ('COMPLETED','FAILED','RETURNED') ORDER BY RANDOM() LIMIT 1200)
 )
+, -- Planted story for DA2: over the last 4 complete months Logistics turns negative and its
+-- clients start talking about leaving (the only churn statements), while Pharmaceuticals improves.
+-- Everything else is random. Text indexes: churn 12-14; negative and positive lists below.
+draws AS (
+    SELECT SEQ4() AS N,
+           DATEADD('hour', -UNIFORM(1, 8760, RANDOM()), CURRENT_TIMESTAMP()) AS FEEDBACK_DATE,
+           c.IDS[MOD(UNIFORM(0,99999,RANDOM()), c.CNT)]::VARCHAR AS CUSTOMER_ID,
+           UNIFORM(1, 100, RANDOM()) AS R,
+           UNIFORM(0, 9999, RANDOM()) AS PICK
+    FROM TABLE(GENERATOR(ROWCOUNT => 2000))
+    CROSS JOIN cust_arr c
+),
+picked AS (
+    SELECT d.*,
+           d.FEEDBACK_DATE >= DATEADD('month', -4, DATE_TRUNC('month', CURRENT_DATE())) AS RECENT,
+           ARRAY_CONSTRUCT(1, 3, 5, 7, 8, 10, 16, 18, 19, 21, 23) AS NEG,
+           ARRAY_CONSTRUCT(0, 2, 4, 6, 9, 11, 17, 20, 22) AS POS,
+           ARRAY_CONSTRUCT(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 15, 16, 17, 18, 19, 20, 21, 22, 23) AS ANY_TEXT,
+           CASE
+             WHEN cu.SECTOR = 'Logistics' AND RECENT AND d.R <= 15 THEN 12 + MOD(d.PICK, 3)
+             WHEN cu.SECTOR = 'Logistics' AND RECENT AND d.R <= 85 THEN NEG[MOD(d.PICK, 11)]::INT
+             WHEN cu.SECTOR = 'Pharmaceuticals' AND RECENT AND d.R <= 85 THEN POS[MOD(d.PICK, 9)]::INT
+             ELSE ANY_TEXT[MOD(d.PICK, 21)]::INT
+           END AS TEXT_IX
+    FROM draws d
+    JOIN CUSTOMERS cu ON cu.CUSTOMER_ID = d.CUSTOMER_ID
+)
 SELECT
-    'FB' || LPAD(SEQ4()::VARCHAR, 8, '0'),
-    DATEADD('hour', -UNIFORM(1, 8760, RANDOM()), CURRENT_TIMESTAMP()),
-    c.IDS[MOD(UNIFORM(0,99999,RANDOM()), c.CNT)]::VARCHAR AS CUSTOMER_ID,
+    'FB' || LPAD(k.N::VARCHAR, 8, '0'),
+    k.FEEDBACK_DATE,
+    k.CUSTOMER_ID,
     CASE WHEN UNIFORM(1,10,RANDOM()) <= 6
          THEN p.IDS[MOD(UNIFORM(0,99999,RANDOM()), p.CNT)]::VARCHAR
          ELSE NULL
@@ -370,11 +397,10 @@ SELECT
         'Our payroll file of 1,240 BACS payments was rejected twice because of a format validation error.',
         'The relationship manager walked us through the new payment limits and it was genuinely useful.',
         'Online banking timed out while approving a GBP 5,000,000 CHAPS payment and we had to call to release it.'
-    )[UNIFORM(0,23,RANDOM())]::VARCHAR,
+    )[k.TEXT_IX]::VARCHAR,
     ARRAY_CONSTRUCT('SWIFT','BACS','CHAPS','FASTER_PAYMENTS','SEPA')[UNIFORM(0,4,RANDOM())]::VARCHAR,
     UNIFORM(1, 5, RANDOM())
-FROM TABLE(GENERATOR(ROWCOUNT => 2000))
-CROSS JOIN cust_arr c
+FROM picked k
 CROSS JOIN pay_arr p;
 
 SELECT COUNT(*) AS TOTAL_FEEDBACK,
