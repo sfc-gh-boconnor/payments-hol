@@ -136,6 +136,36 @@ export const CHECKS: Record<string, Check[]> = {
       hint: "Paste the AI_AGG themes prompt into Cortex Code.",
     },
   ],
+  DA3: [
+    {
+      id: "da3_catchment",
+      label: "Every retail customer has a fastest and second-fastest branch by drive time",
+      sql: `SELECT COUNT(*) >= 19000 AND COUNT(SECOND_BRANCH_ID) >= COUNT(*) * 0.95 AS OK,
+                   COUNT(*) || ' customers, median ' || ROUND(MEDIAN(NEAREST_DRIVE_MIN), 1) || ' min drive to fastest branch' AS DETAIL
+            FROM BARCLAYS_HOL.ANALYTICS.CUSTOMER_NEAREST_BRANCH`,
+      hint: "Paste the fastest-branch prompt into Cortex Code (it must include the second-fastest branch and NEAREST_DRIVE_MIN).",
+    },
+    {
+      id: "da3_closure_impact",
+      label: "BRANCH_CLOSURE_IMPACT models every branch",
+      sql: `SELECT COUNT(*) >= 50 AND COUNT_IF(DISRUPTION_RISK = 'HIGH') > 0 AS OK,
+                   COUNT(*) || ' branches, ' || COUNT_IF(DISRUPTION_RISK = 'LOW') || ' LOW risk' AS DETAIL
+            FROM BARCLAYS_HOL.ANALYTICS.BRANCH_CLOSURE_IMPACT`,
+      hint: "Paste the closure-impact prompt into Cortex Code.",
+    },
+    {
+      id: "da3_semantic_view",
+      label: "SV_BRANCH_NETWORK semantic view exists",
+      sql: show("SHOW SEMANTIC VIEWS LIKE 'SV_BRANCH_NETWORK' IN SCHEMA BARCLAYS_HOL.ANALYTICS", "SV_BRANCH_NETWORK"),
+      hint: "Paste the semantic view prompt into Cortex Code.",
+    },
+    {
+      id: "da3_agent",
+      label: "BRANCH_NETWORK_ADVISOR agent exists",
+      sql: show("SHOW AGENTS LIKE 'BRANCH_NETWORK_ADVISOR' IN SCHEMA BARCLAYS_HOL.ANALYTICS", "BRANCH_NETWORK_ADVISOR"),
+      hint: "Create the agent with + > Agent > Create with CoCo, using the prompt in this step.",
+    },
+  ],
   OPS1: [
     {
       id: "ops1_agent",
@@ -263,6 +293,12 @@ const pre = {
     sql: show("SHOW SEMANTIC VIEWS LIKE 'SV_PAYMENTS' IN SCHEMA BARCLAYS_HOL.ANALYTICS", "SV_PAYMENTS"),
     hint: "Run setup/catchup/semantic_view_and_agent.sql (Lab Companion > this module > catch-up script).",
   },
+  retailGeo: {
+    id: "pre_retail_geo",
+    label: "Retail branch network and travel times ready (BARCLAYS_HOL.RETAIL)",
+    sql: `SELECT COUNT(*) > 0 AS OK, COUNT(*) || ' branch-to-cell travel times' AS DETAIL FROM BARCLAYS_HOL.RETAIL.BRANCH_CELL_TRAVEL`,
+    hint: "The retail data is built at provisioning. Ask your facilitator to run setup/07_retail_geo_seed.sql.",
+  },
   auditPack: {
     id: "pre_audit_pack",
     label: "GOV2 audit pack ready (PAYMENTS_AUDIT_AGENT)",
@@ -300,6 +336,7 @@ export const PREREQS: Record<string, Check[]> = {
   DE2: [pre.staging, pre.slaMart, pre.customerMart],
   DA1: [pre.staging, pre.feedback, pre.svPayments],
   DA2: [pre.staging],
+  DA3: [pre.retailGeo],
   OPS1: [pre.svClient360, pre.svPayments],
   OPS2: [pre.staging, pre.feedback],
   AI1: [pre.staging, pre.svPayments],

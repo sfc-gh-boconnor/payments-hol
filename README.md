@@ -42,6 +42,7 @@ docs/           data model, ERD and column dictionary
 | [DE2](vignettes/de2_dynamic_tables_quality/) | Dynamic Tables + data quality (DMFs) | Data Engineer | 45 |
 | [DA1](vignettes/da1_semantic_view_analyst/) | Build a semantic view + Cortex Analyst | Data Analyst | 60 |
 | [DA2](vignettes/da2_aisql_feedback/) | AI SQL on customer feedback (sentiment, AI_AGG themes per RM) | Data Analyst | 45 |
+| [DA3](vignettes/da3_branch_network_geo/) | Retail branch network: spatial SQL, H3, closure impact, semantic view and agent | Data Analyst | 45 |
 | [OPS1](vignettes/ops1_payments_360_agent/) | Corporate Payments 360 agent in Snowflake Intelligence | Payments Ops | 45 |
 | [OPS2](vignettes/ops2_alert_triage/) | Alert triage + negative sentiment feed | Payments Ops | 30 |
 | [AI1](vignettes/ai1_agent_tools/) | Agent with custom (UDF) tools | AI Builder | 45 |

@@ -37,7 +37,7 @@ Check: da2_enriched
 
 ### Find churn risk in plain English
 ```prompt
-Add a SQL cell named churn_risk that uses AI_FILTER on BARCLAYS_HOL.ANALYTICS.FEEDBACK_ENRICHED to find negative feedback where the client explicitly says they may leave, switch bank, move their business or tender their banking - not ordinary complaints. Show customer, payment type and the first 120 characters of the feedback, grouped by distinct feedback text with a count. Run it.
+Add a SQL cell named churn_risk that uses AI_FILTER on BARCLAYS_HOL.ANALYTICS.FEEDBACK_ENRICHED with exactly this question: 'Does the client in this feedback explicitly state that they will or may leave the bank, move their business to another bank, review other banking providers, or tender their banking? Complaints without a stated intention to leave do not count. Feedback: {0}'. Show customer, payment type and the first 120 characters of the feedback, grouped by distinct feedback text with a count. Run it.
 ```
 Expect: a short list - three distinct churn statements (reviewing other providers, moving to another bank, tendering their banking) - found by meaning rather than keywords. Ordinary complaints about delays or outages are left out. That's the difference between AI_FILTER and a sentiment score
 

@@ -17,4 +17,11 @@ CREATE USER IF NOT EXISTS IDENTIFIER($ATTENDEE)
     COMMENT = 'Barclays HOL attendee';
 GRANT ROLE HOL_PARTICIPANT TO USER IDENTIFIER($ATTENDEE);
 
+-- Let the Lab Companion (owned by HOL_ADMIN, runs with restricted caller's rights)
+-- see the attendee's Cortex Code automations in their personal USER$ database (GOV2 check)
+SET USER_DB = 'USER$' || $ATTENDEE;
+GRANT CALLER USAGE ON DATABASE IDENTIFIER($USER_DB) TO ROLE HOL_ADMIN;
+GRANT INHERITED CALLER USAGE ON ALL SCHEMAS IN DATABASE IDENTIFIER($USER_DB) TO ROLE HOL_ADMIN;
+GRANT INHERITED CALLER MONITOR ON ALL TASKS IN DATABASE IDENTIFIER($USER_DB) TO ROLE HOL_ADMIN;
+
 -- Then set an initial password in Snowsight (Admin > Users) and share it out-of-band.

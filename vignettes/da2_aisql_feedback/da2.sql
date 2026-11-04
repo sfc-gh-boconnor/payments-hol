@@ -57,7 +57,7 @@ GROUP BY PAYMENT_TYPE ORDER BY AVG_SENTIMENT;
 SELECT CUSTOMER_NAME, PAYMENT_TYPE, LEFT(FEEDBACK_TEXT, 120) AS FEEDBACK
 FROM FEEDBACK_ENRICHED
 WHERE SENTIMENT_LABEL = 'NEGATIVE'
-  AND AI_FILTER(PROMPT('Does this feedback mention a risk of the client moving their business elsewhere? {0}', FEEDBACK_TEXT))
+  AND AI_FILTER(PROMPT('Does the client in this feedback explicitly state that they will or may leave the bank, move their business to another bank, review other banking providers, or tender their banking? Complaints without a stated intention to leave do not count. Feedback: {0}', FEEDBACK_TEXT))
 LIMIT 10;
 
 -- -----------------------------------------------------

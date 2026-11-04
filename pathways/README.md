@@ -28,6 +28,7 @@ Every attendee does the **shared core**, then follows one pathway. Vignettes are
 |---|---|---|
 | A | Run `setup/catchup/core_analytics.sql`, then [DA2 AI SQL on customer feedback](../vignettes/da2_aisql_feedback/) | 45 |
 | B | [DA1 Build a semantic view + Cortex Analyst](../vignettes/da1_semantic_view_analyst/) | 60 |
+| C (stretch) | [DA3 Branch network and spatial analytics](../vignettes/da3_branch_network_geo/) (uses the retail data in `BARCLAYS_HOL.RETAIL`; no catch-up needed) | 45 |
 
 ### Payments Operations analyst (low-code)
 | Block | Vignette | Time |

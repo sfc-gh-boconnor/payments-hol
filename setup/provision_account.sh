@@ -48,6 +48,13 @@ snow dbt deploy BARCLAYS_DBT --source dbt --database BARCLAYS_HOL --schema ANALY
 step "4a GOV2 audit pack (BARCLAYS_HOL.AUDIT_PACK)"
 run_sql setup/06_audit_pack.sql
 
+step "4c Retail geospatial data for DA3 (BARCLAYS_HOL.RETAIL)"
+# precomputed OpenRouteService travel times and catchments go on the stage first
+snow sql -c "$CONN" --role HOL_ADMIN -q "CREATE SCHEMA IF NOT EXISTS BARCLAYS_HOL.RETAIL; CREATE STAGE IF NOT EXISTS BARCLAYS_HOL.RETAIL.ORS_SEED;" > /dev/null
+snow stage copy "$ROOT/data/retail/" @BARCLAYS_HOL.RETAIL.ORS_SEED/ --overwrite -c "$CONN" --role HOL_ADMIN > /tmp/hol_ors_seed.log 2>&1 \
+  || { echo "FAILED: upload data/retail (see /tmp/hol_ors_seed.log)"; exit 1; }
+run_sql setup/07_retail_geo_seed.sql
+
 if [[ "$REFERENCE_BUILD" == "--with-reference-build" ]]; then
   step "4b Reference build (catch-up scripts, DA1, OPS1)"
   run_sql setup/catchup/core_analytics.sql

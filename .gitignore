@@ -11,3 +11,4 @@ lab-companion/output/
 lab-companion/*.tsbuildinfo
 lab-companion/.env*
 lab-companion/snowflake.log
+data/retail/parts/
