@@ -266,6 +266,33 @@ export const CHECKS: Record<string, Check[]> = {
       asCaller: true,
     },
   ],
+  DE3: [
+    {
+      id: "de3_events",
+      label: "Payment events streamed into REALTIME.PAYMENT_EVENTS",
+      sql: `SELECT COUNT(*) >= 1000 AS OK, COUNT(*) || ' events, ' || COUNT_IF(STATUS = 'FAILED') || ' failed' AS DETAIL FROM BARCLAYS_HOL.REALTIME.PAYMENT_EVENTS`,
+      hint: "Run the stream cell in de3_realtime_payments (it needs HOL_NOTEBOOK_ACCESS_INTEGRATION in the notebook settings).",
+    },
+    {
+      id: "de3_incidents",
+      label: "DT_PAYMENT_INCIDENTS flags failing payment clusters",
+      sql: show("SHOW DYNAMIC TABLES LIKE 'DT_PAYMENT_INCIDENTS' IN SCHEMA BARCLAYS_HOL.REALTIME", "DT_PAYMENT_INCIDENTS"),
+      hint: "Paste the incidents prompt into Cortex Code with the notebook open.",
+    },
+  ],
+  GOV3: [
+    {
+      id: "gov3_traces",
+      label: "Cortex AI Gateway recorded your requests today",
+      // The app's role has MONITOR on the gateway, so it sees every user's spans; leave out admin and service users
+      sql: `SELECT COUNT(*) >= 2 AS OK, COUNT(*) || ' requests via ' || COALESCE(LISTAGG(DISTINCT record_attributes:"gen_ai.request.model"::STRING, ', '), 'no model yet') AS DETAIL
+            FROM TABLE(AGENT_TRACE_TABLE('SNOWFLAKE'))
+            WHERE timestamp >= DATEADD('day', -1, CURRENT_TIMESTAMP())
+              AND record_attributes:"gen_ai.operation.name"::STRING = 'chat'
+              AND resource_attributes:"user"::STRING NOT IN ('EMERGENCY_SERVICE_USER', 'DATAOPS_SERVICE_ADMIN', 'SYSTEM', 'ADMIN')`,
+      hint: "Run the gateway_calls cell in gov3_ai_gateway (it needs HOL_NOTEBOOK_ACCESS_INTEGRATION in the notebook settings).",
+    },
+  ],
 }
 
 export const ALL_CHECK_IDS = Object.values(CHECKS).flat().map((c) => c.id)
@@ -335,6 +362,24 @@ const pre = {
     sql: show("SHOW CORTEX SEARCH SERVICES IN DATABASE SNOWFLAKE_DOCS_CKE", "Knowledge extension"),
     hint: "Ask the facilitator - setup/00 installs SNOWFLAKE_DOCS_CKE from the Marketplace.",
   },
+  realtime: {
+    id: "pre_realtime",
+    label: "Shared interactive warehouse HOL_INTERACTIVE_WH exists",
+    sql: show("SHOW WAREHOUSES LIKE 'HOL_INTERACTIVE_WH'", "HOL_INTERACTIVE_WH"),
+    hint: "Created by setup/00_admin_provision.sql. Ask the facilitator to resume it for the session.",
+  },
+  gateway: {
+    id: "pre_gateway",
+    label: "Cortex AI Gateway SNOWFLAKE available",
+    sql: show("SHOW AI GATEWAYS", "Gateway"),
+    hint: "Cortex AI Gateway is in preview: ask the facilitator whether it's available in this region.",
+  },
+  notebookAccess: {
+    id: "pre_notebook_access",
+    label: "External access integration HOL_NOTEBOOK_ACCESS_INTEGRATION exists",
+    sql: show("SHOW INTEGRATIONS LIKE 'HOL_NOTEBOOK_ACCESS_INTEGRATION'", "HOL_NOTEBOOK_ACCESS_INTEGRATION"),
+    hint: "Created by setup/00_admin_provision.sql. Ask the facilitator to run it.",
+  },
 } satisfies Record<string, Check>
 
 export const PREREQS: Record<string, Check[]> = {
@@ -350,4 +395,6 @@ export const PREREQS: Record<string, Check[]> = {
   AI3: [pre.cke, pre.svClient360],
   GOV1: [pre.staging],
   GOV2: [pre.auditPack],
+  DE3: [pre.realtime, pre.notebookAccess],
+  GOV3: [pre.gateway, pre.notebookAccess],
 }

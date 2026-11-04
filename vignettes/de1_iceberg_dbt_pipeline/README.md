@@ -59,6 +59,7 @@ Deploy the dbt project in my payments-hol Workspace (snow://workspace/DEFAULT_DA
 Expect: "Successfully deployed new files", and both Cortex Code marts listed in the deployed project. The nightly task in the next step now builds what you developed.
 
 ### Schedule the project
+**Autonomous Data Engineering:** native orchestration with a task, so the data product rebuilds itself every night with no external orchestrator.
 ```prompt
 Create a task BARCLAYS_HOL.ANALYTICS.TSK_DBT_NIGHTLY_BUILD on warehouse BARCLAYS_WH that runs EXECUTE DBT PROJECT BARCLAYS_HOL.ANALYTICS.BARCLAYS_DBT ARGS = 'build' every day at 05:00 Europe/London. Leave it suspended.
 ```

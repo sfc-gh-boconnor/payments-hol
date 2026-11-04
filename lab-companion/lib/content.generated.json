@@ -154,7 +154,7 @@
     },
     {
      "title": "Schedule the project",
-     "body": "",
+     "body": "**Autonomous Data Engineering:** native orchestration with a task, so the data product rebuilds itself every night with no external orchestrator.",
      "where": "",
      "prompt": "Create a task BARCLAYS_HOL.ANALYTICS.TSK_DBT_NIGHTLY_BUILD on warehouse BARCLAYS_WH that runs EXECUTE DBT PROJECT BARCLAYS_HOL.ANALYTICS.BARCLAYS_DBT ARGS = 'build' every day at 05:00 Europe/London. Leave it suspended.",
      "sql": "",
@@ -236,7 +236,7 @@
     },
     {
      "title": "Orchestrate the pipeline with Pipeline Builder",
-     "body": "Dynamic tables keep themselves fresh, but the dbt build and the data quality checks need scheduling. Pipeline Builder draws that as a task graph. Go to the Workspace **Home** page (the house icon at the top of the file explorer) and press **Pipeline Builder**. In the **Create Pipeline Builder** dialog, name it `payments_nightly` and for **Database and schema** choose **BARCLAYS_HOL.ANALYTICS**. Not `RAW_DATA`: the Iceberg sources are read-only, so creating it there fails with \"must have CREATE DCM PROJECT\". Then click **Generate with Cortex** at the bottom left of the dialog (not **Create**, which opens an empty canvas). A **Prompt** box opens in the dialog: paste this prompt there and click **Generate**:",
+     "body": "**Autonomous Data Engineering:** describe a pipeline in plain English, refine it visually, and deploy it as a native **task graph** (public preview): no external orchestrator needed. Dynamic tables keep themselves fresh, but the dbt build and the data quality checks need scheduling. Pipeline Builder draws that as a task graph. Go to the Workspace **Home** page (the house icon at the top of the file explorer) and press **Pipeline Builder**. In the **Create Pipeline Builder** dialog, name it `payments_nightly` and for **Database and schema** choose **BARCLAYS_HOL.ANALYTICS**. Not `RAW_DATA`: the Iceberg sources are read-only, so creating it there fails with \"must have CREATE DCM PROJECT\". Then click **Generate with Cortex** at the bottom left of the dialog (not **Create**, which opens an empty canvas). A **Prompt** box opens in the dialog: paste this prompt there and click **Generate**:",
      "where": "payments-hol Workspace **Home** page > **Pipeline Builder** (Preview)",
      "prompt": "Build a nightly pipeline in BARCLAYS_HOL.ANALYTICS on warehouse BARCLAYS_WH, scheduled at 05:00 Europe/London. Task 1 BARCLAYS_HOL.ANALYTICS.PIPE_DBT_BUILD runs EXECUTE DBT PROJECT BARCLAYS_HOL.ANALYTICS.BARCLAYS_DBT ARGS = 'build'. Task 2 BARCLAYS_HOL.ANALYTICS.PIPE_REFRESH_SLA runs after it: ALTER DYNAMIC TABLE BARCLAYS_HOL.ANALYTICS.DT_LIVE_SLA_BREACHES REFRESH. Task 3 BARCLAYS_HOL.ANALYTICS.PIPE_DQ_CHECKS runs after task 1: SELECT the NULL_COUNT on RM_NAME and DUPLICATE_COUNT on CUSTOMER_ID of BARCLAYS_HOL.ANALYTICS.MART_CUSTOMER_PAYMENTS. Set warehouse BARCLAYS_WH on each of the three tasks itself, not as a task-graph default. Set the task graph's desired state to Suspended so nothing runs after deploy.",
      "sql": "",
@@ -251,6 +251,98 @@
    "track": "Data Engineer",
    "sqlPath": "vignettes/de2_dynamic_tables_quality/de2.sql",
    "sql": "-- =====================================================\n-- VIGNETTE DE2: DYNAMIC TABLES + DATA QUALITY   (~45 min)\n-- Persona: Data Engineer\n-- Question: \"How do I keep an ops-floor SLA monitor fresh without writing\n--            orchestration, and prove the data feeding it is trustworthy?\"\n-- Prereq:   setup/catchup/core_analytics.sql  (or DE1 + DA2)\n-- =====================================================\n\nUSE ROLE HOL_PARTICIPANT;\nUSE SECONDARY ROLES NONE;   -- see exactly what an attendee sees\nUSE WAREHOUSE BARCLAYS_WH;\nUSE SCHEMA BARCLAYS_HOL.ANALYTICS;\n\n-- -----------------------------------------------------\n-- DE2.1 Dynamic Tables: declare the result, Snowflake keeps it fresh\n-- -----------------------------------------------------\n\n-- Ops-floor SLA breach monitor: never more than 1 minute stale\nCREATE OR REPLACE DYNAMIC TABLE DT_LIVE_SLA_BREACHES\n    TARGET_LAG = '1 minute'\n    WAREHOUSE  = BARCLAYS_WH\nAS\nSELECT PAYMENT_TYPE,\n       SUM(TOTAL_PAYMENTS)  AS TOTAL_PAYMENTS,\n       SUM(FAILED_PAYMENTS) AS BREACHED_PAYMENTS,\n       ROUND(SUM(FAILED_PAYMENTS)::FLOAT / NULLIF(SUM(TOTAL_PAYMENTS), 0) * 100, 2) AS BREACH_RATE_PCT,\n       MIN(PAYMENT_DAY) AS EARLIEST_BREACH,\n       MAX(PAYMENT_DAY) AS LATEST_BREACH\nFROM MART_SLA_COMPLIANCE\nWHERE SLA_STATUS = 'BREACH'\nGROUP BY PAYMENT_TYPE;\n\n-- Failed-payment triage feed built straight off the Iceberg source.\n-- Dynamic tables can read Iceberg tables directly - no copy into Snowflake storage.\nCREATE OR REPLACE DYNAMIC TABLE DT_FAILED_PAYMENT_TRIAGE\n    TARGET_LAG = DOWNSTREAM\n    WAREHOUSE  = BARCLAYS_WH\nAS\nSELECT p.PAYMENT_ID, p.PAYMENT_DATE, p.PAYMENT_TYPE, p.AMOUNT, p.CURRENCY,\n       p.ERROR_CODE, e.ERROR_DESCRIPTION, e.ERROR_CATEGORY, e.IS_RETRYABLE,\n       c.CUSTOMER_NAME, c.SECTOR, r.RM_NAME\nFROM BARCLAYS_HOL.RAW_DATA.PAYMENTS p\nJOIN BARCLAYS_HOL.RAW_DATA.ERROR_CODES e  ON p.ERROR_CODE = e.ERROR_CODE\nJOIN BARCLAYS_HOL.RAW_DATA.ACCOUNTS a     ON p.ORIGINATOR_ACCOUNT_ID = a.ACCOUNT_ID\nJOIN BARCLAYS_HOL.RAW_DATA.CUSTOMERS c    ON a.CUSTOMER_ID = c.CUSTOMER_ID\nJOIN BARCLAYS_HOL.RAW_DATA.RELATIONSHIP_MANAGERS r ON c.RM_ID = r.RM_ID\nWHERE p.STATUS IN ('FAILED', 'RETURNED');\n\n-- Downstream summary chained off the triage feed\nCREATE OR REPLACE DYNAMIC TABLE DT_RETRYABLE_SUMMARY\n    TARGET_LAG = '5 minutes'\n    WAREHOUSE  = BARCLAYS_WH\nAS\nSELECT PAYMENT_TYPE, ERROR_CATEGORY, IS_RETRYABLE,\n       COUNT(*) AS PAYMENTS, ROUND(SUM(AMOUNT), 2) AS VALUE_AT_RISK\nFROM DT_FAILED_PAYMENT_TRIAGE\nGROUP BY ALL;\n\nSHOW DYNAMIC TABLES IN SCHEMA BARCLAYS_HOL.ANALYTICS;\n\n-- Refresh history and the pipeline graph are also visible in Snowsight:\n-- Monitoring > Dynamic Tables > DT_RETRYABLE_SUMMARY > Graph\nSELECT NAME, STATE, REFRESH_ACTION, REFRESH_TRIGGER, DATA_TIMESTAMP\nFROM TABLE(INFORMATION_SCHEMA.DYNAMIC_TABLE_REFRESH_HISTORY())\nWHERE NAME LIKE 'DT_%'\nORDER BY DATA_TIMESTAMP DESC\nLIMIT 10;\n\n-- -----------------------------------------------------\n-- DE2.2 Data Metric Functions: quality checks that run on a schedule\n-- -----------------------------------------------------\n\n-- Schedule is set per table; changes also trigger a check\nALTER TABLE MART_CUSTOMER_PAYMENTS SET DATA_METRIC_SCHEDULE = 'TRIGGER_ON_CHANGES';\n\n-- System DMFs\nALTER TABLE MART_CUSTOMER_PAYMENTS ADD DATA METRIC FUNCTION\n    SNOWFLAKE.CORE.NULL_COUNT ON (RM_NAME);\nALTER TABLE MART_CUSTOMER_PAYMENTS ADD DATA METRIC FUNCTION\n    SNOWFLAKE.CORE.DUPLICATE_COUNT ON (CUSTOMER_ID);\n\n-- A custom, business-rule DMF: success rate must be a valid percentage\n-- (the argument type must match the column type - SUCCESS_RATE_PCT is FLOAT)\nCREATE OR REPLACE DATA METRIC FUNCTION INVALID_SUCCESS_RATE_COUNT(\n    t TABLE (SUCCESS_RATE_PCT FLOAT))\nRETURNS NUMBER\nAS\n$$\n    SELECT COUNT(*) FROM t\n    WHERE SUCCESS_RATE_PCT IS NULL OR SUCCESS_RATE_PCT < 0 OR SUCCESS_RATE_PCT > 100\n$$;\n\nALTER TABLE MART_CUSTOMER_PAYMENTS ADD DATA METRIC FUNCTION\n    INVALID_SUCCESS_RATE_COUNT ON (SUCCESS_RATE_PCT);\n\n-- Expectations: turn a metric into a pass/fail rule\nALTER TABLE MART_CUSTOMER_PAYMENTS MODIFY DATA METRIC FUNCTION\n    SNOWFLAKE.CORE.DUPLICATE_COUNT ON (CUSTOMER_ID)\n    ADD EXPECTATION NO_DUPLICATE_CUSTOMERS (VALUE = 0);\n\n-- Which checks are attached?\nSELECT METRIC_NAME, REF_ARGUMENTS, SCHEDULE, SCHEDULE_STATUS\nFROM TABLE(INFORMATION_SCHEMA.DATA_METRIC_FUNCTION_REFERENCES(\n    REF_ENTITY_NAME   => 'BARCLAYS_HOL.ANALYTICS.MART_CUSTOMER_PAYMENTS',\n    REF_ENTITY_DOMAIN => 'TABLE'));\n\n-- Run the checks on demand (scheduled results land in\n-- SNOWFLAKE.LOCAL.DATA_QUALITY_MONITORING_RESULTS after a few minutes)\nSELECT SNOWFLAKE.CORE.NULL_COUNT(SELECT RM_NAME FROM MART_CUSTOMER_PAYMENTS)        AS NULL_RM_NAMES,\n       SNOWFLAKE.CORE.DUPLICATE_COUNT(SELECT CUSTOMER_ID FROM MART_CUSTOMER_PAYMENTS) AS DUPLICATE_CUSTOMERS,\n       INVALID_SUCCESS_RATE_COUNT(SELECT SUCCESS_RATE_PCT FROM MART_CUSTOMER_PAYMENTS) AS INVALID_RATES;\n\n-- -----------------------------------------------------\n-- DE2.3 Cortex Code prompts (try in the CoCo panel)\n-- -----------------------------------------------------\n--  \"Add a dynamic table DT_HIGH_VALUE_FAILURES in BARCLAYS_HOL.ANALYTICS showing\n--   failed CHAPS payments over 1m GBP with the customer and RM, refreshing every\n--   2 minutes. Then show me its refresh history.\"\n--  \"Add a data metric function to MART_PAYMENT_KPIS that counts rows where\n--   P95_PROCESSING_TIME_MS is less than AVG_PROCESSING_TIME_MS, and attach it.\"\n\nSELECT 'DE2 complete' AS STATUS;\n"
+  },
+  {
+   "code": "DE3",
+   "title": "Real-time payments: stream, serve, act",
+   "persona": "Data Engineer (Payments Operations)",
+   "minutes": 40,
+   "prerequisites": "C1 only. Uses `BARCLAYS_HOL.REALTIME` and the shared interactive warehouse `HOL_INTERACTIVE_WH`, created at provisioning",
+   "question": "A corporate client's payments are failing right now. How does the operations floor see it within seconds, not after tonight's dbt build, and serve that view to everyone watching at once?",
+   "build": [
+    "Table `BARCLAYS_HOL.REALTIME.PAYMENT_EVENTS`, fed by **Snowpipe Streaming** from a notebook",
+    "About 5,000 synthetic payment events streamed in real time, with an incident hidden in the stream",
+    "Ops-floor queries served from the **interactive warehouse** `HOL_INTERACTIVE_WH`, straight off the streamed table",
+    "Dynamic table `DT_PAYMENT_INCIDENTS` that flags failing payment clusters within a minute"
+   ],
+   "steps": [
+    {
+     "title": "Create the DE3 notebook",
+     "body": "Name it `de3_realtime_payments`, with the compute pool **NOTEBOOK_POOL** and the warehouse **BARCLAYS_WH**. Open the notebook's settings (**⋮** > **Notebook settings** > **External access**) and turn on **HOL_NOTEBOOK_ACCESS_INTEGRATION**: the notebook installs the Snowpipe Streaming SDK from PyPI and streams to this account's endpoint.",
+     "where": "payments-hol Workspace > **+ > Notebook**",
+     "prompt": "",
+     "sql": "",
+     "expect": "an empty notebook with a connected kernel and the external access integration enabled",
+     "checkId": "",
+     "pasteInto": ""
+    },
+    {
+     "title": "Create the landing table",
+     "body": "",
+     "where": "the Cortex Code sidebar, with `de3_realtime_payments` open",
+     "prompt": "In the open notebook de3_realtime_payments, add a markdown cell titled \"DE3: Real-time payments\", then a SQL cell named landing that creates the table BARCLAYS_HOL.REALTIME.PAYMENT_EVENTS (if it doesn't exist) with columns EVENT_ID STRING, PAYMENT_REF STRING, CUSTOMER_ID STRING, SCHEME STRING, AMOUNT NUMBER(18,2), CURRENCY STRING, STATUS STRING, FAILURE_REASON STRING, EVENT_TS TIMESTAMP_NTZ, CHANNEL_ID NUMBER, STREAM_OFFSET NUMBER and INGESTED_AT TIMESTAMP_LTZ DEFAULT CURRENT_TIMESTAMP(), with a comment saying it's fed by Snowpipe Streaming. Run it and explain the default pipe PAYMENT_EVENTS-STREAMING that Snowpipe Streaming will use, and why CHANNEL_ID and STREAM_OFFSET are in the payload.",
+     "sql": "",
+     "expect": "an empty `PAYMENT_EVENTS` table. You don't create a pipe: Snowpipe Streaming uses the default `PAYMENT_EVENTS-STREAMING` pipe. `CHANNEL_ID` and `STREAM_OFFSET` let you find gaps or duplicates later, per channel.",
+     "checkId": "",
+     "pasteInto": ""
+    },
+    {
+     "title": "Install the SDK and give yourself a key",
+     "body": "",
+     "where": "",
+     "prompt": "Add a Python cell named setup_stream that runs !pip install snowpipe-streaming, then generates an RSA key pair in memory with the cryptography package and registers the public key on my own user with ALTER USER ADD KEY PAIR DE3_STREAMING_KEY PUBLIC_KEY = '<base64 DER public key>' ROLE_RESTRICTION = 'HOL_PARTICIPANT' DAYS_TO_EXPIRY = 1 (remove any existing DE3_STREAMING_KEY first in a try/except), using get_active_session(). Keep the private key in a variable called key; never print or save it. Use vignettes/de3_realtime_payments/de3_stream.py in the Workspace as the reference.",
+     "sql": "",
+     "expect": "the SDK installed and `DE3_STREAMING_KEY` registered on your user. Streaming clients authenticate with a key pair; this one is tied to `HOL_PARTICIPANT` and expires tomorrow.",
+     "checkId": "",
+     "pasteInto": ""
+    },
+    {
+     "title": "Stream payments in real time",
+     "body": "",
+     "where": "",
+     "prompt": "Add a Python cell named stream that opens a Snowpipe Streaming client (snowflake.ingest.streaming.StreamingIngestClient) for BARCLAYS_HOL.REALTIME pipe PAYMENT_EVENTS-STREAMING as my user with key, using account <ORG>-<ACCOUNT>, url https://<org>-<account>.snowflakecomputing.com:443 with underscores replaced by hyphens, and role HOL_PARTICIPANT in the profile JSON (write it to a private temp file and delete it once the client is open). Open channel payments_feed_1 and append 5,000 payment events at about 100 a second: customers from BARCLAYS_HOL.RAW_DATA.CUSTOMERS, schemes FASTER_PAYMENTS, BACS, CHAPS, SEPA and SWIFT, about 3% failed. In the second half, 15% of events are failed SEPA payments for one client with FAILURE_REASON 'Beneficiary bank unavailable'. Use each event's sequence number as the offset token and STREAM_OFFSET. Wait until the last offset is committed, print it and close the client. Follow stream_payments in de3_stream.py.",
+     "sql": "",
+     "expect": "the cell runs for about a minute and prints a committed offset of `5000`. While it runs, open a SQL worksheet and run `SELECT COUNT(*) FROM BARCLAYS_HOL.REALTIME.PAYMENT_EVENTS` a few times: the count climbs as events land, seconds after they're sent.",
+     "checkId": "de3_events",
+     "pasteInto": ""
+    },
+    {
+     "title": "Measure how fresh the data is",
+     "body": "",
+     "where": "",
+     "prompt": "Add a SQL cell named freshness over BARCLAYS_HOL.REALTIME.PAYMENT_EVENTS: events per minute for the last 15 minutes, failed events per minute, and the median and 95th percentile seconds between EVENT_TS and INGESTED_AT (convert INGESTED_AT to UTC and TIMESTAMP_NTZ first). Run it and explain what the numbers say about end-to-end latency.",
+     "sql": "",
+     "expect": "about 6,000 events a minute while streaming (the stream cell sends about 100 a second), each queryable within seconds of being sent. Failures jump in the second half of the run: that's the incident.",
+     "checkId": "",
+     "pasteInto": ""
+    },
+    {
+     "title": "Serve the ops floor from the interactive warehouse",
+     "body": "",
+     "where": "",
+     "prompt": "Add a SQL cell named ops_floor that runs USE WAREHOUSE HOL_INTERACTIVE_WH, then the queries a payments operations dashboard would refresh every few seconds directly on BARCLAYS_HOL.REALTIME.PAYMENT_EVENTS: failed payments and failed value by scheme in the last 10 minutes, and the 10 clients with the most failed value in the last 10 minutes joined to BARCLAYS_HOL.RAW_DATA.CUSTOMERS for the name. Then switch back with USE WAREHOUSE BARCLAYS_WH. Run it and explain zero-copy interactive analytics: why there's no copy or conversion of the table, and when the 5 second statement limit matters.",
+     "sql": "",
+     "expect": "answers from `HOL_INTERACTIVE_WH` in about half a second once it's warm, straight off the table you're streaming into, with no copy. One client stands out with a cluster of failed SEPA payments. On a few thousand rows a standard warehouse is quick too: the interactive warehouse earns its keep when hundreds of screens, APIs or agents run these queries every few seconds at once. Heavy one-off analysis belongs on a standard warehouse, and DML is rejected, which is why the cell switches back.",
+     "checkId": "",
+     "pasteInto": ""
+    },
+    {
+     "title": "Flag incidents automatically",
+     "body": "",
+     "where": "",
+     "prompt": "Add a SQL cell named incidents that creates the dynamic table BARCLAYS_HOL.REALTIME.DT_PAYMENT_INCIDENTS with TARGET_LAG '1 minute' on warehouse BARCLAYS_WH: failed payments in PAYMENT_EVENTS from the last 15 minutes grouped by CUSTOMER_ID (with CUSTOMER_NAME from BARCLAYS_HOL.RAW_DATA.CUSTOMERS), SCHEME and FAILURE_REASON, with the failed count, failed value, first and last failure, keeping groups with at least 5 failures. Then query it, largest first, and draft the message the operations team would send to the client's relationship manager.",
+     "sql": "",
+     "expect": "one incident: a single client's SEPA payments failing with \"Beneficiary bank unavailable\", with the count, value and time window. The table refreshes every minute on its own, so the moment a new cluster starts, it appears. This is the same pattern as DE2's live SLA breaches, now on streamed data. Cortex Code automations (GOV2) could post it to the ops team.",
+     "checkId": "de3_incidents",
+     "pasteInto": ""
+    }
+   ],
+   "check": "`PAYMENT_EVENTS` holds at least 1,000 streamed events, and `DT_PAYMENT_INCIDENTS` exists. Remove your key when you're done: `ALTER USER REMOVE KEY PAIR DE3_STREAMING_KEY` (it expires tomorrow anyway).",
+   "note": "One platform takes payments from event to answer in seconds: streamed in through Snowpipe Streaming, flagged by a dynamic table, and served to every screen on the ops floor by an interactive warehouse, with the same governance as the rest of the data.",
+   "kind": "vignette",
+   "track": "Data Engineer",
+   "sqlPath": "vignettes/de3_realtime_payments/de3.sql",
+   "sql": "-- =====================================================\n-- DE3: Real-time payments - reference SQL\n-- Streaming itself is Python (de3_stream.py); this is the SQL around it.\n-- =====================================================\nUSE ROLE HOL_PARTICIPANT;\nUSE WAREHOUSE BARCLAYS_WH;\n\n-- 1. Landing table. Snowpipe Streaming writes to it through its default pipe PAYMENT_EVENTS-STREAMING.\nCREATE TABLE IF NOT EXISTS BARCLAYS_HOL.REALTIME.PAYMENT_EVENTS (\n    EVENT_ID       STRING,\n    PAYMENT_REF    STRING,\n    CUSTOMER_ID    STRING,\n    SCHEME         STRING,\n    AMOUNT         NUMBER(18,2),\n    CURRENCY       STRING,\n    STATUS         STRING,\n    FAILURE_REASON STRING,\n    EVENT_TS       TIMESTAMP_NTZ,\n    CHANNEL_ID     NUMBER,           -- with STREAM_OFFSET, finds gaps or duplicates per channel\n    STREAM_OFFSET  NUMBER,\n    INGESTED_AT    TIMESTAMP_LTZ DEFAULT CURRENT_TIMESTAMP()\n) COMMENT = 'DE3: payment events streamed with Snowpipe Streaming';\n\n-- 2. Your streaming key (registered from the notebook with ALTER USER ADD KEY PAIR)\nSHOW USER KEY PAIRS;\n\n-- 3. Freshness: events per minute and end-to-end latency, last 15 minutes\nSELECT DATE_TRUNC('minute', EVENT_TS)                     AS MINUTE,\n       COUNT(*)                                           AS EVENTS,\n       COUNT_IF(STATUS = 'FAILED')                        AS FAILED,\n       MEDIAN(DATEDIFF('millisecond', EVENT_TS, CONVERT_TIMEZONE('UTC', INGESTED_AT)::TIMESTAMP_NTZ)) / 1000 AS MEDIAN_LAG_S,\n       APPROX_PERCENTILE(DATEDIFF('millisecond', EVENT_TS, CONVERT_TIMEZONE('UTC', INGESTED_AT)::TIMESTAMP_NTZ), 0.95) / 1000 AS P95_LAG_S\nFROM BARCLAYS_HOL.REALTIME.PAYMENT_EVENTS\nWHERE EVENT_TS >= DATEADD('minute', -15, SYSDATE())\nGROUP BY 1\nORDER BY 1;\n\n-- 4. Ops floor on the shared interactive warehouse: zero-copy, straight off the streamed table\nUSE WAREHOUSE HOL_INTERACTIVE_WH;\n\nSELECT SCHEME, COUNT(*) AS FAILED_PAYMENTS, SUM(AMOUNT) AS FAILED_VALUE\nFROM BARCLAYS_HOL.REALTIME.PAYMENT_EVENTS\nWHERE STATUS = 'FAILED' AND EVENT_TS >= DATEADD('minute', -10, SYSDATE())\nGROUP BY SCHEME\nORDER BY FAILED_VALUE DESC;\n\nSELECT c.CUSTOMER_NAME, e.SCHEME, COUNT(*) AS FAILED_PAYMENTS, SUM(e.AMOUNT) AS FAILED_VALUE\nFROM BARCLAYS_HOL.REALTIME.PAYMENT_EVENTS e\nJOIN BARCLAYS_HOL.RAW_DATA.CUSTOMERS c ON c.CUSTOMER_ID = e.CUSTOMER_ID\nWHERE e.STATUS = 'FAILED' AND e.EVENT_TS >= DATEADD('minute', -10, SYSDATE())\nGROUP BY 1, 2\nORDER BY FAILED_VALUE DESC\nLIMIT 10;\n\n-- Interactive warehouses reject DML and procedures: switch back before creating anything\nUSE WAREHOUSE BARCLAYS_WH;\n\n-- 5. Incidents: failing clusters in the last 15 minutes, refreshed every minute\nCREATE OR REPLACE DYNAMIC TABLE BARCLAYS_HOL.REALTIME.DT_PAYMENT_INCIDENTS\n  TARGET_LAG = '1 minute'\n  WAREHOUSE = BARCLAYS_WH\n  COMMENT = 'DE3: failing payment clusters in the last 15 minutes, refreshed every minute'\nAS\nSELECT e.CUSTOMER_ID,\n       c.CUSTOMER_NAME,\n       e.SCHEME,\n       e.FAILURE_REASON,\n       COUNT(*)         AS FAILED_PAYMENTS,\n       SUM(e.AMOUNT)    AS FAILED_VALUE,\n       MIN(e.EVENT_TS)  AS FIRST_FAILURE,\n       MAX(e.EVENT_TS)  AS LAST_FAILURE\nFROM BARCLAYS_HOL.REALTIME.PAYMENT_EVENTS e\nJOIN BARCLAYS_HOL.RAW_DATA.CUSTOMERS c ON c.CUSTOMER_ID = e.CUSTOMER_ID\nWHERE e.STATUS = 'FAILED'\n  AND e.EVENT_TS >= DATEADD('minute', -15, SYSDATE())\nGROUP BY 1, 2, 3, 4\nHAVING COUNT(*) >= 5;\n\nSELECT * FROM BARCLAYS_HOL.REALTIME.DT_PAYMENT_INCIDENTS ORDER BY FAILED_PAYMENTS DESC;\n\n-- 6. Clean up\n-- ALTER USER REMOVE KEY PAIR DE3_STREAMING_KEY;\n"
   },
   {
    "code": "DA1",
@@ -980,7 +1072,7 @@
     },
     {
      "title": "Turn the access check into a daily automation",
-     "body": "Cortex Code offers to run the access-history query as a daily **Cortex Code automation**: a scheduled, unattended Cortex Code run in a Snowflake-managed sandbox. Accept the offer, or ask for it:",
+     "body": "**Autonomous Data Engineering:** autonomous agents. A Cortex Code automation (GA in the CLI, public preview in Desktop) runs a prompt on a schedule, unattended; Cortex Code Cloud Agents take the same idea to longer, background tasks. Cortex Code offers to run the access-history query as a daily **Cortex Code automation**: a scheduled, unattended Cortex Code run in a Snowflake-managed sandbox. Accept the offer, or ask for it:",
      "where": "the Cortex Code sidebar (same chat as the step above)",
      "prompt": "Set up a daily Cortex Code automation called RESTRICTED_COLUMN_WATCH that runs at 08:00 Europe/London. Each run: query SNOWFLAKE.ACCOUNT_USAGE.ACCESS_HISTORY for reads of the IBAN, ACCOUNT_NUMBER or SORT_CODE columns of any BARCLAYS_HOL object in the last 24 hours, and report who read them, when, and from which object. It runs unattended, so it must not ask questions and must stay read-only. Create it paused, run it once now so I can see the report, then start the schedule.",
      "sql": "",
@@ -1015,6 +1107,98 @@
    "track": "Governance",
    "sqlPath": "vignettes/gov2_lineage_audit/gov2.sql",
    "sql": "-- =====================================================\n-- VIGNETTE GOV2: LINEAGE, AUDIT AND TRUST   (~30 min)\n-- Persona: Governance / Risk / Audit\n-- Question: \"If a source Iceberg table changes, what breaks? And who - human\n--            or AI agent - has been reading client data?\"\n-- Prereq:   C1 only. Uses the ready-made audit pack in BARCLAYS_HOL.AUDIT_PACK\n--           (setup/06_audit_pack.sql); ask PAYMENTS_AUDIT_AGENT a few questions first.\n-- Note:     ACCOUNT_USAGE views have up to ~3 hours latency. Run the\n--           immediate checks first; revisit the history queries at the end of the day.\n-- =====================================================\n\nUSE ROLE HOL_PARTICIPANT;\nUSE SECONDARY ROLES NONE;   -- see exactly what an attendee sees\nUSE WAREHOUSE BARCLAYS_WH;\nUSE SCHEMA BARCLAYS_HOL.AUDIT_PACK;\n\n-- -----------------------------------------------------\n-- GOV2.1 Impact analysis: what depends on the PAYMENTS Iceberg table? (immediate)\n-- Snowsight: Catalog > BARCLAYS_HOL > RAW_DATA > PAYMENTS > Lineage tab\n-- -----------------------------------------------------\nSELECT DISTANCE, TARGET_OBJECT_DOMAIN, TARGET_OBJECT_DATABASE || '.' || TARGET_OBJECT_SCHEMA || '.' || TARGET_OBJECT_NAME AS DOWNSTREAM_OBJECT\nFROM TABLE(SNOWFLAKE.CORE.GET_LINEAGE('BARCLAYS_HOL.RAW_DATA.PAYMENTS', 'TABLE', 'DOWNSTREAM', 3))\nORDER BY DISTANCE, DOWNSTREAM_OBJECT;\n\n-- And upstream: where do the agent's answers come from?\nSELECT DISTANCE, SOURCE_OBJECT_DOMAIN, SOURCE_OBJECT_DATABASE || '.' || SOURCE_OBJECT_SCHEMA || '.' || SOURCE_OBJECT_NAME AS UPSTREAM_OBJECT\nFROM TABLE(SNOWFLAKE.CORE.GET_LINEAGE('BARCLAYS_HOL.AUDIT_PACK.PAYMENTS_AUDIT_AGENT', 'CORTEX_AGENT', 'UPSTREAM', 3))\nORDER BY DISTANCE, UPSTREAM_OBJECT;\n-- A row shown as ***.***.*** is an object in the lineage that your role has no\n-- privileges on (here the platform team's SEED schema). Lineage never leaks\n-- the existence of objects you are not entitled to see.\n\n-- Object dependencies (views, dynamic tables, semantic views) - immediate\nSELECT REFERENCING_OBJECT_NAME, REFERENCING_OBJECT_DOMAIN, REFERENCED_OBJECT_NAME\nFROM SNOWFLAKE.ACCOUNT_USAGE.OBJECT_DEPENDENCIES\nWHERE REFERENCED_DATABASE = 'BARCLAYS_HOL'\nORDER BY REFERENCED_OBJECT_NAME\nLIMIT 50;\n\n-- Make sure there is a restricted-column read to find\nSELECT * FROM BARCLAYS_HOL.AUDIT_PACK.CLIENT_ACCOUNTS LIMIT 5;\n\n-- -----------------------------------------------------\n-- GOV2.2 Who accessed restricted columns? (ACCOUNT_USAGE latency applies)\n-- -----------------------------------------------------\nSELECT ah.QUERY_START_TIME, ah.USER_NAME,\n       obj.value:objectName::STRING     AS OBJECT_NAME,\n       col.value:columnName::STRING     AS COLUMN_NAME\nFROM SNOWFLAKE.ACCOUNT_USAGE.ACCESS_HISTORY ah,\n     LATERAL FLATTEN(ah.BASE_OBJECTS_ACCESSED) obj,\n     LATERAL FLATTEN(obj.value:columns) col\nWHERE obj.value:objectName::STRING ILIKE 'BARCLAYS_HOL.%'\n  AND col.value:columnName::STRING IN ('IBAN', 'ACCOUNT_NUMBER', 'SORT_CODE')\n  AND ah.QUERY_START_TIME >= DATEADD('day', -1, CURRENT_TIMESTAMP())\nORDER BY ah.QUERY_START_TIME DESC\nLIMIT 20;\n\n-- -----------------------------------------------------\n-- GOV2.3 What are our agents doing? Every agent call is observable\n-- Snowsight: AI & ML > Agents > PAYMENTS_AUDIT_AGENT > Monitoring\n-- -----------------------------------------------------\nSELECT QUERY_TYPE, USER_NAME, ROLE_NAME, START_TIME, TOTAL_ELAPSED_TIME / 1000 AS SECONDS,\n       LEFT(QUERY_TEXT, 120) AS QUERY_PREVIEW\nFROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY\nWHERE DATABASE_NAME = 'BARCLAYS_HOL'\n  AND QUERY_TEXT ILIKE '%SEMANTIC_VIEW%'\n  AND START_TIME >= DATEADD('day', -1, CURRENT_TIMESTAMP())\nORDER BY START_TIME DESC\nLIMIT 20;\n\n-- -----------------------------------------------------\n-- GOV2.4 Document the data product so humans and AI find the right thing\n-- -----------------------------------------------------\nCOMMENT ON TABLE PAYMENT_SLA_DAILY IS\n  'Daily SLA compliance per payment scheme. Owner: Payments Operations. Grain: day x scheme. Source: Iceberg RAW_DATA.PAYMENTS and RAW_DATA.SLA_DEFINITIONS.';\nCOMMENT ON COLUMN PAYMENT_SLA_DAILY.SLA_STATUS IS\n  'COMPLIANT = met success-rate and P95 targets; AT RISK = within 5% of success target; BREACH = otherwise';\n\n-- Ask CoCo:\n--   \"If I drop column PROCESSING_TIME_MS from BARCLAYS_HOL.RAW_DATA.PAYMENTS,\n--    which downstream objects and agents break? Use lineage to check.\"\n--   \"Produce a one-page data product card for PAYMENT_SLA_DAILY: owner, grain,\n--    lineage, quality checks, sensitivity tags and consumers.\"\n\n-- Barclayflake note: Trust Center and Horizon Catalog surface the same lineage,\n-- classification and access history centrally for the CDO / data office.\n\nSELECT 'GOV2 complete' AS STATUS;\n"
+  },
+  {
+   "code": "GOV3",
+   "title": "AI governance with Cortex AI Gateway",
+   "persona": "AI governance lead / platform team",
+   "minutes": 40,
+   "prerequisites": "C1 only. Uses the account's Cortex AI Gateway (`SNOWFLAKE`, created by Snowflake)",
+   "question": "Our teams use coding agents, SDK apps and Snowflake agents. How do we control which models they can reach, see what every request did, and attribute AI spend to each person, without slowing the builders down?",
+   "build": [
+    "Notebook `gov3_ai_gateway` that calls two model families through the gateway and reads back what it recorded",
+    "A key pair on your own user, restricted to `HOL_PARTICIPANT` and expiring after a day",
+    "A drafted model policy for the gateway (only an account administrator can apply it)",
+    "A per-user, per-model view of AI usage from the gateway's traces"
+   ],
+   "steps": [
+    {
+     "title": "Create the GOV3 notebook",
+     "body": "Name it `gov3_ai_gateway`, with the compute pool **NOTEBOOK_POOL** and the warehouse **BARCLAYS_WH**. Then open the notebook's settings (the **⋮** menu > **Notebook settings** > **External access**) and turn on **HOL_NOTEBOOK_ACCESS_INTEGRATION**. The notebook calls the gateway on this account's public endpoint, and Snowflake blocks outbound traffic from notebooks unless an integration allows it.",
+     "where": "payments-hol Workspace > **+ > Notebook**",
+     "prompt": "",
+     "sql": "",
+     "expect": "an empty notebook with a connected kernel and the external access integration enabled",
+     "checkId": "",
+     "pasteInto": ""
+    },
+    {
+     "title": "Inspect the gateway",
+     "body": "",
+     "where": "the Cortex Code sidebar, with `gov3_ai_gateway` open",
+     "prompt": "In the open notebook gov3_ai_gateway, add a markdown cell titled \"GOV3: AI governance with Cortex AI Gateway\", then a SQL cell named gateway that runs SHOW AI GATEWAYS and a SQL cell named gateway_spec that runs DESCRIBE AI GATEWAY SNOWFLAKE. Run them and explain the specification: which models it exposes, whether logging is on, and whether prompts and responses are captured.",
+     "sql": "",
+     "expect": "one gateway, `SNOWFLAKE`, with its base URL. The specification exposes every model (`name: '*'`) and logs every request's metadata; prompts and responses are **not** captured unless an administrator turns payload capture on.",
+     "checkId": "",
+     "pasteInto": ""
+    },
+    {
+     "title": "Give yourself a short-lived key",
+     "body": "",
+     "where": "",
+     "prompt": "Add a Python cell named make_key that generates an RSA key pair in memory with the cryptography package and registers the public key on my own user with ALTER USER ADD KEY PAIR GOV3_GATEWAY_KEY PUBLIC_KEY = '<base64 DER public key>' ROLE_RESTRICTION = 'HOL_PARTICIPANT' DAYS_TO_EXPIRY = 1, using get_active_session(). Remove any existing GOV3_GATEWAY_KEY first (REMOVE KEY PAIR has no IF EXISTS, so wrap it in try/except). Keep the private key in a variable called key; never print or save it. Then run SHOW USER KEY PAIRS. Use vignettes/gov3_ai_gateway/gov3_gateway_calls.py in the Workspace as the reference.",
+     "sql": "",
+     "expect": "`GOV3_GATEWAY_KEY` listed with role restriction `HOL_PARTICIPANT` and an expiry tomorrow. The gateway accepts the same tokens as other Snowflake REST APIs: OAuth, a key-pair JWT or a programmatic access token. A key that's tied to one role and expires in a day can only do what the lab role can, and only today.",
+     "checkId": "",
+     "pasteInto": ""
+    },
+    {
+     "title": "Call two model families through the gateway",
+     "body": "",
+     "where": "",
+     "prompt": "Add a Python cell named gateway_calls that builds a key-pair JWT from key (issuer ACCOUNT.USER.SHA256:<public key fingerprint>, subject ACCOUNT.USER, 50 minute expiry, signed RS256 with cryptography) and calls the gateway at https://<org>-<account>.snowflakecomputing.com/api/v2/aigateways/snowflake, with underscores in the host replaced by hyphens. Send the header X-Snowflake-Authorization-Token-Type: KEYPAIR_JWT and the conversation header x-snowflake-ai-gateway-conversation-id: gov3-lab. Make two calls with urllib: openai-gpt-5 on /v1/chat/completions asking \"In two sentences, why might a CHAPS payment be returned, and what should the operations team check first?\", and claude-sonnet-4-5 on /v1/messages asking the same about a delayed SEPA payment. Print each answer and its token usage. Use gov3_gateway_calls.py as the reference.",
+     "sql": "",
+     "expect": "two answers, one from each model family, each with its token counts. Same endpoint, same credential, two API formats: the gateway routes each request to the right model. Any client that can change its base URL (a coding agent, the OpenAI SDK, an agent framework) could make these calls.",
+     "checkId": "",
+     "pasteInto": ""
+    },
+    {
+     "title": "See what the gateway recorded",
+     "body": "",
+     "where": "",
+     "prompt": "Add a SQL cell named my_traces over TABLE(AGENT_TRACE_TABLE('SNOWFLAKE')) for the last hour: one row per trace with the start time, user (resource_attributes:\"user\"), model (record_attributes:\"gen_ai.request.model\"), conversation id (record_attributes:\"gen_ai.conversation.id\"), input and output tokens (record_attributes:\"gen_ai.usage.input_tokens\" and \"gen_ai.usage.output_tokens\"), duration in milliseconds, and status (http.status_code below 400 is success). Run it and explain the difference between a conversation, a trace and a span.",
+     "sql": "",
+     "expect": "your two calls, tagged with your user, the model, the `gov3-lab` conversation and their tokens and duration. You see only your own traces: a role with **MONITOR** on the gateway sees everyone's. The same data is charted in Snowsight under **AI & ML > AI Gateway > Observability**.",
+     "checkId": "gov3_traces",
+     "pasteInto": ""
+    },
+    {
+     "title": "Draft a tighter model policy",
+     "body": "",
+     "where": "",
+     "prompt": "Add a markdown cell explaining the gateway specification, then a code cell (don't run it) with the ALTER AI GATEWAY SNOWFLAKE FROM SPECIFICATION statement an account administrator would run to expose only claude-sonnet-4-5, claude-haiku-4-5 and openai-gpt-5, keep logging on, turn on prompt and response capture, and exclude users tagged BARCLAYS_HOL.GOVERNANCE.PAYLOAD_CAPTURE_EXEMPT from capture. Explain why FROM SPECIFICATION replaces the whole specification, why captured prompts make the trace table sensitive, and how CORTEX_MODELS_ALLOWLIST differs from the gateway's model list.",
+     "sql": "",
+     "expect": "a reviewed specification change, not applied: attendees aren't account administrators, which is the point. The gateway list controls what this door exposes; `CORTEX_MODELS_ALLOWLIST` controls which models anyone in the account can use at all. Capturing prompts helps audit and evaluation but puts customer data into the trace table, so restrict who can read it, and exempt sensitive users.",
+     "checkId": "",
+     "pasteInto": ""
+    },
+    {
+     "title": "See who is using which model",
+     "body": "",
+     "where": "",
+     "prompt": "Add a SQL cell named usage_by_model over TABLE(AGENT_TRACE_TABLE('SNOWFLAKE')) for the last day: requests, input tokens and output tokens per user and model, plus the failure count. Then add a markdown cell explaining where an AI governance lead gets authoritative credits (SNOWFLAKE.ACCOUNT_USAGE.AI_GATEWAY_USAGE_HISTORY, which lags), and the controls they can apply: budgets, per-user quotas, and revoking USAGE on the gateway from a role.",
+     "sql": "",
+     "expect": "your usage by model. Traces show what happened per request; credits come from `AI_GATEWAY_USAGE_HISTORY`, and per-user quotas or a budget stop spend before it surprises you.",
+     "checkId": "",
+     "pasteInto": ""
+    }
+   ],
+   "check": "`gov3_traces` passes once the gateway has recorded at least two of your requests today. Remove your key when you're done: `ALTER USER REMOVE KEY PAIR GOV3_GATEWAY_KEY` (it expires tomorrow anyway).",
+   "note": "One endpoint, one identity, one trace table for every AI client means the AI governance lead can answer \"who used which model, on what, at what cost\" from Snowflake alone, and change the policy in one place.",
+   "kind": "vignette",
+   "track": "Governance",
+   "sqlPath": "vignettes/gov3_ai_gateway/gov3.sql",
+   "sql": "-- =====================================================\n-- GOV3: AI governance with Cortex AI Gateway - reference SQL\n-- The calls themselves are Python (gov3_gateway_calls.py); this is the SQL around them.\n-- =====================================================\nUSE ROLE HOL_PARTICIPANT;\nUSE WAREHOUSE BARCLAYS_WH;\n\n-- 1. The gateway Snowflake created for this account, and its specification\nSHOW AI GATEWAYS;\nDESCRIBE AI GATEWAY SNOWFLAKE;\n\n-- 2. Your key pair (registered from the notebook with ALTER USER ADD KEY PAIR)\nSHOW USER KEY PAIRS;\n\n-- 3. What the gateway recorded for you in the last hour: one row per trace\nWITH spans AS (\n    SELECT trace:\"trace_id\"::STRING                                         AS TRACE_ID,\n           resource_attributes:\"user\"::STRING                               AS USER_NAME,\n           record_attributes:\"gen_ai.request.model\"::STRING                 AS MODEL,\n           record_attributes:\"gen_ai.conversation.id\"::STRING               AS CONVERSATION_ID,\n           TRY_TO_NUMBER(record_attributes:\"gen_ai.usage.input_tokens\"::STRING)  AS INPUT_TOKENS,\n           TRY_TO_NUMBER(record_attributes:\"gen_ai.usage.output_tokens\"::STRING) AS OUTPUT_TOKENS,\n           TRY_TO_NUMBER(record_attributes:\"http.status_code\"::STRING)      AS HTTP_STATUS,\n           start_timestamp, timestamp\n    FROM TABLE(AGENT_TRACE_TABLE('SNOWFLAKE'))\n    WHERE timestamp >= DATEADD('hour', -1, CURRENT_TIMESTAMP())\n)\nSELECT TRACE_ID, MIN(start_timestamp) AS STARTED_AT, MAX(USER_NAME) AS USER_NAME, MAX(MODEL) AS MODEL,\n       MAX(CONVERSATION_ID) AS CONVERSATION_ID, SUM(INPUT_TOKENS) AS INPUT_TOKENS, SUM(OUTPUT_TOKENS) AS OUTPUT_TOKENS,\n       DATEDIFF('millisecond', MIN(start_timestamp), MAX(timestamp)) AS DURATION_MS,\n       IFF(COUNT_IF(HTTP_STATUS >= 400) = 0, 'SUCCESS', 'FAILURE') AS STATUS\nFROM spans\nGROUP BY TRACE_ID\nORDER BY STARTED_AT DESC;\n\n-- 4. Draft only: a tighter specification. Needs ACCOUNTADMIN, and FROM SPECIFICATION\n--    replaces the whole specification, so start from what DESCRIBE returns.\n-- CREATE TAG IF NOT EXISTS BARCLAYS_HOL.GOVERNANCE.PAYLOAD_CAPTURE_EXEMPT;\n-- ALTER AI GATEWAY SNOWFLAKE FROM SPECIFICATION $$\n-- schema_version: 1\n-- models:\n--   - name: claude-sonnet-4-5\n--   - name: claude-haiku-4-5\n--   - name: openai-gpt-5\n-- logging:\n--   enabled: true\n--   capture_payload:\n--     request_response: true\n--     exclude_tags:\n--       - BARCLAYS_HOL.GOVERNANCE.PAYLOAD_CAPTURE_EXEMPT\n-- $$;\n\n-- 5. Usage per user and model in the last day (your own rows unless you have MONITOR)\nSELECT resource_attributes:\"user\"::STRING                                       AS USER_NAME,\n       record_attributes:\"gen_ai.request.model\"::STRING                         AS MODEL,\n       COUNT(*)                                                                 AS REQUESTS,\n       SUM(TRY_TO_NUMBER(record_attributes:\"gen_ai.usage.input_tokens\"::STRING))  AS INPUT_TOKENS,\n       SUM(TRY_TO_NUMBER(record_attributes:\"gen_ai.usage.output_tokens\"::STRING)) AS OUTPUT_TOKENS,\n       COUNT_IF(TRY_TO_NUMBER(record_attributes:\"http.status_code\"::STRING) >= 400) AS FAILURES\nFROM TABLE(AGENT_TRACE_TABLE('SNOWFLAKE'))\nWHERE timestamp >= DATEADD('day', -1, CURRENT_TIMESTAMP())\n  AND record_attributes:\"gen_ai.operation.name\"::STRING = 'chat'\nGROUP BY 1, 2\nORDER BY REQUESTS DESC;\n\n-- Authoritative credits (lags; needs Account Usage access):\n-- SELECT * FROM SNOWFLAKE.ACCOUNT_USAGE.AI_GATEWAY_USAGE_HISTORY ORDER BY START_TIME DESC LIMIT 50;\n\n-- 6. Clean up\n-- ALTER USER REMOVE KEY PAIR GOV3_GATEWAY_KEY;\n"
   }
  ],
  "catchups": [

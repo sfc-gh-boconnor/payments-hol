@@ -22,6 +22,7 @@ Every attendee does the **shared core**, then follows one pathway. Vignettes are
 | A | [DE1 Iceberg + dbt pipeline with Cortex Code](../vignettes/de1_iceberg_dbt_pipeline/) | 60 |
 | B | [DE2 Dynamic Tables + data quality](../vignettes/de2_dynamic_tables_quality/) | 45 |
 | B (stretch) | [GOV2 Lineage and audit](../vignettes/gov2_lineage_audit/) | 15-30 |
+| B (stretch) | [DE3 Real-time payments](../vignettes/de3_realtime_payments/): Snowpipe Streaming, interactive warehouse | 40 |
 
 ### Data Analyst
 | Block | Vignette | Time |
@@ -49,6 +50,7 @@ Every attendee does the **shared core**, then follows one pathway. Vignettes are
 |---|---|---|
 | A | Run `setup/catchup/core_analytics.sql`, then [GOV1 Classify, tag, mask and filter PII](../vignettes/gov1_pii_policies/) | 45 |
 | B | [GOV2 Lineage, audit and trust](../vignettes/gov2_lineage_audit/) | 30 |
+| B | [GOV3 AI governance with Cortex AI Gateway](../vignettes/gov3_ai_gateway/) | 40 |
 | B | [AI3](../vignettes/ai3_knowledge_extension/) discussion: why a knowledge extension is acceptable where Cortex Search is not | 15 |
 
 ## Catch-up order (any vignette, any time)

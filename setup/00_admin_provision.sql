@@ -111,6 +111,36 @@ GRANT APPLY ROW ACCESS POLICY ON ACCOUNT TO ROLE HOL_PARTICIPANT;
 GRANT APPLY TAG               ON ACCOUNT TO ROLE HOL_PARTICIPANT;
 GRANT CREATE DATABASE ON ACCOUNT TO ROLE HOL_ADMIN;
 
+-- GOV3 AI governance: the app (HOL_ADMIN) reads every user's gateway traces for checks
+GRANT MONITOR ON AI GATEWAY SNOWFLAKE TO ROLE HOL_ADMIN;
+
+-- DE3 real-time analytics: attendees stream into REALTIME and serve it from one shared
+-- interactive warehouse. It's created suspended; once resumed it bills for at least
+-- 24 hours (AUTO_SUSPEND minimum 86400), so the facilitator suspends it after the lab.
+CREATE SCHEMA IF NOT EXISTS BARCLAYS_HOL.REALTIME COMMENT = 'DE3: streamed payment events (Snowpipe Streaming)';
+GRANT ALL ON SCHEMA BARCLAYS_HOL.REALTIME TO ROLE HOL_PARTICIPANT;
+CREATE INTERACTIVE WAREHOUSE IF NOT EXISTS HOL_INTERACTIVE_WH
+  WAREHOUSE_SIZE = XSMALL INITIALLY_SUSPENDED = TRUE AUTO_RESUME = TRUE
+  COMMENT = 'DE3 shared interactive warehouse: suspend after the lab (24 h minimum once resumed)';
+GRANT USAGE ON WAREHOUSE HOL_INTERACTIVE_WH TO ROLE HOL_PARTICIPANT;
+-- CREATE WAREHOUSE makes it current; scripts and procedures can't run on an interactive warehouse
+USE WAREHOUSE BARCLAYS_WH;
+
+-- GOV3/DE3 notebooks call the account's own public endpoint (AI gateway, Snowpipe Streaming SDK)
+-- and install the SDK from PyPI, so they need external access to both
+EXECUTE IMMEDIATE $$
+DECLARE
+  account_host STRING DEFAULT (SELECT LOWER(CURRENT_ORGANIZATION_NAME() || '-' || CURRENT_ACCOUNT_NAME()) || '.snowflakecomputing.com');
+BEGIN
+  EXECUTE IMMEDIATE 'CREATE OR REPLACE NETWORK RULE BARCLAYS_HOL.ANALYTICS.HOL_NOTEBOOK_EGRESS_RULE MODE = EGRESS TYPE = HOST_PORT VALUE_LIST = ('''
+    || :account_host || ''', ''' || REPLACE(:account_host, '_', '-') || ''', ''pypi.org'', ''pypi.python.org'', ''pythonhosted.org'', ''files.pythonhosted.org'')';
+END;
+$$;
+CREATE EXTERNAL ACCESS INTEGRATION IF NOT EXISTS HOL_NOTEBOOK_ACCESS_INTEGRATION
+  ALLOWED_NETWORK_RULES = (BARCLAYS_HOL.ANALYTICS.HOL_NOTEBOOK_EGRESS_RULE) ENABLED = TRUE
+  COMMENT = 'GOV3/DE3 notebooks: this account''s endpoint (AI gateway, Snowpipe Streaming) and PyPI';
+GRANT USAGE ON INTEGRATION HOL_NOTEBOOK_ACCESS_INTEGRATION TO ROLE HOL_PARTICIPANT;
+
 -- Snowflake Intelligence: make attendee agents discoverable
 CREATE DATABASE IF NOT EXISTS SNOWFLAKE_INTELLIGENCE;
 CREATE SCHEMA IF NOT EXISTS SNOWFLAKE_INTELLIGENCE.AGENTS;

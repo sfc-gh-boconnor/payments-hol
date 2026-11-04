@@ -46,6 +46,7 @@ Expect: recent reads, including your GOV1 queries if you did GOV1. To be sure th
 
 ### Turn the access check into a daily automation
 Where: the Cortex Code sidebar (same chat as the step above)
+**Autonomous Data Engineering:** autonomous agents. A Cortex Code automation (GA in the CLI, public preview in Desktop) runs a prompt on a schedule, unattended; Cortex Code Cloud Agents take the same idea to longer, background tasks.
 Cortex Code offers to run the access-history query as a daily **Cortex Code automation**: a scheduled, unattended Cortex Code run in a Snowflake-managed sandbox. Accept the offer, or ask for it:
 ```prompt
 Set up a daily Cortex Code automation called RESTRICTED_COLUMN_WATCH that runs at 08:00 Europe/London. Each run: query SNOWFLAKE.ACCOUNT_USAGE.ACCESS_HISTORY for reads of the IBAN, ACCOUNT_NUMBER or SORT_CODE columns of any BARCLAYS_HOL object in the last 24 hours, and report who read them, when, and from which object. It runs unattended, so it must not ask questions and must stay read-only. Create it paused, run it once now so I can see the report, then start the schedule.

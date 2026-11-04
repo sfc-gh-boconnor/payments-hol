@@ -27,5 +27,11 @@ SET USER_DB = 'USER$' || $ATTENDEE;
 GRANT CALLER USAGE ON DATABASE IDENTIFIER($USER_DB) TO ROLE HOL_ADMIN;
 GRANT INHERITED CALLER USAGE ON ALL SCHEMAS IN DATABASE IDENTIFIER($USER_DB) TO ROLE HOL_ADMIN;
 GRANT INHERITED CALLER MONITOR ON ALL TASKS IN DATABASE IDENTIFIER($USER_DB) TO ROLE HOL_ADMIN;
+-- GOV3/DE3 have attendees register their own key pair. Event accounts (one attendee each)
+-- grant MODIFY PROGRAMMATIC AUTHENTICATION METHODS ON USER <attendee> TO ROLE HOL_PARTICIPANT.
+-- Don't do that here when several attendees share an account: anyone in HOL_PARTICIPANT could
+-- add keys to another attendee's user. Instead register keys for them as an admin:
+--   ALTER USER <attendee> ADD KEY PAIR GOV3_KEY PUBLIC_KEY = '<their public key>'
+--     ROLE_RESTRICTION = 'HOL_PARTICIPANT' DAYS_TO_EXPIRY = 1;
 
 -- Then set an initial password in Snowsight (Admin > Users) and share it out-of-band.

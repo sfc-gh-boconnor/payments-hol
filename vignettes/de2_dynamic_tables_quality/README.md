@@ -47,6 +47,7 @@ Check: de2_dmfs
 
 ### Orchestrate the pipeline with Pipeline Builder
 Where: payments-hol Workspace **Home** page > **Pipeline Builder** (Preview)
+**Autonomous Data Engineering:** describe a pipeline in plain English, refine it visually, and deploy it as a native **task graph** (public preview): no external orchestrator needed.
 Dynamic tables keep themselves fresh, but the dbt build and the data quality checks need scheduling. Pipeline Builder draws that as a task graph. Go to the Workspace **Home** page (the house icon at the top of the file explorer) and press **Pipeline Builder**. In the **Create Pipeline Builder** dialog, name it `payments_nightly` and for **Database and schema** choose **BARCLAYS_HOL.ANALYTICS**. Not `RAW_DATA`: the Iceberg sources are read-only, so creating it there fails with "must have CREATE DCM PROJECT". Then click **Generate with Cortex** at the bottom left of the dialog (not **Create**, which opens an empty canvas). A **Prompt** box opens in the dialog: paste this prompt there and click **Generate**:
 Paste: the **Prompt** box in Create Pipeline Builder, then click **Generate** (not the Cortex Code sidebar)
 ```prompt
