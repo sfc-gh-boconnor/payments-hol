@@ -51,7 +51,7 @@ run_sql setup/06_audit_pack.sql
 step "4c Retail geospatial data for DA3 (BARCLAYS_HOL.RETAIL)"
 # precomputed OpenRouteService travel times and catchments go on the stage first
 snow sql -c "$CONN" --role HOL_ADMIN -q "CREATE SCHEMA IF NOT EXISTS BARCLAYS_HOL.RETAIL; CREATE STAGE IF NOT EXISTS BARCLAYS_HOL.RETAIL.ORS_SEED;" > /dev/null
-snow stage copy "$ROOT/data/retail/" @BARCLAYS_HOL.RETAIL.ORS_SEED/ --overwrite -c "$CONN" --role HOL_ADMIN > /tmp/hol_ors_seed.log 2>&1 \
+snow stage copy "$ROOT/data/retail/*.csv.gz" @BARCLAYS_HOL.RETAIL.ORS_SEED/ --overwrite -c "$CONN" --role HOL_ADMIN > /tmp/hol_ors_seed.log 2>&1 \
   || { echo "FAILED: upload data/retail (see /tmp/hol_ors_seed.log)"; exit 1; }
 run_sql setup/07_retail_geo_seed.sql
 

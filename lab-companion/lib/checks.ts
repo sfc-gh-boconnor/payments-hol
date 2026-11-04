@@ -165,6 +165,12 @@ export const CHECKS: Record<string, Check[]> = {
       sql: show("SHOW AGENTS LIKE 'BRANCH_NETWORK_ADVISOR' IN SCHEMA BARCLAYS_HOL.ANALYTICS", "BRANCH_NETWORK_ADVISOR"),
       hint: "Create the agent with + > Agent > Create with CoCo, using the prompt in this step.",
     },
+    {
+      id: "da3_map_app",
+      label: "BRANCH_NETWORK_MAP Streamlit app exists",
+      sql: show("SHOW STREAMLITS LIKE 'BRANCH_NETWORK_MAP' IN SCHEMA BARCLAYS_HOL.ANALYTICS", "BRANCH_NETWORK_MAP"),
+      hint: "Ask Cortex Code to build the app from + > Streamlit App, using the prompt in this step.",
+    },
   ],
   OPS1: [
     {

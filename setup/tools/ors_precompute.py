@@ -79,6 +79,11 @@ for city in REGION:
     lo_lat, hi_lat, lo_lon, hi_lon = BOUNDS[city]
     cells[city] = [c for c in cells[city]
                    if lo_lat + MARGIN < float(c[2]) < hi_lat - MARGIN and lo_lon + MARGIN < float(c[1]) < hi_lon - MARGIN]
+    # optional ORS_LAND_<CITY>=file of known routable cells, to skip slow sea-cell isolation
+    land = os.environ.get(f"ORS_LAND_{city.upper()}")
+    if land:
+        keep = set(open(land).read().split())
+        cells[city] = [c for c in cells[city] if c[0] in keep]
     print(city, len(cells[city]), "cells", flush=True)
 
 # One part file per city and profile, so an interrupted run resumes where it stopped

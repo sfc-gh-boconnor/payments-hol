@@ -404,6 +404,7 @@
     "Notebook `da3_branch_network` with a network map, drive-time catchments and an H3 density map",
     "Table `CUSTOMER_NEAREST_BRANCH` (every customer's fastest and second-fastest branch by real drive time)",
     "Table `BRANCH_CLOSURE_IMPACT` (saving, footfall, added drive time, lost walk-in access and disruption risk per branch)",
+    "Streamlit app `BRANCH_NETWORK_MAP` with a real basemap: catchments, customer density and a closure what-if",
     "Semantic view `SV_BRANCH_NETWORK` and agent `BRANCH_NETWORK_ADVISOR` that answers consolidation questions in plain English"
    ],
    "steps": [
@@ -443,7 +444,7 @@
      "where": "",
      "prompt": "Add a SQL cell named nearest that creates the table BARCLAYS_HOL.ANALYTICS.CUSTOMER_NEAREST_BRANCH: for every customer in BARCLAYS_HOL.RETAIL.RETAIL_CUSTOMERS, the fastest and second-fastest branch in the same city by drive time, joining BARCLAYS_HOL.RETAIL.BRANCH_CELL_TRAVEL on the customer's HOME_H3_CELL with PROFILE 'driving-car'. Columns: CUSTOMER_ID, CITY, AGE_BAND, SEGMENT, DIGITAL_ACTIVE, NEAREST_BRANCH_ID, NEAREST_DRIVE_MIN, NEAREST_DRIVE_KM, SECOND_BRANCH_ID, SECOND_DRIVE_MIN, and NEAREST_WALK_MIN (the shortest 'foot-walking' time to any branch). Run it and show the median drive and walk minutes per city.",
      "sql": "",
-     "expect": "about 19,500 customers, each with two branches (the few left out live in cells with no routable road, such as parks or water). The median drive to a branch is about 6 minutes; walking times are much longer and vary more by city.",
+     "expect": "all 20,000 customers, each with two branches. The median drive to a branch is about 7 minutes; walking times are much longer and vary more by city.",
      "checkId": "da3_catchment",
      "pasteInto": ""
     },
@@ -488,6 +489,16 @@
      "pasteInto": ""
     },
     {
+     "title": "Build the branch network map app",
+     "body": "Notebook charts have no basemap, so build a Streamlit app that draws the network on a real map.",
+     "where": "payments-hol Workspace > **+ > Streamlit App**, then the Cortex Code sidebar",
+     "prompt": "Build a Streamlit in Snowflake app BARCLAYS_HOL.ANALYTICS.BRANCH_NETWORK_MAP titled \"Branch network map\" on the container runtime (RUNTIME_NAME SYSTEM$ST_CONTAINER_RUNTIME_PY3_11, compute pool SYSTEM_COMPUTE_POOL_CPU, query warehouse BARCLAYS_WH, external access integration PYPI_ACCESS_INTEGRATION). Use st.connection(\"snowflake\").session(). Include a pyproject.toml next to the app file with requires-python \">=3.11\" and dependencies \"streamlit>=1.50\", \"snowflake-snowpark-python\" and \"pydeck\", because the container runtime installs them from PyPI. Sidebar: a city picker (default Leeds) from BARCLAYS_HOL.RETAIL.BRANCHES (columns BRANCH_ID, BRANCH_NAME, CITY, FORMAT, LAT, LON), a catchment picker mapping \"10 min drive\", \"20 min drive\" and \"15 min walk\" to BRANCH_ISOCHRONES PROFILE/MINUTES values driving-car/10, driving-car/20 and foot-walking/15, and a customer density toggle. Draw one st.pydeck_chart with map_style \"light\" (a Carto basemap), centred on the mean LAT/LON of the city's branches at zoom 10.5, with three layers: a semi-transparent blue PolygonLayer of the city's BARCLAYS_HOL.RETAIL.BRANCH_ISOCHRONES catchments (select ST_ASGEOJSON(CATCHMENT)::STRING, parse it with json, and take the outer ring of a Polygon or the first polygon of a MultiPolygon), an orange H3HexagonLayer of BARCLAYS_HOL.RETAIL.RETAIL_CUSTOMERS counted by HOME_H3_CELL for the city with opacity scaled by count, and a dark blue ScatterplotLayer of branches (radius 180 m) on top. pydeck uses one tooltip template for all layers, so add a TIP text column to each layer's dataframe (\"<BRANCH_NAME> (<FORMAT>)\" for branches, \"<BRANCH_NAME>: <catchment> catchment\" for polygons, \"<n> customers\" for hexagons) and set tooltip={\"text\": \"{TIP}\"}. Below the map, show \"What if a branch closes?\" as a table from BARCLAYS_HOL.ANALYTICS.BRANCH_CLOSURE_IMPACT for the city with BRANCH_NAME, ANNUAL_SAVING_GBP, COST_PER_VISIT_GBP, AVG_ADDED_DRIVE_MIN, P90_ADDED_DRIVE_MIN, LOSE_WALK_IN_ACCESS, VULNERABLE_CUSTOMERS, DISRUPTION_RISK and MAIN_RECEIVING_BRANCH, LOW risk first. Cache queries with st.cache_data.",
+     "sql": "",
+     "expect": "a map of Leeds with streets underneath, overlapping blue catchments around Boar Lane and the city centre, orange customer hexagons and the closure table below. The first start takes a minute or two while the container starts. A reference version is in `da3_branch_map.py` and `pyproject.toml`. If the app reports a missing pyproject.toml, Streamlit version or snowflake module, ask Cortex Code to add that file with those dependencies and attach PYPI_ACCESS_INTEGRATION.",
+     "checkId": "da3_map_app",
+     "pasteInto": ""
+    },
+    {
      "title": "Ask Cortex Analyst",
      "body": "Ask these in plain English, one at a time: \"Which 3 branches in Manchester could close with the least added travel time?\", \"How much could we save by closing all LOW risk branches with fewer than 500 visits?\" and \"Which branch closure would cost the most customers their walk-in access?\"",
      "where": "Snowsight > **AI & ML > Cortex Analyst** > `SV_BRANCH_NETWORK`",
@@ -513,12 +524,12 @@
      "where": "Snowsight > **AI & ML > Agents > BRANCH_NETWORK_ADVISOR**",
      "prompt": "What is the consolidation opportunity in Leeds? Give me the candidates, the saving, which branch absorbs the customers, the extra drive time, the risk, and a 90-day transition plan.",
      "sql": "",
-     "expect": "Leeds Boar Lane recommended, with about GBP 690,000 a year saved, customers moving to Leeds City Centre for a minute or two of extra driving, LOW risk and a phased 90-day plan. Then ask \"Should we close Barry?\" and see it explain the HIGH risk. Compare the answers with your notebook maps.",
+     "expect": "Leeds Boar Lane recommended, with about GBP 690,000 a year saved, customers moving to Leeds City Centre for a minute or two of extra driving, LOW risk and a phased 90-day plan. Then ask \"Should we close Barry?\" and see it explain the HIGH risk. Compare the answers with your map app.",
      "checkId": "",
      "pasteInto": "the **BRANCH_NETWORK_ADVISOR** agent chat (not the Cortex Code sidebar)"
     }
    ],
-   "check": "`CUSTOMER_NEAREST_BRANCH` covers about 19,500 customers with drive times, `BRANCH_CLOSURE_IMPACT` ranks Leeds Boar Lane and Manchester King Street as the best LOW-risk candidates, and `BRANCH_NETWORK_ADVISOR` answers consolidation questions over `SV_BRANCH_NETWORK`.",
+   "check": "`CUSTOMER_NEAREST_BRANCH` covers all 20,000 customers with drive times, `BRANCH_CLOSURE_IMPACT` ranks Leeds Boar Lane and Manchester King Street as the best LOW-risk candidates, and `BRANCH_NETWORK_ADVISOR` answers consolidation questions over `SV_BRANCH_NETWORK`.",
    "note": "The same pattern works on real data: geocode branch addresses to `GEOGRAPHY`, use customer postcode centroids, and run OpenRouteService on Snowpark Container Services for live travel times and catchments. Spatial joins, H3, routing and the agent all run in Snowflake, so customer locations never leave the governed platform.",
    "kind": "vignette",
    "track": "Data Analyst",
