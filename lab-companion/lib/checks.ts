@@ -194,6 +194,20 @@ export const CHECKS: Record<string, Check[]> = {
       hint: "Paste the AI next actions prompt into Cortex Code.",
     },
   ],
+  OPS3: [
+    {
+      id: "ops3_cowork_used",
+      label: "You asked Payments Ops CoWork a question today",
+      // The agent's observability events record who asked; leave out admin and service users.
+      // Charts, threads, automations, documents and dashboards are artifacts with no SQL view yet.
+      sql: `SELECT COUNT(*) >= 1 AS OK, COUNT(*) || ' CoWork requests to Payments Ops CoWork' AS DETAIL
+            FROM TABLE(SNOWFLAKE.LOCAL.GET_AI_OBSERVABILITY_EVENTS('SNOWFLAKE_INTELLIGENCE', 'AGENTS', 'PAYMENTS_OPS_COWORK', 'CORTEX AGENT'))
+            WHERE timestamp >= DATEADD('day', -1, CURRENT_TIMESTAMP())
+              AND record:"name"::STRING = 'CORTEX_AGENT_REQUEST'
+              AND record_attributes:"snow.ai.observability.user.name"::STRING NOT IN ('EMERGENCY_SERVICE_USER', 'DATAOPS_SERVICE_ADMIN', 'SYSTEM', 'ADMIN')`,
+      hint: "Open CoWork, pick Payments Ops CoWork and ask the first OPS3 question. Check your role is HOL_PARTICIPANT.",
+    },
+  ],
   AI1: [
     {
       id: "ai1_tool",
@@ -368,6 +382,12 @@ const pre = {
     sql: show("SHOW WAREHOUSES LIKE 'HOL_INTERACTIVE_WH'", "HOL_INTERACTIVE_WH"),
     hint: "Created by setup/00_admin_provision.sql. Ask the facilitator to resume it for the session.",
   },
+  coworkAgent: {
+    id: "pre_cowork_agent",
+    label: "Agent PAYMENTS_OPS_COWORK exists for CoWork",
+    sql: show("SHOW AGENTS LIKE 'PAYMENTS_OPS_COWORK' IN SCHEMA SNOWFLAKE_INTELLIGENCE.AGENTS", "Agent"),
+    hint: "Built by setup/09_cowork_pack.sql at provisioning. Ask the facilitator to run it.",
+  },
   gateway: {
     id: "pre_gateway",
     label: "Cortex AI Gateway SNOWFLAKE available",
@@ -390,6 +410,7 @@ export const PREREQS: Record<string, Check[]> = {
   DA3: [pre.retailGeo],
   OPS1: [pre.svClient360, pre.svPayments],
   OPS2: [pre.staging, pre.feedback],
+  OPS3: [pre.coworkAgent],
   AI1: [pre.staging, pre.svPayments],
   AI2: [pre.svClient360, pre.agent360, pre.lookup, pre.cke],
   AI3: [pre.cke, pre.svClient360],

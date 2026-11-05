@@ -14,8 +14,8 @@ USE WAREHOUSE BARCLAYS_WH;
 
 -- -----------------------------------------------------
 -- OPS1.1 The agent: two semantic views as tools + charting
--- Created in SNOWFLAKE_INTELLIGENCE.AGENTS so it appears in Snowflake
--- Intelligence / CoWork for everyone with access.
+-- Created in SNOWFLAKE_INTELLIGENCE.AGENTS so it appears in Snowflake CoWork
+-- for everyone with access.
 -- (Snowsight alternative: AI & ML > Agents > Create agent - same settings.)
 -- -----------------------------------------------------
 CREATE OR REPLACE AGENT SNOWFLAKE_INTELLIGENCE.AGENTS.CORPORATE_PAYMENTS_360
@@ -84,7 +84,7 @@ CREATE OR REPLACE AGENT SNOWFLAKE_INTELLIGENCE.AGENTS.CORPORATE_PAYMENTS_360
   $$;
 
 -- -----------------------------------------------------
--- OPS1.2 Use it - Snowflake Intelligence (ai.snowflake.com) or CoWork
+-- OPS1.2 Use it - Snowflake CoWork (formerly Snowflake Intelligence)
 -- Select "Corporate Payments 360" and try:
 --   1. "Brief me on the client with the most failed payment value"
 --   2. "Which of Priya Sharma's clients have open critical alerts?"

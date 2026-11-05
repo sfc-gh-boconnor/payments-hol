@@ -39,7 +39,7 @@ Expect: `PAYMENTS_PLATFORM_COPILOT` deployed in `SNOWFLAKE_INTELLIGENCE.AGENTS`
 Check: ai3_agent
 
 ### Ask a question that needs both
-Where: Snowsight > **AI & ML > Snowflake Intelligence** > **Payments Platform Copilot**
+Where: Snowsight > **AI & ML > CoWork** > **Payments Platform Copilot**
 Ask "Which 3 clients have the most open critical alerts, and how could I build a dynamic table to keep that list up to date?"
 Expect: the agent calls both `Client360` and `PlatformDocs`, names three clients and cites documentation URLs
 

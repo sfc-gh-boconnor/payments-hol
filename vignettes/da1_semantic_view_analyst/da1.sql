@@ -153,7 +153,7 @@ SELECT * FROM SEMANTIC_VIEW(
 
 -- -----------------------------------------------------
 -- DA1.4 Ask in plain English (Cortex Analyst)
--- Snowsight: AI & ML > Cortex Analyst > SV_CLIENT_360, or in Snowflake Intelligence after OPS1.
+-- Snowsight: AI & ML > Cortex Analyst > SV_CLIENT_360, or in Snowflake CoWork after OPS1.
 -- Try:
 --   "Which clients in Manufacturing have open critical alerts?"
 --   "Compare success rate and average sentiment for each RM team"

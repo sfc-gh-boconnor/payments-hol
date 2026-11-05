@@ -78,7 +78,7 @@ CREATE OR REPLACE AGENT SNOWFLAKE_INTELLIGENCE.AGENTS.PAYMENTS_PLATFORM_COPILOT
   $$;
 
 -- -----------------------------------------------------
--- AI3.4 Try it in Snowflake Intelligence ("Payments Platform Copilot"):
+-- AI3.4 Try it in Snowflake CoWork ("Payments Platform Copilot"):
 --   "Which 3 clients have the most open critical alerts, and how could I build
 --    a dynamic table that keeps that list up to date?"
 --   "How do Snowflake-managed Iceberg tables differ from ones using an external volume?"

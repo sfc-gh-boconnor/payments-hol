@@ -12,7 +12,7 @@ v2 of [gemmamcginlay-sf/barclays-hol](https://github.com/gemmamcginlay-sf/barcla
 |---|---|
 | Source data lands centrally in Iceberg | `BARCLAYS_HOL.RAW_DATA`: 9 **Snowflake-managed Iceberg** tables (no external volume needed) |
 | End users cannot load data | Attendees (`HOL_PARTICIPANT`) have read-only access to `RAW_DATA` and build in `ANALYTICS` / `AGENTS` |
-| Semantic Views, Agents, MCP and CoWork approved this quarter | Covered by DA1, OPS1, AI1, AI2 |
+| Semantic Views, Agents, MCP and CoWork approved this quarter | Covered by DA1, OPS1, OPS3, AI1, AI2 |
 | Cortex Search over internal data not approved (PII and vectorisation concerns) | **No search service is built.** AI3 uses a Marketplace Cortex Knowledge Extension instead |
 | Strict governance | GOV1 tags, masking and row access; GOV2 lineage and audit |
 
@@ -43,8 +43,9 @@ docs/           data model, ERD and column dictionary
 | [DA1](vignettes/da1_semantic_view_analyst/) | Build a semantic view + Cortex Analyst | Data Analyst | 60 |
 | [DA2](vignettes/da2_aisql_feedback/) | AI SQL on customer feedback (sentiment, AI_AGG themes per RM) | Data Analyst | 45 |
 | [DA3](vignettes/da3_branch_network_geo/) | Retail branch network: spatial SQL, H3, closure impact, semantic view and agent | Data Analyst | 45 |
-| [OPS1](vignettes/ops1_payments_360_agent/) | Corporate Payments 360 agent in Snowflake Intelligence | Payments Ops | 45 |
+| [OPS1](vignettes/ops1_payments_360_agent/) | Corporate Payments 360 agent in Snowflake CoWork | Payments Ops | 45 |
 | [OPS2](vignettes/ops2_alert_triage/) | Alert triage + negative sentiment feed | Payments Ops | 30 |
+| [OPS3](vignettes/ops3_cowork_dashboards/) | Snowflake CoWork: charts, Deep Research, automations, documents and an AI dashboard | Payments Ops | 45 |
 | [AI1](vignettes/ai1_agent_tools/) | Agent with custom (UDF) tools | AI Builder | 45 |
 | [AI2](vignettes/ai2_mcp_server/) | Snowflake-managed MCP server | AI Builder | 30 |
 | [AI3](vignettes/ai3_knowledge_extension/) | Marketplace knowledge extension instead of Cortex Search | AI Builder | 30 |
@@ -58,6 +59,7 @@ docs/           data model, ERD and column dictionary
 |---|---|
 | **Autonomous Data Engineering**: pipelines that build, monitor and repair themselves | DE1 Cortex Code-generated dbt marts and a nightly task; DE2 Pipeline Builder (public preview) deploying a native task graph, data metric functions; GOV2 a scheduled Cortex Code automation |
 | **E2E Real-Time Analytics**: connectivity, transformation, serving | DE3 Snowpipe Streaming (GA) into a table, a 1 minute dynamic table, and an interactive warehouse (GA) serving the ops floor; concept notes on Elastic Channels, Datastream and streaming transformations |
+| **Business users and AI apps** | OPS1 and OPS3 Snowflake CoWork: governed answers, saved charts, Deep Research, automations, generated documents, and AI dashboards built by Cortex Code (preview) |
 | **AI governance** | GOV3 one governed endpoint (Cortex AI Gateway, preview) with model policy, traces and per-user usage; Business Ontology (private preview) as the business-wide vocabulary |
 | **Data governance** | GOV1 classification, tags, masking and row access; GOV2 lineage, access history and the audit pack |
 

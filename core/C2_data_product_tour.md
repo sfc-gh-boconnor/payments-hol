@@ -29,8 +29,8 @@ A guided look at the end state everyone will be building towards, so each pathwa
 1. **Iceberg is the contract.** Source data arrives centrally as Iceberg, so the same files can be read by other engines. Attendees cannot load or change it, and that is deliberate.
 2. **Build data products, not copies.** Everything downstream is a view, dynamic table or mart. DE1 publishes a mart back out as Iceberg.
 3. **A semantic view is the trust layer for AI.** Business definitions (success rate, value at risk, open alerts) live in one place. Analyst, agents and MCP clients all use it.
-4. **What's approved at Barclays.** Semantic views, Cortex Agents, Snowflake Intelligence/CoWork and MCP are moving forward this quarter. Cortex Search over internal data is not yet approved, so AI3 shows the knowledge-extension alternative.
+4. **What's approved at Barclays.** Semantic views, Cortex Agents, Snowflake CoWork and MCP are moving forward this quarter. Cortex Search over internal data is not yet approved, so AI3 shows the knowledge-extension alternative.
 5. **Governance follows the data.** Policies on the source flow through every model, view and agent, because agents run as the user.
 
 ## Demo (facilitator, 5 min)
-If the facilitator has run the full build, open Snowflake Intelligence and ask **Corporate Payments 360**: "Brief me on the client with the most failed payment value." Then show the lineage graph for `RAW_DATA.PAYMENTS` in Catalog.
+If the facilitator has run the full build, open Snowflake CoWork and ask **Corporate Payments 360**: "Brief me on the client with the most failed payment value." Then show the lineage graph for `RAW_DATA.PAYMENTS` in Catalog.

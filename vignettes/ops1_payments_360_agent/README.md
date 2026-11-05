@@ -23,8 +23,8 @@ Create a Cortex Agent SNOWFLAKE_INTELLIGENCE.AGENTS.CORPORATE_PAYMENTS_360 with 
 Expect: the agent deployed as `CORPORATE_PAYMENTS_360` in `SNOWFLAKE_INTELLIGENCE.AGENTS`
 Check: ops1_agent
 
-### Ask it in Snowflake Intelligence
-Where: Snowsight > **AI & ML > Snowflake Intelligence** (or CoWork) > **Corporate Payments 360**
+### Ask it in Snowflake CoWork
+Where: Snowsight > **AI & ML > CoWork** (formerly Snowflake Intelligence) > **Corporate Payments 360**
 Run the four sample questions. Start with "Brief me on the client with the most failed payment value".
 Expect: a briefing naming the client, failed value, open and critical alerts, and the main feedback topic. The CHAPS question returns a chart.
 
@@ -37,7 +37,7 @@ Where: the Cortex Code sidebar, with `corporate_payments_360` open
 ```prompt
 Add a sample question to CORPORATE_PAYMENTS_360 for weekly CHAPS volume and update its orchestration instructions so scheme and SLA questions always use the PaymentsOps tool. Redeploy it.
 ```
-Expect: the new sample question appears in Snowflake Intelligence
+Expect: the new sample question appears in CoWork
 
 ## Check your work
 "Brief me on the client with the most failed payment value" returns a briefing naming the client, failed value, open/critical alerts and feedback topic.

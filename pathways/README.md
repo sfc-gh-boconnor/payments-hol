@@ -36,6 +36,7 @@ Every attendee does the **shared core**, then follows one pathway. Vignettes are
 |---|---|---|
 | A | Facilitator has pre-run the catch-up scripts and DA1. [OPS1 Corporate Payments 360 agent](../vignettes/ops1_payments_360_agent/) | 45 |
 | A/B | [OPS2 Alert triage + negative sentiment feed](../vignettes/ops2_alert_triage/) | 30 |
+| B | [OPS3 Snowflake CoWork: charts, Deep Research, automations, documents and an AI dashboard](../vignettes/ops3_cowork_dashboards/) (agent built at provisioning) | 45 |
 | B | [DA2 AI SQL on feedback](../vignettes/da2_aisql_feedback/) sections 2.3-2.5 only (AI_FILTER, AI_AGG, AI_COMPLETE) | 30 |
 
 ### AI Builder
@@ -64,7 +65,7 @@ vignettes/ops1_payments_360_agent/ops1.sql    -- needed by AI2
 
 ## Cross-persona finale (25 min)
 
-In Snowflake Intelligence, open **Corporate Payments 360** and have each pathway ask a question that uses their work:
+In Snowflake CoWork, open **Corporate Payments 360** and have each pathway ask a question that uses their work:
 
 - **Data Engineer:** "Which schemes breached SLA most often?" (your dbt marts feed this)
 - **Data Analyst:** "Which clients have negative sentiment and a success rate below 96%?" (your semantic view and AI enrichment)

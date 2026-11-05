@@ -117,7 +117,7 @@ Each issue: where it happened, what went wrong, what was expected, and severity
 - **Requirement (Becky, 3 Nov):** wherever Cortex Code is used, every module follows the item 5 pattern: a prompt card (copy, paste into the Cortex Code sidebar, what you should see, Check my work), and the SQL as a collapsed fallback. The aim is a lab that feels less scripted.
 - **Applies to:** C1, C2, DE1, DE2, DA1, DA2, OPS1, OPS2, AI1, AI2, AI3, GOV1, GOV2.
 - **Per module, for the fix:**
-  - Turn each build step that's SQL-only today into a Cortex Code prompt with an expected outcome. Keep it as plain UI steps where Cortex Code doesn't fit (for example, chatting to the agent in Snowflake Intelligence in OPS1/AI2, or the Marketplace listing in AI3).
+  - Turn each build step that's SQL-only today into a Cortex Code prompt with an expected outcome. Keep it as plain UI steps where Cortex Code doesn't fit (for example, chatting to the agent in Snowflake CoWork in OPS1/AI2, or the Marketplace listing in AI3).
   - Make sure each prompt produces objects with the exact names Check my work looks for (for example `DT_HIGH_VALUE_FAILURES`, `SV_CLIENT_360`). Otherwise the checks fail even when the attendee did the step correctly.
   - Keep any purely setup or safety SQL (role/warehouse context) as one small "run first" snippet, not the whole script.
   - Rewrite the README `## Cortex Code prompts` and the steps so `sync-content` produces per-step prompts. This needs a content model change: prompts attached to steps, with an expected-outcome field.
@@ -184,7 +184,7 @@ Each issue: where it happened, what went wrong, what was expected, and severity
   3. **The facilitator board** shows the same Cortex Code / other-way split per attendee.
 - **Notes for the fix:**
   - **Data source:** `INFORMATION_SCHEMA.QUERY_HISTORY_BY_USER` is near real time but covers only 7 days, and the app role needs MONITOR on the user. `ACCOUNT_USAGE.QUERY_HISTORY` / `ACCESS_HISTORY` lag up to about 45 minutes / 3 hours, which is too slow for live Check my work. Use the information schema for live checks, and account usage for post-lab reporting.
-  - Snowflake Intelligence and agent-playground chats (OPS1, AI1, AI3) don't show up as worksheet SQL. Their Analyst queries are the signal (semantic view queries by `USER`); confirm what tag or client they carry.
+  - Snowflake CoWork and agent-playground chats (OPS1, AI1, AI3) don't show up as worksheet SQL. Their Analyst queries are the signal (semantic view queries by `USER`); confirm what tag or client they carry.
   - Check whether Cortex Code usage also lands in an ACCOUNT_USAGE Cortex Code usage view. That would give per-request counts without parsing query tags (not verified).
   - **Seen while checking (3 Nov, LKRTFH):** since 12:37 GMT, the only Cortex Code activity for `USER` is the C1 Iceberg prompt; the earlier dbt build at 11:42 GMT was from the dbt pane. Either the rest of the lab was done in another account or session, or the rebuild reset what's visible. Confirm with Becky which account she finished the lab in, before using LKRTFH as test data.
 
@@ -360,3 +360,13 @@ The Cortex Code sidebar can't render charts, so DA2 is now built in a Workspace 
 - **Gotchas found:** Python's TLS rejects the underscore host (`org-acct_name`), so the code uses hyphens. `CREATE WAREHOUSE` makes the interactive warehouse current, and procedures can't run on it, so setup switches back to BARCLAYS_WH. `REMOVE KEY PAIR` has no `IF EXISTS`.
 - **Not verified:** the notebooks in the Snowsight UI (notebook-level external access setting, `!pip install snowpipe-streaming`, Cortex Code writing the JWT and streaming cells from the prompts). The interactive warehouse was resumed once in YUKVPZ for the test (24 h minimum billing) and suspended again.
 - **Facilitator:** resume `HOL_INTERACTIVE_WH` just before DE3 and suspend it after; it bills for at least 24 hours once resumed.
+
+## 32. New module OPS3: payments operations in Snowflake CoWork — BUILT locally (4 Nov)
+- **Why (Becky):** the lab had nothing for CoWork (the renamed Snowflake Intelligence) or its new AI dashboards.
+- **OPS3:** a business-user module on a ready-made agent, **Payments Ops CoWork** (`SNOWFLAKE_INTELLIGENCE.AGENTS.PAYMENTS_OPS_COWORK`), with a Cortex Analyst tool over `BARCLAYS_HOL.COWORK_PACK.SV_PAYMENTS_OPS` and the `code_execution` tool (needed for document generation). Steps: ask in CoWork, save a chart and thread artifact, Deep Research on Logistics, a weekly automation, a PowerPoint briefing, then build an AI dashboard in the Workspace with `/dashboard` and publish it with Share.
+- **Setup (09, new):** `setup/09_cowork_pack.sql` builds views `PAYMENT_ACTIVITY` and `CLIENT_FEEDBACK`, the semantic view and the agent, owned by HOL_PARTICIPANT. Runs from `provision_account.sh` (step 4d) and `INSTALL.sql`. OPS3 needs only C1.
+- **Story:** the Deep Research prompt asks about Logistics feedback. Logistics is the only sector with churn statements (16 of 86 recent comments), and its failure rate (0.9%) is ordinary, so the expected conclusion is service rather than failures. Ratings by sector are random in the seed data, so the prompt doesn't promise a rating drop.
+- **Rename:** "Snowflake Intelligence" is now "Snowflake CoWork" in OPS1, AI3, C2, DA1, the README and pathways. The `SNOWFLAKE_INTELLIGENCE.AGENTS` schema name stays, because it's where CoWork lists agents.
+- **Check:** `ops3_cowork_used` counts `CORTEX_AGENT_REQUEST` events by non-admin users in `GET_AI_OBSERVABILITY_EVENTS` for the agent. Artifacts (chart, thread, file, dashboard) and automations have no SQL yet (`SHOW ARTIFACTS` is "coming soon"), so there's no automatic check for them. Rerunning setup 09 recreates the agent and clears its event history.
+- **Verified in YUKVPZ:** setup 09 runs clean. As USER / HOL_PARTICIPANT, the agent answers via the Agent REST API (top clients with RMs and the period). `ops3.sql` runs clean. HOL_ADMIN sees the request and the check passes. Lab Companion sync, tsc and 83 tests pass.
+- **Not verified (UI only):** the agent in CoWork's picker, chart and thread saving, Deep Research, the automation, the PowerPoint, Workspace **Create > Dashboard** with `/dashboard`, and Share. Dashboards are an open preview for all accounts; sharing needs MANAGE ACCESS ON DASHBOARD ARTIFACTS, which defaults to PUBLIC.

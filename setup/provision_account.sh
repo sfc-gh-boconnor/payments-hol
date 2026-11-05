@@ -55,6 +55,9 @@ snow stage copy "$ROOT/data/retail/*.csv.gz" @BARCLAYS_HOL.RETAIL.ORS_SEED/ --ov
   || { echo "FAILED: upload data/retail (see /tmp/hol_ors_seed.log)"; exit 1; }
 run_sql setup/07_retail_geo_seed.sql
 
+step "4d CoWork pack for OPS3 (PAYMENTS_OPS_COWORK agent)"
+run_sql setup/09_cowork_pack.sql
+
 if [[ "$REFERENCE_BUILD" == "--with-reference-build" ]]; then
   step "4b Reference build (catch-up scripts, DA1, OPS1)"
   run_sql setup/catchup/core_analytics.sql
