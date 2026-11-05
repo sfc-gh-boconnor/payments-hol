@@ -118,7 +118,46 @@ GRANT MONITOR ON AI GATEWAY SNOWFLAKE TO ROLE HOL_ADMIN;
 -- interactive warehouse. It's created suspended; once resumed it bills for at least
 -- 24 hours (AUTO_SUSPEND minimum 86400), so the facilitator suspends it after the lab.
 CREATE SCHEMA IF NOT EXISTS BARCLAYS_HOL.REALTIME COMMENT = 'DE3: streamed payment events (Snowpipe Streaming)';
+GRANT OWNERSHIP ON SCHEMA BARCLAYS_HOL.REALTIME TO ROLE HOL_ADMIN COPY CURRENT GRANTS;
 GRANT ALL ON SCHEMA BARCLAYS_HOL.REALTIME TO ROLE HOL_PARTICIPANT;
+
+-- Attendee schemas: whatever role a session runs as, what attendees build is owned by
+-- HOL_PARTICIPANT. Event logins also hold ACCOUNTADMIN, so a Workspace or notebook session
+-- can create objects as ACCOUNTADMIN that HOL_PARTICIPANT then can't use ("already exists,
+-- but current role has no privileges on it"). Also hands over anything already created
+-- under another role, so rerunning this script repairs an account. (Streamlit apps have
+-- no future grant; DA3 creates its app as HOL_PARTICIPANT.)
+EXECUTE IMMEDIATE $$
+DECLARE
+  schemas ARRAY DEFAULT ['ANALYTICS', 'AGENTS', 'GOVERNANCE', 'REALTIME'];
+  kinds ARRAY DEFAULT ['TABLES', 'DYNAMIC TABLES', 'VIEWS', 'SEMANTIC VIEWS', 'FUNCTIONS', 'PROCEDURES',
+                       'TASKS', 'STAGES', 'NOTEBOOKS', 'AGENTS', 'MCP SERVERS', 'CORTEX SEARCH SERVICES'];
+  existing ARRAY DEFAULT ['TABLES', 'DYNAMIC TABLES', 'VIEWS'];
+  s STRING;
+  k STRING;
+BEGIN
+  FOR i IN 0 TO ARRAY_SIZE(:schemas) - 1 DO
+    s := 'BARCLAYS_HOL.' || :schemas[i];
+    FOR j IN 0 TO ARRAY_SIZE(:kinds) - 1 DO
+      k := :kinds[j];
+      BEGIN
+        EXECUTE IMMEDIATE 'GRANT OWNERSHIP ON FUTURE ' || :k || ' IN SCHEMA ' || :s || ' TO ROLE HOL_PARTICIPANT';
+      EXCEPTION
+        -- a rerun: the future grant is already there
+        WHEN STATEMENT_ERROR THEN
+          IF (NOT CONTAINS(SQLERRM, 'already exists')) THEN
+            RAISE;
+          END IF;
+      END;
+    END FOR;
+    FOR j IN 0 TO ARRAY_SIZE(:existing) - 1 DO
+      k := :existing[j];
+      EXECUTE IMMEDIATE 'GRANT OWNERSHIP ON ALL ' || :k || ' IN SCHEMA ' || :s || ' TO ROLE HOL_PARTICIPANT COPY CURRENT GRANTS';
+    END FOR;
+  END FOR;
+  RETURN 'attendee schema ownership set';
+END;
+$$;
 CREATE INTERACTIVE WAREHOUSE IF NOT EXISTS HOL_INTERACTIVE_WH
   WAREHOUSE_SIZE = XSMALL INITIALLY_SUSPENDED = TRUE AUTO_RESUME = TRUE
   COMMENT = 'DE3 shared interactive warehouse: suspend after the lab (24 h minimum once resumed)';
