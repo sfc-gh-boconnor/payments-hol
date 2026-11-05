@@ -22,15 +22,15 @@
 - **Serving:** **Interactive Analytics** (GA): interactive warehouses return sub-second answers at high concurrency, directly on standard, dynamic or Iceberg tables, with no copy. They're built for dashboards, APIs and agents, with a 5 second statement limit and a 24 hour minimum run time once resumed, which is why the lab shares one.
 
 ## Steps
-### Create the DE3 notebook
-Where: payments-hol Workspace > **+ > Notebook**
-Name it `de3_realtime_payments`, with the compute pool **NOTEBOOK_POOL** and the warehouse **BARCLAYS_WH**. Open the notebook's settings (**⋮** > **Notebook settings** > **External access**) and turn on **HOL_NOTEBOOK_ACCESS_INTEGRATION**: the notebook installs the Snowpipe Streaming SDK from PyPI and streams to this account's endpoint.
-Expect: an empty notebook with a connected kernel and the external access integration enabled
+### Open the DE3 starter notebook
+Where: the **payments-hol** Workspace (not My Workspace) > file explorer > `notebooks/de3_realtime_payments.ipynb`
+Open the starter notebook `de3_realtime_payments`: it has the title and one numbered heading per step, so Cortex Code puts each cell in the right place. If you can't see the `notebooks/` and `vignettes/` folders in the file explorer, you're in the wrong Workspace: switch to **payments-hol** from the Workspace dropdown (top left) before you go on. (No starter? Use **+ > Notebook** in payments-hol and name it `de3_realtime_payments`.) Choose the compute pool **NOTEBOOK_POOL** and the warehouse **BARCLAYS_WH**. Open the notebook's settings (**⋮** > **Notebook settings** > **External access**) and turn on **HOL_NOTEBOOK_ACCESS_INTEGRATION**: the notebook installs the Snowpipe Streaming SDK from PyPI and streams to this account's endpoint.
+Expect: the starter notebook open in payments-hol with its numbered headings, a connected kernel and the external access integration enabled
 
 ### Create the landing table
 Where: the Cortex Code sidebar, with `de3_realtime_payments` open
 ```prompt
-In the open notebook de3_realtime_payments, add a markdown cell titled "DE3: Real-time payments", then a SQL cell named landing that creates the table BARCLAYS_HOL.REALTIME.PAYMENT_EVENTS (if it doesn't exist) with columns EVENT_ID STRING, PAYMENT_REF STRING, CUSTOMER_ID STRING, SCHEME STRING, AMOUNT NUMBER(18,2), CURRENCY STRING, STATUS STRING, FAILURE_REASON STRING, EVENT_TS TIMESTAMP_NTZ, CHANNEL_ID NUMBER, STREAM_OFFSET NUMBER and INGESTED_AT TIMESTAMP_LTZ DEFAULT CURRENT_TIMESTAMP(), with a comment saying it's fed by Snowpipe Streaming. Run it and explain the default pipe PAYMENT_EVENTS-STREAMING that Snowpipe Streaming will use, and why CHANNEL_ID and STREAM_OFFSET are in the payload.
+In the open notebook de3_realtime_payments, put each cell I ask for under its matching numbered heading. Under heading 1, add a SQL cell named landing that creates the table BARCLAYS_HOL.REALTIME.PAYMENT_EVENTS (if it doesn't exist) with columns EVENT_ID STRING, PAYMENT_REF STRING, CUSTOMER_ID STRING, SCHEME STRING, AMOUNT NUMBER(18,2), CURRENCY STRING, STATUS STRING, FAILURE_REASON STRING, EVENT_TS TIMESTAMP_NTZ, CHANNEL_ID NUMBER, STREAM_OFFSET NUMBER and INGESTED_AT TIMESTAMP_LTZ DEFAULT CURRENT_TIMESTAMP(), with a comment saying it's fed by Snowpipe Streaming. Run it and explain the default pipe PAYMENT_EVENTS-STREAMING that Snowpipe Streaming will use, and why CHANNEL_ID and STREAM_OFFSET are in the payload.
 ```
 Expect: an empty `PAYMENT_EVENTS` table. You don't create a pipe: Snowpipe Streaming uses the default `PAYMENT_EVENTS-STREAMING` pipe. `CHANNEL_ID` and `STREAM_OFFSET` let you find gaps or duplicates later, per channel.
 

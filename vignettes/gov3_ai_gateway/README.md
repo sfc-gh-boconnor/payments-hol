@@ -24,15 +24,15 @@ Cortex AI Gateway (preview) gives every AI client in the organisation one endpoi
 - **Cost:** per-user attribution, budgets and per-user quotas.
 
 ## Steps
-### Create the GOV3 notebook
-Where: payments-hol Workspace > **+ > Notebook**
-Name it `gov3_ai_gateway`, with the compute pool **NOTEBOOK_POOL** and the warehouse **BARCLAYS_WH**. Then open the notebook's settings (the **⋮** menu > **Notebook settings** > **External access**) and turn on **HOL_NOTEBOOK_ACCESS_INTEGRATION**. The notebook calls the gateway on this account's public endpoint, and Snowflake blocks outbound traffic from notebooks unless an integration allows it.
-Expect: an empty notebook with a connected kernel and the external access integration enabled
+### Open the GOV3 starter notebook
+Where: the **payments-hol** Workspace (not My Workspace) > file explorer > `notebooks/gov3_ai_gateway.ipynb`
+Open the starter notebook `gov3_ai_gateway`: it has the title and one numbered heading per step, so Cortex Code puts each cell in the right place. If you can't see the `notebooks/` and `vignettes/` folders in the file explorer, you're in the wrong Workspace: switch to **payments-hol** from the Workspace dropdown (top left) before you go on. (No starter? Use **+ > Notebook** in payments-hol and name it `gov3_ai_gateway`.) Choose the compute pool **NOTEBOOK_POOL** and the warehouse **BARCLAYS_WH**. Then open the notebook's settings (the **⋮** menu > **Notebook settings** > **External access**) and turn on **HOL_NOTEBOOK_ACCESS_INTEGRATION**. The notebook calls the gateway on this account's public endpoint, and Snowflake blocks outbound traffic from notebooks unless an integration allows it.
+Expect: the starter notebook open in payments-hol with its numbered headings, a connected kernel and the external access integration enabled
 
 ### Inspect the gateway
 Where: the Cortex Code sidebar, with `gov3_ai_gateway` open
 ```prompt
-In the open notebook gov3_ai_gateway, add a markdown cell titled "GOV3: AI governance with Cortex AI Gateway", then a SQL cell named gateway that runs SHOW AI GATEWAYS and a SQL cell named gateway_spec that runs DESCRIBE AI GATEWAY SNOWFLAKE. Run them and explain the specification: which models it exposes, whether logging is on, and whether prompts and responses are captured.
+In the open notebook gov3_ai_gateway, put each cell I ask for under its matching numbered heading. Under heading 1, add a SQL cell named gateway that runs SHOW AI GATEWAYS and a SQL cell named gateway_spec that runs DESCRIBE AI GATEWAY SNOWFLAKE. Run them and explain the specification: which models it exposes, whether logging is on, and whether prompts and responses are captured.
 ```
 Expect: one gateway, `SNOWFLAKE`, with its base URL. The specification exposes every model (`name: '*'`) and logs every request's metadata; prompts and responses are **not** captured unless an administrator turns payload capture on.
 

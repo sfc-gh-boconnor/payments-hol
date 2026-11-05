@@ -16,15 +16,15 @@
 - Notebook `da2_feedback_analysis` with the whole analysis and a sentiment-by-sector chart
 
 ## Steps
-### Create the DA2 notebook
-Where: payments-hol Workspace > **+ > Notebook**
-Name it `da2_feedback_analysis`. When it asks for compute, choose the compute pool **NOTEBOOK_POOL** and the warehouse **BARCLAYS_WH** (SQL cells run on the warehouse; Python and charts run on the pool). The first start can take a minute or two while the pool resumes. You'll build this whole module as cells in this notebook: Cortex Code adds them for you, and you run each one.
-Expect: an empty notebook open in the Workspace, with a connected kernel
+### Open the DA2 starter notebook
+Where: the **payments-hol** Workspace (not My Workspace) > file explorer > `notebooks/da2_feedback_analysis.ipynb`
+Open the starter notebook `da2_feedback_analysis`: it has the title and one numbered heading per step, so Cortex Code puts each cell in the right place. If you can't see the `notebooks/` and `vignettes/` folders in the file explorer, you're in the wrong Workspace: switch to **payments-hol** from the Workspace dropdown (top left) before you go on. (No starter? Use **+ > Notebook** in payments-hol and name it `da2_feedback_analysis`.) When it asks for compute, choose the compute pool **NOTEBOOK_POOL** and the warehouse **BARCLAYS_WH** (SQL cells run on the warehouse; Python and charts run on the pool). The first start can take a minute or two while the pool resumes. You'll build this whole module as cells in this notebook: Cortex Code adds them for you, and you run each one.
+Expect: the starter notebook open in payments-hol, with its numbered headings and a connected kernel
 
 ### Score sentiment by aspect
 Where: the Cortex Code sidebar, with `da2_feedback_analysis` open
 ```prompt
-In the open notebook da2_feedback_analysis, add a markdown cell titled "DA2: AI SQL on customer feedback", then a SQL cell named aspect_sentiment that uses AI_SENTIMENT to score 5 rows of FEEDBACK_TEXT from BARCLAYS_HOL.ANALYTICS.STG_FEEDBACK overall and for the aspects speed, communication and fees. Run it and explain the output.
+In the open notebook da2_feedback_analysis, put each cell I ask for under its matching numbered heading. Under heading 1, add a SQL cell named aspect_sentiment that uses AI_SENTIMENT to score 5 rows of FEEDBACK_TEXT from BARCLAYS_HOL.ANALYTICS.STG_FEEDBACK overall and for the aspects speed, communication and fees. Run it and explain the output.
 ```
 Expect: the cell's result shows an overall sentiment plus a separate one for each aspect (positive, negative, neutral, mixed or unknown)
 

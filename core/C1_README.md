@@ -17,7 +17,8 @@
 ### Open the payments-hol Workspace
 Where: Snowsight > **Projects > Workspaces**, then the **My Workspace** dropdown (top left) > **payments-hol**
 This shared Workspace is where you'll build every module. Take a quick tour: **Home** and the **+** button list everything you can create here (SQL file, Notebook, dbt Project, Streamlit App, Agent, Semantic view, Pipeline Builder). The file explorer on the left holds the lab project (`dbt/`, `vignettes/`). The bottom panel has Query History and, later, the dbt pane.
-Expect: the payments-hol Workspace open, with `dbt/` and `vignettes/` in the file explorer
+Stay in **payments-hol** for the whole lab: every module's files, starter notebooks and the dbt project are here, and Cortex Code only finds them when this Workspace is open. Snowsight sometimes reopens **My Workspace**, so check the name top left whenever you come back.
+Expect: the payments-hol Workspace open, with `dbt/`, `notebooks/` and `vignettes/` in the file explorer
 
 ### Open Cortex Code
 Where: payments-hol Workspace, the Cortex Code sidebar (right-hand panel)

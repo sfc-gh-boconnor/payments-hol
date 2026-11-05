@@ -370,3 +370,15 @@ The Cortex Code sidebar can't render charts, so DA2 is now built in a Workspace 
 - **Check:** `ops3_cowork_used` counts `CORTEX_AGENT_REQUEST` events by non-admin users in `GET_AI_OBSERVABILITY_EVENTS` for the agent. Artifacts (chart, thread, file, dashboard) and automations have no SQL yet (`SHOW ARTIFACTS` is "coming soon"), so there's no automatic check for them. Rerunning setup 09 recreates the agent and clears its event history.
 - **Verified in YUKVPZ:** setup 09 runs clean. As USER / HOL_PARTICIPANT, the agent answers via the Agent REST API (top clients with RMs and the period). `ops3.sql` runs clean. HOL_ADMIN sees the request and the check passes. Lab Companion sync, tsc and 83 tests pass.
 - **Not verified (UI only):** the agent in CoWork's picker, chart and thread saving, Deep Research, the automation, the PowerPoint, Workspace **Create > Dashboard** with `/dashboard`, and Share. Dashboards are an open preview for all accounts; sharing needs MANAGE ACCESS ON DASHBOARD ARTIFACTS, which defaults to PUBLIC.
+
+## 33. Notebook modules don't say clearly enough to work in the payments-hol workspace (Major) — FIXED locally
+- **Problem (Becky):** in every module that creates a notebook (DA2, DA3, DE3, GOV3), it isn't explicit that the notebook must be created inside the **payments-hol** workspace. If attendees create it in My Workspace or another workspace, Cortex Code can't find the files the module needs (reference SQL, Python helpers, `pyproject.toml`, the dbt project).
+- **Fix to make:**
+  - In C1, as the very first setup step, tell attendees to open **Projects > Workspaces > payments-hol** and stay in it for the whole lab. Add a Check that the workspace exists.
+  - In each notebook step, change `Where:` to say **payments-hol workspace > + > Notebook**, and add a line: "If you can't see the `vignettes` folder in the file tree, you're in the wrong workspace."
+  - Consider a Lab Companion banner or hint that repeats this on notebook steps.
+- **Done:**
+  - **Starter notebooks:** new `notebooks/` folder with one per notebook module: `da2_feedback_analysis`, `da3_branch_network`, `de3_realtime_payments` and `gov3_ai_gateway`. Each has the module title and one numbered heading per step, naming the cells that step's prompt adds. They're generated from the READMEs by `setup/tools/build_starter_notebooks.py`; rerun it after changing a module's steps. All four are valid nbformat 4.5.
+  - **Module steps:** each "Create the notebook" step is now "Open the starter notebook" in the payments-hol Workspace, with the wrong-workspace hint and **+ > Notebook** as a fallback. The first prompt now says to put cells under the matching numbered heading, instead of adding a second title.
+  - **C1:** the first step now says to stay in payments-hol for the whole lab, and to check the Workspace name when coming back.
+  - **Still to do:** a Lab Companion check that the workspace exists. The payments-hol Workspace is a copy of the repo taken at event deploy, so `notebooks/` only appears in new accounts; YUKVPZ needs a fresh deploy (or the folder uploaded) to test it in the UI.

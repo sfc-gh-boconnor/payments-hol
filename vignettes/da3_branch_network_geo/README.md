@@ -27,15 +27,15 @@ These were precomputed once so the lab runs in any account.
 **Compute your own:** OpenRouteService runs natively in Snowflake on Snowpark Container Services, so you can calculate travel times, isochrones and route optimisations for your own branches and customers without data leaving Snowflake. It exposes SQL functions such as `OPENROUTESERVICE_APP.CORE.MATRIX`, `ISOCHRONES`, `DIRECTIONS` and `OPTIMIZATION`. See the quickstart [Build Routing Solution in Snowflake with Snowflake CoCo](https://www.snowflake.com/en/developers/guides/oss-install-openrouteservice-native-app/).
 
 ## Steps
-### Create the DA3 notebook
-Where: payments-hol Workspace > **+ > Notebook**
-Name it `da3_branch_network`. When it asks for compute, choose the compute pool **NOTEBOOK_POOL** and the warehouse **BARCLAYS_WH**. You'll build the analysis as cells in this notebook: Cortex Code adds them for you, and you run each one. The data is a synthetic UK retail network in `BARCLAYS_HOL.RETAIL`: about 60 branches in 8 cities, ATMs, 20,000 retail customers with a home location and H3 cell, a year of branch visits, and the ORS travel times and catchments described above.
-Expect: an empty notebook open in the Workspace, with a connected kernel
+### Open the DA3 starter notebook
+Where: the **payments-hol** Workspace (not My Workspace) > file explorer > `notebooks/da3_branch_network.ipynb`
+Open the starter notebook `da3_branch_network`: it has the title and one numbered heading per step, so Cortex Code puts each cell in the right place. If you can't see the `notebooks/` and `vignettes/` folders in the file explorer, you're in the wrong Workspace: switch to **payments-hol** from the Workspace dropdown (top left) before you go on. (No starter? Use **+ > Notebook** in payments-hol and name it `da3_branch_network`.) When it asks for compute, choose the compute pool **NOTEBOOK_POOL** and the warehouse **BARCLAYS_WH**. You'll build the analysis as cells in this notebook: Cortex Code adds them for you, and you run each one. The data is a synthetic UK retail network in `BARCLAYS_HOL.RETAIL`: about 60 branches in 8 cities, ATMs, 20,000 retail customers with a home location and H3 cell, a year of branch visits, and the ORS travel times and catchments described above.
+Expect: the starter notebook open in payments-hol, with its numbered headings and a connected kernel
 
 ### Map the branch network
 Where: the Cortex Code sidebar, with `da3_branch_network` open
 ```prompt
-In the open notebook da3_branch_network, add a markdown cell titled "DA3: Branch network and catchment analysis", then a SQL cell named network that returns every branch from BARCLAYS_HOL.RETAIL.BRANCHES (BRANCH_NAME, CITY, FORMAT, LAT, LON) plus the standalone ATMs from BARCLAYS_HOL.RETAIL.ATMS. Then add a Python cell that plots network as an altair map: LON on x, LAT on y, branches coloured by CITY and sized by FORMAT, ATMs as small grey points, with a tooltip showing the name. Run both.
+In the open notebook da3_branch_network, put each cell I ask for under its matching numbered heading. Under heading 1, add a SQL cell named network that returns every branch from BARCLAYS_HOL.RETAIL.BRANCHES (BRANCH_NAME, CITY, FORMAT, LAT, LON) plus the standalone ATMs from BARCLAYS_HOL.RETAIL.ATMS. Then add a Python cell that plots network as an altair map: LON on x, LAT on y, branches coloured by CITY and sized by FORMAT, ATMs as small grey points, with a tooltip showing the name. Run both.
 ```
 Expect: a scatter map of the UK with clusters of branches around eight cities. Hover over a point to see the branch.
 
