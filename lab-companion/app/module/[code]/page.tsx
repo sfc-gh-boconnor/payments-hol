@@ -12,6 +12,7 @@ import { SqlBlock } from "@/components/lab/sql-block"
 import { CATCHUPS, MODULES, moduleByCode } from "@/lib/content"
 import { CHECKS, PREREQS } from "@/lib/checks"
 import { PrereqPanel } from "@/components/lab/prereq-panel"
+import { PgConnectionPanel } from "@/components/lab/pg-connection-panel"
 
 export const dynamic = "force-dynamic"
 
@@ -74,6 +75,7 @@ export default async function ModulePage({ params }: { params: Promise<{ code: s
                         </div>
                       </div>
                       <div className="space-y-3 pl-9">
+                        {m.code === "DE3" && s.title.startsWith("Reveal the connection") && <PgConnectionPanel />}
                         {s.prompt && <PromptCard prompt={s.prompt} expect={s.expect} pasteInto={s.pasteInto} />}
                         {s.sql && <SqlBlock sql={s.sql} path="Run in a SQL file in the Workspace" />}
                         {!s.prompt && s.expect && <p className="text-xs"><span className="font-semibold">What you should see: </span><InlineMd text={s.expect} /></p>}

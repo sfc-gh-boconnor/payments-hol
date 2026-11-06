@@ -22,7 +22,7 @@ Every attendee does the **shared core**, then follows one pathway. Vignettes are
 | A | [DE1 Iceberg + dbt pipeline with Cortex Code](../vignettes/de1_iceberg_dbt_pipeline/) | 60 |
 | B | [DE2 Dynamic Tables + data quality](../vignettes/de2_dynamic_tables_quality/) | 45 |
 | B (stretch) | [GOV2 Lineage and audit](../vignettes/gov2_lineage_audit/) | 15-30 |
-| B (stretch) | [DE3 Real-time payments](../vignettes/de3_realtime_payments/): Snowpipe Streaming, interactive warehouse | 40 |
+| B (stretch) | [DE3 Real-time payments](../vignettes/de3_realtime_payments/): Snowflake Postgres streamed to Iceberg with Data Mirroring, interactive warehouse | 45 |
 
 ### Data Analyst
 | Block | Vignette | Time |

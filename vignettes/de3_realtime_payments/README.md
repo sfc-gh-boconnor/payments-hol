@@ -1,73 +1,93 @@
-# DE3: Real-time payments: stream, serve, act
+# DE3: Real-time payments: stream, mirror, serve, act
 
 | | |
 |---|---|
 | **Persona** | Data Engineer (Payments Operations) |
-| **Time** | ~40 min |
-| **Prerequisites** | C1 only. Uses `BARCLAYS_HOL.REALTIME` and the shared interactive warehouse `HOL_INTERACTIVE_WH`, created at provisioning |
-| **Reference** | [`de3.sql`](de3.sql), [`de3_stream.py`](de3_stream.py) |
+| **Time** | ~45 min |
+| **Prerequisites** | C1 only. Uses `BARCLAYS_HOL.REALTIME`, the shared interactive warehouse `HOL_INTERACTIVE_WH`, and grants to create a Snowflake Postgres instance and mirror it (all set up at provisioning) |
+| **Reference** | [`de3.sql`](de3.sql), [`de3_postgres.py`](de3_postgres.py) |
 
 ## Business question
 > A corporate client's payments are failing right now. How does the operations floor see it within seconds, not after tonight's dbt build, and serve that view to everyone watching at once?
 
 ## What you'll build
-- Table `BARCLAYS_HOL.REALTIME.PAYMENT_EVENTS`, fed by **Snowpipe Streaming** from a notebook
-- About 5,000 synthetic payment events streamed in real time, with an incident hidden in the stream
-- Ops-floor queries served from the **interactive warehouse** `HOL_INTERACTIVE_WH`, straight off the streamed table
+- A **Snowflake Postgres** instance `HOL_PAYMENTS_PG`: the operational payments database the payment engine writes to
+- A live feed of payment events into Postgres, with an incident hidden in the stream
+- A **Data Mirror** that streams every change from Postgres into **Snowflake-managed Iceberg** tables in `PAYMENTS_MIRROR`, with `$live` (seconds behind) and `$changes` (the change feed)
+- Ops-floor queries served from the **interactive warehouse** `HOL_INTERACTIVE_WH`, straight off the mirrored table
 - Dynamic table `DT_PAYMENT_INCIDENTS` that flags failing payment clusters within a minute
 
 ## End-to-end real-time analytics in Snowflake
-- **Connectivity:** Snowpipe Streaming (GA) writes rows into tables seconds after they happen, through a **pipe** and named **channels**; every table gets a default pipe called `<TABLE>-STREAMING`. **Elastic Channels** scale ingestion without managing channels yourself. **Datastream** (public preview soon) streams change data from operational databases.
+- **Connectivity:** **Snowflake Postgres** runs the operational database inside Snowflake, and **Data Mirroring** (preview) streams its changes continuously into open Iceberg tables, with no pipeline to run. For events from apps and Kafka, **Snowpipe Streaming** (GA) writes rows into tables seconds after they happen through a pipe and named channels, and **Elastic Channels** scale it. (Snowpipe Streaming isn't used in this notebook: Workspace notebooks run in Snowpark Container Services, where its key-pair sign-in is rejected. [`de3_stream.py`](de3_stream.py) shows the SDK for an app outside Snowflake.)
 - **Transformation:** dynamic tables refresh on a target lag measured in minutes or seconds. **Streaming transformations** (private preview) transform rows as they arrive.
 - **Serving:** **Interactive Analytics** (GA): interactive warehouses return sub-second answers at high concurrency, directly on standard, dynamic or Iceberg tables, with no copy. They're built for dashboards, APIs and agents, with a 5 second statement limit and a 24 hour minimum run time once resumed, which is why the lab shares one.
 
 ## Steps
 ### Open the DE3 starter notebook
 Where: the **payments-hol** Workspace (not My Workspace) > file explorer > `notebooks/de3_realtime_payments.ipynb`
-Open the starter notebook `de3_realtime_payments`: it has the title and one numbered heading per step, so Cortex Code puts each cell in the right place. If you can't see the `notebooks/` and `vignettes/` folders in the file explorer, you're in the wrong Workspace: switch to **payments-hol** from the Workspace dropdown (top left) before you go on. (No starter? Use **+ > Notebook** in payments-hol and name it `de3_realtime_payments`.) Choose the compute pool **NOTEBOOK_POOL** and the warehouse **BARCLAYS_WH**. Open the notebook's settings (**⋮** > **Notebook settings** > **External access**) and turn on **HOL_NOTEBOOK_ACCESS_INTEGRATION**: the notebook installs the Snowpipe Streaming SDK from PyPI and streams to this account's endpoint.
+Open the starter notebook `de3_realtime_payments`: it has the title and one numbered heading per step, so Cortex Code puts each cell in the right place. If you can't see the `notebooks/` and `vignettes/` folders in the file explorer, you're in the wrong Workspace: switch to **payments-hol** from the Workspace dropdown (top left) before you go on. (No starter? Use **+ > Notebook** in payments-hol and name it `de3_realtime_payments`.) Choose the compute pool **NOTEBOOK_POOL** and the warehouse **BARCLAYS_WH**, and check the role is **HOL_PARTICIPANT**. Open the notebook's settings (**⋮** > **Notebook settings** > **External access**) and turn on **HOL_NOTEBOOK_ACCESS_INTEGRATION**: the notebook installs the Postgres driver from PyPI and connects to Postgres on port 5432.
 Expect: the starter notebook open in payments-hol with its numbered headings, a connected kernel and the external access integration enabled
 
-### Create the landing table
+### Create the Postgres instance
+You don't write the Postgres code yourself: the Workspace has a tested helper, `vignettes/de3_realtime_payments/de3_postgres.py`, and these cells import it.
 Where: the Cortex Code sidebar, with `de3_realtime_payments` open
 ```prompt
-In the open notebook de3_realtime_payments, put each cell I ask for under its matching numbered heading. Under heading 1, add a SQL cell named landing that creates the table BARCLAYS_HOL.REALTIME.PAYMENT_EVENTS (if it doesn't exist) with columns EVENT_ID STRING, PAYMENT_REF STRING, CUSTOMER_ID STRING, SCHEME STRING, AMOUNT NUMBER(18,2), CURRENCY STRING, STATUS STRING, FAILURE_REASON STRING, EVENT_TS TIMESTAMP_NTZ, CHANNEL_ID NUMBER, STREAM_OFFSET NUMBER and INGESTED_AT TIMESTAMP_LTZ DEFAULT CURRENT_TIMESTAMP(), with a comment saying it's fed by Snowpipe Streaming. Run it and explain the default pipe PAYMENT_EVENTS-STREAMING that Snowpipe Streaming will use, and why CHANNEL_ID and STREAM_OFFSET are in the payload.
+In the open notebook de3_realtime_payments, put each cell I ask for under its matching numbered heading. Under heading 1, add a Python cell named create_pg that runs !pip install psycopg2-binary, makes vignettes/de3_realtime_payments/de3_postgres.py importable (search upwards from the current working directory for a folder containing vignettes/de3_realtime_payments/de3_postgres.py and add that folder to sys.path), imports de3_postgres as pg, and runs host = pg.create_postgres(get_active_session()). Don't rewrite the helper and never print the password. Then add a markdown cell explaining what create_postgres does: the instance size and why, the network policy, and what happens to the one-time password.
 ```
-Expect: an empty `PAYMENT_EVENTS` table. You don't create a pipe: Snowpipe Streaming uses the default `PAYMENT_EVENTS-STREAMING` pipe. `CHANNEL_ID` and `STREAM_OFFSET` let you find gaps or duplicates later, per channel.
+Expect: the cell prints the instance moving through CREATING, STARTING and FINALIZING, then returns its host after 3 to 5 minutes. `HOL_PAYMENTS_PG` uses `STANDARD_M`, the smallest size Data Mirroring supports, with the network policy `HOL_PG_POLICY`. Its `snowflake_admin` password is shown only once, in the CREATE result, so the helper saves it straight into the secret `BARCLAYS_HOL.REALTIME.PG_ADMIN_SECRET` without printing it.
+Check: de3_postgres
 
-### Install the SDK and give yourself a key
-```prompt
-Add a Python cell named setup_stream that runs !pip install snowpipe-streaming, then generates an RSA key pair in memory with the cryptography package and registers the public key on my own user with ALTER USER ADD KEY PAIR DE3_STREAMING_KEY PUBLIC_KEY = '<base64 DER public key>' ROLE_RESTRICTION = 'HOL_PARTICIPANT' DAYS_TO_EXPIRY = 1 (remove any existing DE3_STREAMING_KEY first in a try/except), using get_active_session(). Keep the private key in a variable called key; never print or save it. Use vignettes/de3_realtime_payments/de3_stream.py in the Workspace as the reference.
+### Reveal the connection and connect
+Where: the Lab Companion > **DE3** > **Reveal Postgres connection**, then the notebook
+Click **Reveal Postgres connection**: it reads the secret and shows the host, user and password with copy buttons. Paste them into a new Python cell under heading 2:
+```python
+PG_HOST = "<host>"
+PG_USER = "snowflake_admin"
+PG_PASS = "<password>"
 ```
-Expect: the SDK installed and `DE3_STREAMING_KEY` registered on your user. Streaming clients authenticate with a key pair; this one is tied to `HOL_PARTICIPANT` and expires tomorrow.
+Run it, then paste this into the Cortex Code sidebar:
+```prompt
+Under heading 2, after my connection cell, add a Python cell named source_table that opens conn = pg.connect(PG_HOST, PG_USER, PG_PASS) and runs pg.create_source_table(conn), printing the row count it returns. Then explain the table it created in Postgres and why it has a primary key.
+```
+Expect: `0` rows in the new Postgres table `payments.payment_events`. The primary key lets the mirror carry updates and deletes as well as inserts. Keep the password out of anything you share. You can reveal it again any time, for example after a kernel restart. If the Lab Companion says the password wasn't saved, run `pg.reset_password(get_active_session())` and reveal again.
 
-### Stream payments in real time
+### Mirror Postgres into Snowflake
 ```prompt
-Add a Python cell named stream that opens a Snowpipe Streaming client (snowflake.ingest.streaming.StreamingIngestClient) for BARCLAYS_HOL.REALTIME pipe PAYMENT_EVENTS-STREAMING as my user with key, using account <ORG>-<ACCOUNT>, url https://<org>-<account>.snowflakecomputing.com:443 with underscores replaced by hyphens, and role HOL_PARTICIPANT in the profile JSON (write it to a private temp file and delete it once the client is open). Open channel payments_feed_1 and append 5,000 payment events at about 100 a second: customers from BARCLAYS_HOL.RAW_DATA.CUSTOMERS, schemes FASTER_PAYMENTS, BACS, CHAPS, SEPA and SWIFT, about 3% failed. In the second half, 15% of events are failed SEPA payments for one client with FAILURE_REASON 'Beneficiary bank unavailable'. Use each event's sequence number as the offset token and STREAM_OFFSET. Wait until the last offset is committed, print it and close the client. Follow stream_payments in de3_stream.py.
+Under heading 3, add a Python cell named mirror that runs pg.start_mirror(get_active_session()) and shows the result as a table. Then add a markdown cell explaining Snowflake Postgres Data Mirroring: what CREATE_MIRROR creates in PAYMENTS_MIRROR (an Iceberg table plus $live and $changes), who owns it, and what refresh_interval means.
 ```
-Expect: the cell runs for about a minute and prints a committed offset of `5000`. While it runs, open a SQL worksheet and run `SELECT COUNT(*) FROM BARCLAYS_HOL.REALTIME.PAYMENT_EVENTS` a few times: the count climbs as events land, seconds after they're sent.
-Check: de3_events
+Expect: `payments.payment_events` in state `REPLICATING` in the new database `PAYMENTS_MIRROR`. The mirror owns `PAYMENTS_MIRROR.PAYMENTS.PAYMENT_EVENTS`, a Snowflake-managed Iceberg table in open Parquet, plus `PAYMENT_EVENTS$live` (the table plus changes not merged yet, so it's seconds behind) and `PAYMENT_EVENTS$changes` (the change feed). Changes merge into the base table every minute (`refresh_interval`). Nothing to schedule or run: the mirror keeps going on its own.
+Check: de3_mirror
+
+### Stream payments into Postgres
+```prompt
+Under heading 4, add a Python cell named stream that runs pg.stream_payments(conn, get_active_session()) to insert about 20 payment events a second into Postgres for 5 minutes, and prints the total it returns. Then explain in a markdown cell what the stream sends, including the SEPA incident in the second half.
+```
+Expect: the cell runs for 5 minutes, printing progress every 30 seconds, and sends about 6,000 events. While it runs, open a SQL worksheet and run `SELECT COUNT(*) FROM PAYMENTS_MIRROR.PAYMENTS.PAYMENT_EVENTS$live` a few times: the count climbs about 20 to 40 seconds behind Postgres. Halfway through, one corporate client's SEPA payments start failing with "Beneficiary bank unavailable".
 
 ### Measure how fresh the data is
 ```prompt
-Add a SQL cell named freshness over BARCLAYS_HOL.REALTIME.PAYMENT_EVENTS: events per minute for the last 15 minutes, failed events per minute, and the median and 95th percentile seconds between EVENT_TS and INGESTED_AT (convert INGESTED_AT to UTC and TIMESTAMP_NTZ first). Run it and explain what the numbers say about end-to-end latency.
+Under heading 5, add a SQL cell named freshness: events and failed events per minute for the last 15 minutes from PAYMENTS_MIRROR.PAYMENTS.PAYMENT_EVENTS$live, then the seconds between the newest EVENT_TS and SYSDATE() in both PAYMENT_EVENTS$live and the base table PAYMENT_EVENTS, then the count of rows per _CHANGE_TYPE in PAYMENT_EVENTS$changes. Run it and explain what the numbers say about end-to-end latency from Postgres to Snowflake.
 ```
-Expect: about 6,000 events a minute while streaming (the stream cell sends about 100 a second), each queryable within seconds of being sent. Failures jump in the second half of the run: that's the incident.
+Expect: about 1,200 events a minute while streaming, with `$live` about 20 to 40 seconds behind and the base table up to a minute behind (its refresh interval). Failures jump in the second half: that's the incident. `$changes` shows one `I` (insert) per event; an update would appear as a `D` and an `I`.
 
 ### Serve the ops floor from the interactive warehouse
 ```prompt
-Add a SQL cell named ops_floor that runs USE WAREHOUSE HOL_INTERACTIVE_WH, then the queries a payments operations dashboard would refresh every few seconds directly on BARCLAYS_HOL.REALTIME.PAYMENT_EVENTS: failed payments and failed value by scheme in the last 10 minutes, and the 10 clients with the most failed value in the last 10 minutes joined to BARCLAYS_HOL.RAW_DATA.CUSTOMERS for the name. Then switch back with USE WAREHOUSE BARCLAYS_WH. Run it and explain zero-copy interactive analytics: why there's no copy or conversion of the table, and when the 5 second statement limit matters.
+Under heading 6, add a SQL cell named ops_floor that runs USE WAREHOUSE HOL_INTERACTIVE_WH, then the queries a payments operations dashboard would refresh every few seconds directly on PAYMENTS_MIRROR.PAYMENTS.PAYMENT_EVENTS: failed payments and failed value by scheme in the last 15 minutes, and the 10 clients with the most failed value in the last 15 minutes joined to BARCLAYS_HOL.RAW_DATA.CUSTOMERS for the name. Then switch back with USE WAREHOUSE BARCLAYS_WH. Run it and explain zero-copy interactive analytics on an Iceberg table: why there's no copy or conversion, and when the 5 second statement limit matters.
 ```
-Expect: answers from `HOL_INTERACTIVE_WH` in about half a second once it's warm, straight off the table you're streaming into, with no copy. One client stands out with a cluster of failed SEPA payments. On a few thousand rows a standard warehouse is quick too: the interactive warehouse earns its keep when hundreds of screens, APIs or agents run these queries every few seconds at once. Heavy one-off analysis belongs on a standard warehouse, and DML is rejected, which is why the cell switches back.
+Expect: answers from `HOL_INTERACTIVE_WH` in well under a second once it's warm, straight off the mirrored Iceberg table, with no copy. SEPA stands out, and one client has a cluster of failed SEPA payments. On a few thousand rows a standard warehouse is quick too: the interactive warehouse earns its keep when hundreds of screens, APIs or agents run these queries every few seconds at once. Heavy one-off analysis belongs on a standard warehouse, and DML is rejected, which is why the cell switches back.
 
 ### Flag incidents automatically
 ```prompt
-Add a SQL cell named incidents that creates the dynamic table BARCLAYS_HOL.REALTIME.DT_PAYMENT_INCIDENTS with TARGET_LAG '1 minute' on warehouse BARCLAYS_WH: failed payments in PAYMENT_EVENTS from the last 15 minutes grouped by CUSTOMER_ID (with CUSTOMER_NAME from BARCLAYS_HOL.RAW_DATA.CUSTOMERS), SCHEME and FAILURE_REASON, with the failed count, failed value, first and last failure, keeping groups with at least 5 failures. Then query it, largest first, and draft the message the operations team would send to the client's relationship manager.
+Under heading 7, add a SQL cell named incidents that creates the dynamic table BARCLAYS_HOL.REALTIME.DT_PAYMENT_INCIDENTS with TARGET_LAG '1 minute' on warehouse BARCLAYS_WH: failed payments in PAYMENTS_MIRROR.PAYMENTS.PAYMENT_EVENTS from the last 15 minutes grouped by CUSTOMER_ID (with CUSTOMER_NAME from BARCLAYS_HOL.RAW_DATA.CUSTOMERS), SCHEME and FAILURE_REASON, with the failed count, failed value, first and last failure, keeping groups with at least 5 failures. Then query it, largest first, and draft the message the operations team would send to the client's relationship manager.
 ```
-Expect: one incident: a single client's SEPA payments failing with "Beneficiary bank unavailable", with the count, value and time window. The table refreshes every minute on its own, so the moment a new cluster starts, it appears. This is the same pattern as DE2's live SLA breaches, now on streamed data. Cortex Code automations (GOV2) could post it to the ops team.
+Expect: one incident: Crown Logistics' SEPA payments failing with "Beneficiary bank unavailable", with the count, value and time window. The table refreshes every minute on its own, so the moment a new cluster starts in Postgres, it appears here. This is the same pattern as DE2's live SLA breaches, now on data streaming out of an operational database. Cortex Code automations (GOV2) could post it to the ops team.
 Check: de3_incidents
 
 ## Check your work
-`PAYMENT_EVENTS` holds at least 1,000 streamed events, and `DT_PAYMENT_INCIDENTS` exists. Remove your key when you're done: `ALTER USER REMOVE KEY PAIR DE3_STREAMING_KEY` (it expires tomorrow anyway).
+`HOL_PAYMENTS_PG` is READY, `PAYMENTS_MIRROR.PAYMENTS.PAYMENT_EVENTS` is replicating with at least 1,000 events, and `DT_PAYMENT_INCIDENTS` exists.
+
+## After the lab
+The Postgres instance bills while it runs. Suspend it when you're done (`ALTER POSTGRES INSTANCE HOL_PAYMENTS_PG SUSPEND`); the facilitator's teardown drops the mirror and the instance.
 
 ## Barclayflake note
-One platform takes payments from event to answer in seconds: streamed in through Snowpipe Streaming, flagged by a dynamic table, and served to every screen on the ops floor by an interactive warehouse, with the same governance as the rest of the data.
+One platform takes payments from the operational database to an answer in seconds: written to Snowflake Postgres, mirrored continuously into open Iceberg tables, flagged by a dynamic table, and served to every screen on the ops floor by an interactive warehouse, with the same governance as the rest of the data.

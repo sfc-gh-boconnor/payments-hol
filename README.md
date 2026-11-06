@@ -51,14 +51,14 @@ docs/           data model, ERD and column dictionary
 | [AI3](vignettes/ai3_knowledge_extension/) | Marketplace knowledge extension instead of Cortex Search | AI Builder | 30 |
 | [GOV1](vignettes/gov1_pii_policies/) | Classify, tag, mask and filter PII | Governance | 45 |
 | [GOV2](vignettes/gov2_lineage_audit/) | Lineage, audit and trust | Governance | 30 |
-| [DE3](vignettes/de3_realtime_payments/) | Real-time payments: Snowpipe Streaming, interactive warehouse, incident detection | Data Engineer | 40 |
+| [DE3](vignettes/de3_realtime_payments/) | Real-time payments: Snowflake Postgres streamed to Iceberg with Data Mirroring, interactive warehouse, incident detection | Data Engineer | 45 |
 | [GOV3](vignettes/gov3_ai_gateway/) | AI governance with Cortex AI Gateway (+ Business Ontology concept) | Governance | 40 |
 
 ### Themes
 | Theme | Where it shows up |
 |---|---|
 | **Autonomous Data Engineering**: pipelines that build, monitor and repair themselves | DE1 Cortex Code-generated dbt marts and a nightly task; DE2 Pipeline Builder (public preview) deploying a native task graph, data metric functions; GOV2 a scheduled Cortex Code automation |
-| **E2E Real-Time Analytics**: connectivity, transformation, serving | DE3 Snowpipe Streaming (GA) into a table, a 1 minute dynamic table, and an interactive warehouse (GA) serving the ops floor; concept notes on Elastic Channels, Datastream and streaming transformations |
+| **E2E Real-Time Analytics**: connectivity, transformation, serving | DE3 a live payment feed into Snowflake Postgres, mirrored continuously into Snowflake-managed Iceberg (Data Mirroring, preview), a 1 minute dynamic table, and an interactive warehouse (GA) serving the ops floor; concept notes on Snowpipe Streaming, Elastic Channels and streaming transformations |
 | **Business users and AI apps** | OPS1 and OPS3 Snowflake CoWork: governed answers, saved charts, Deep Research, automations, generated documents, and AI dashboards built by Cortex Code (preview) |
 | **AI governance** | GOV3 one governed endpoint (Cortex AI Gateway, preview) with model policy, traces and per-user usage; Business Ontology (private preview) as the business-wide vocabulary |
 | **Data governance** | GOV1 classification, tags, masking and row access; GOV2 lineage, access history and the audit pack |

@@ -282,10 +282,16 @@ export const CHECKS: Record<string, Check[]> = {
   ],
   DE3: [
     {
-      id: "de3_events",
-      label: "Payment events streamed into REALTIME.PAYMENT_EVENTS",
-      sql: `SELECT COUNT(*) >= 1000 AS OK, COUNT(*) || ' events, ' || COUNT_IF(STATUS = 'FAILED') || ' failed' AS DETAIL FROM BARCLAYS_HOL.REALTIME.PAYMENT_EVENTS`,
-      hint: "Run the stream cell in de3_realtime_payments (it needs HOL_NOTEBOOK_ACCESS_INTEGRATION in the notebook settings).",
+      id: "de3_postgres",
+      label: "Snowflake Postgres instance HOL_PAYMENTS_PG is READY",
+      sql: `SHOW POSTGRES INSTANCES LIKE 'HOL_PAYMENTS_PG' ->> SELECT COUNT_IF("state" = 'READY') > 0 AS OK, COALESCE(MAX("name" || ' ' || "state" || ' (' || "compute_family" || ')'), 'HOL_PAYMENTS_PG not created yet') AS DETAIL FROM $1`,
+      hint: "Run the create_pg cell (pg.create_postgres) as HOL_PARTICIPANT; it takes 3 to 5 minutes to reach READY.",
+    },
+    {
+      id: "de3_mirror",
+      label: "payments_mirror is replicating Postgres into PAYMENTS_MIRROR (1,000+ events)",
+      sql: `SELECT COUNT(*) >= 1000 AS OK, COUNT(*) || ' events mirrored, ' || COUNT_IF(STATUS = 'FAILED') || ' failed' AS DETAIL FROM PAYMENTS_MIRROR.PAYMENTS.PAYMENT_EVENTS$live`,
+      hint: "Run the mirror cell (pg.start_mirror), then the stream cell. Mirrored rows appear in PAYMENTS_MIRROR.PAYMENTS.PAYMENT_EVENTS$live about 30 seconds after they're inserted.",
     },
     {
       id: "de3_incidents",
@@ -400,6 +406,12 @@ const pre = {
     sql: show("SHOW INTEGRATIONS LIKE 'HOL_NOTEBOOK_ACCESS_INTEGRATION'", "HOL_NOTEBOOK_ACCESS_INTEGRATION"),
     hint: "Created by setup/00_admin_provision.sql. Ask the facilitator to run it.",
   },
+  postgres: {
+    id: "pre_postgres",
+    label: "HOL_PARTICIPANT can create a Snowflake Postgres instance and mirror it",
+    sql: `SHOW GRANTS TO ROLE HOL_PARTICIPANT ->> SELECT COUNT_IF("privilege" = 'CREATE POSTGRES INSTANCE') > 0 AND COUNT_IF("name" ILIKE '%POSTGRES_MIRROR_ADMIN') > 0 AS OK, IFF(OK, 'CREATE POSTGRES INSTANCE and POSTGRES_MIRROR_ADMIN granted', 'missing Postgres grants') AS DETAIL FROM $1`,
+    hint: "Granted by setup/00_admin_provision.sql (DE3 section). Ask the facilitator to rerun it.",
+  },
 } satisfies Record<string, Check>
 
 export const PREREQS: Record<string, Check[]> = {
@@ -416,6 +428,6 @@ export const PREREQS: Record<string, Check[]> = {
   AI3: [pre.cke, pre.svClient360],
   GOV1: [pre.staging],
   GOV2: [pre.auditPack],
-  DE3: [pre.realtime, pre.notebookAccess],
+  DE3: [pre.realtime, pre.notebookAccess, pre.postgres],
   GOV3: [pre.gateway, pre.notebookAccess],
 }

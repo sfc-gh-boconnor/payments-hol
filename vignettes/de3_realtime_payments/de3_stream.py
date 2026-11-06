@@ -1,8 +1,14 @@
-"""DE3 reference: stream payment events into Snowflake with Snowpipe Streaming.
+"""Optional reference (not used in the DE3 steps): stream payment events with Snowpipe Streaming.
+
+DE3 itself streams through Snowflake Postgres and Data Mirroring (de3_postgres.py).
 
 Run in a Workspace notebook with the external access integration HOL_NOTEBOOK_ACCESS_INTEGRATION
-enabled, after `!pip install snowpipe-streaming`. Streams ~5,000 synthetic payment events into
+enabled, after `!pip install "snowpipe-streaming>=1.5"`. Streams ~5,000 synthetic payment events into
 BARCLAYS_HOL.REALTIME.PAYMENT_EVENTS through its default pipe PAYMENT_EVENTS-STREAMING.
+
+Notebooks run in Snowpark Container Services, where Snowflake rejects key-pair sign-in (error
+395090), so inside a notebook the client signs in with the container's own token (SPCS auth). The
+key-pair path is for running this file outside Snowflake, for example from a laptop.
 
 The planted story: halfway through, SEPA payments for one corporate client start failing with
 "Beneficiary bank unavailable" - the ops floor should spot it within seconds.
@@ -38,18 +44,29 @@ def make_key_pair(session, key_name=KEY_NAME, role=ROLE):
     return key
 
 
-def streaming_client(session, key, client_name="de3_payments"):
-    """A Snowpipe Streaming client for PAYMENT_EVENTS, authenticated with key as the current user."""
+SPCS_TOKEN = "/snowflake/session/token"
+
+
+def streaming_client(session, key=None, client_name="de3_payments"):
+    """A Snowpipe Streaming client for PAYMENT_EVENTS as the current user.
+
+    In a notebook it signs in with the container token; elsewhere it needs key from make_key_pair.
+    """
     from snowflake.ingest.streaming import StreamingIngestClient
 
     org, acct, user = session.sql(
         "SELECT CURRENT_ORGANIZATION_NAME(), CURRENT_ACCOUNT_NAME(), CURRENT_USER()").collect()[0]
     host = f"{org}-{acct}".lower().replace("_", "-") + ".snowflakecomputing.com"
-    pem = key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
-                            serialization.NoEncryption()).decode()
-    profile = {"account": f"{org}-{acct}".upper(), "user": user, "url": f"https://{host}:443",
-               "private_key": pem, "role": ROLE}
-    # The SDK reads its profile from a file; keep it private and remove it once the client is open
+    profile = {"account": f"{org}-{acct}".upper(), "url": f"https://{host}:443", "role": ROLE}
+    if os.path.exists(SPCS_TOKEN):
+        profile.update(authorization_type="SPCS", spcs_token_path=SPCS_TOKEN)
+    elif key is None:
+        raise ValueError("Outside a notebook, pass key = make_key_pair(session)")
+    else:
+        pem = key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
+                                serialization.NoEncryption()).decode()
+        profile.update(authorization_type="JWT", user=user, private_key=pem)
+    # The SDK reads its profile from a file; keep it private (it can hold the key) and remove it once the client is open
     fd, path = tempfile.mkstemp(suffix=".json")
     with os.fdopen(fd, "w") as f:
         json.dump(profile, f)

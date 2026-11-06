@@ -117,7 +117,7 @@ GRANT MONITOR ON AI GATEWAY SNOWFLAKE TO ROLE HOL_ADMIN;
 -- DE3 real-time analytics: attendees stream into REALTIME and serve it from one shared
 -- interactive warehouse. It's created suspended; once resumed it bills for at least
 -- 24 hours (AUTO_SUSPEND minimum 86400), so the facilitator suspends it after the lab.
-CREATE SCHEMA IF NOT EXISTS BARCLAYS_HOL.REALTIME COMMENT = 'DE3: streamed payment events (Snowpipe Streaming)';
+CREATE SCHEMA IF NOT EXISTS BARCLAYS_HOL.REALTIME COMMENT = 'DE3: incident detection on payments mirrored from Snowflake Postgres';
 GRANT OWNERSHIP ON SCHEMA BARCLAYS_HOL.REALTIME TO ROLE HOL_ADMIN COPY CURRENT GRANTS;
 GRANT ALL ON SCHEMA BARCLAYS_HOL.REALTIME TO ROLE HOL_PARTICIPANT;
 
@@ -165,20 +165,70 @@ GRANT USAGE ON WAREHOUSE HOL_INTERACTIVE_WH TO ROLE HOL_PARTICIPANT;
 -- CREATE WAREHOUSE makes it current; scripts and procedures can't run on an interactive warehouse
 USE WAREHOUSE BARCLAYS_WH;
 
--- GOV3/DE3 notebooks call the account's own public endpoint (AI gateway, Snowpipe Streaming SDK)
--- and install the SDK from PyPI, so they need external access to both
+-- GOV3/DE3 notebooks call the account's own public endpoint (AI gateway) and Snowflake Postgres
+-- (DE3, any instance host on 5432), and install packages from PyPI, so they need external access to all three
 EXECUTE IMMEDIATE $$
 DECLARE
   account_host STRING DEFAULT (SELECT LOWER(CURRENT_ORGANIZATION_NAME() || '-' || CURRENT_ACCOUNT_NAME()) || '.snowflakecomputing.com');
 BEGIN
   EXECUTE IMMEDIATE 'CREATE OR REPLACE NETWORK RULE BARCLAYS_HOL.ANALYTICS.HOL_NOTEBOOK_EGRESS_RULE MODE = EGRESS TYPE = HOST_PORT VALUE_LIST = ('''
-    || :account_host || ''', ''' || REPLACE(:account_host, '_', '-') || ''', ''pypi.org'', ''pypi.python.org'', ''pythonhosted.org'', ''files.pythonhosted.org'')';
+    || :account_host || ''', ''' || REPLACE(:account_host, '_', '-') || ''', ''pypi.org'', ''pypi.python.org'', ''pythonhosted.org'', ''files.pythonhosted.org'', ''*.postgres.snowflake.app:5432'')';
 END;
 $$;
 CREATE EXTERNAL ACCESS INTEGRATION IF NOT EXISTS HOL_NOTEBOOK_ACCESS_INTEGRATION
   ALLOWED_NETWORK_RULES = (BARCLAYS_HOL.ANALYTICS.HOL_NOTEBOOK_EGRESS_RULE) ENABLED = TRUE
-  COMMENT = 'GOV3/DE3 notebooks: this account''s endpoint (AI gateway, Snowpipe Streaming) and PyPI';
+  COMMENT = 'GOV3/DE3 notebooks: this account''s endpoint (AI gateway), Snowflake Postgres and PyPI';
 GRANT USAGE ON INTEGRATION HOL_NOTEBOOK_ACCESS_INTEGRATION TO ROLE HOL_PARTICIPANT;
+
+-- DE3 streaming source: each attendee creates Snowflake Postgres instance HOL_PAYMENTS_PG and
+-- mirrors it into Snowflake-managed Iceberg (Snowpipe Streaming can't sign in from a notebook).
+-- Mirroring needs STANDARD (not BURSTABLE) compute; the instance bills while it runs.
+GRANT CREATE POSTGRES INSTANCE ON ACCOUNT TO ROLE HOL_PARTICIPANT;
+GRANT APPLICATION ROLE SNOWFLAKE.POSTGRES_MIRROR_ADMIN TO ROLE HOL_PARTICIPANT;
+-- Inbound to Postgres from notebooks and laptops (lab only: open to any IPv4 address)
+CREATE NETWORK RULE IF NOT EXISTS BARCLAYS_HOL.REALTIME.HOL_PG_INGRESS_RULE
+  TYPE = IPV4 MODE = POSTGRES_INGRESS VALUE_LIST = ('0.0.0.0/0')
+  COMMENT = 'DE3: who may connect to the lab Postgres instance';
+CREATE NETWORK POLICY IF NOT EXISTS HOL_PG_POLICY
+  ALLOWED_NETWORK_RULE_LIST = ('BARCLAYS_HOL.REALTIME.HOL_PG_INGRESS_RULE')
+  COMMENT = 'DE3: attach to HOL_PAYMENTS_PG';
+GRANT USAGE ON NETWORK POLICY HOL_PG_POLICY TO ROLE HOL_PARTICIPANT;
+-- The admin password appears once, in the CREATE output; the attendee's helper saves it here
+-- (IF NOT EXISTS: a rerun must never wipe a saved password). The Lab Companion reveals it.
+CREATE SECRET IF NOT EXISTS BARCLAYS_HOL.REALTIME.PG_ADMIN_SECRET
+  TYPE = PASSWORD USERNAME = 'not-set' PASSWORD = 'not-set'
+  COMMENT = 'DE3: HOL_PAYMENTS_PG snowflake_admin credentials, saved when the instance is created';
+GRANT OWNERSHIP ON SECRET BARCLAYS_HOL.REALTIME.PG_ADMIN_SECRET TO ROLE HOL_PARTICIPANT COPY CURRENT GRANTS;
+CREATE EXTERNAL ACCESS INTEGRATION IF NOT EXISTS HOL_PG_SECRET_INTEGRATION
+  ALLOWED_NETWORK_RULES = (BARCLAYS_HOL.ANALYTICS.HOL_NOTEBOOK_EGRESS_RULE)
+  ALLOWED_AUTHENTICATION_SECRETS = (BARCLAYS_HOL.REALTIME.PG_ADMIN_SECRET)
+  ENABLED = TRUE
+  COMMENT = 'DE3: lets the Lab Companion read PG_ADMIN_SECRET (reveal button)';
+GRANT USAGE ON INTEGRATION HOL_PG_SECRET_INTEGRATION TO ROLE HOL_ADMIN;
+USE ROLE HOL_ADMIN;
+-- Owner's rights, owned by HOL_ADMIN (the app's role): attendees can't call it from SQL
+CREATE OR REPLACE PROCEDURE BARCLAYS_HOL.LAB.PG_CONNECTION_INFO()
+  RETURNS VARIANT LANGUAGE PYTHON RUNTIME_VERSION = '3.11' PACKAGES = ('snowflake-snowpark-python')
+  HANDLER = 'run' EXTERNAL_ACCESS_INTEGRATIONS = (HOL_PG_SECRET_INTEGRATION)
+  SECRETS = ('pg' = BARCLAYS_HOL.REALTIME.PG_ADMIN_SECRET)
+  COMMENT = 'DE3: host, port, database, user and password for HOL_PAYMENTS_PG (Lab Companion reveal)'
+  EXECUTE AS OWNER
+AS $$
+import _snowflake
+
+def run(session):
+    rows = session.sql("SHOW POSTGRES INSTANCES LIKE 'HOL_PAYMENTS_PG'").collect()
+    if not rows:
+        return {"ready": False, "message": "HOL_PAYMENTS_PG doesn't exist yet: run the create cell in the DE3 notebook."}
+    row = rows[0].as_dict()
+    cred = _snowflake.get_username_password("pg")
+    if cred.password == "not-set":
+        return {"ready": False, "state": row.get("state"),
+                "message": "The password wasn't saved. Run the reset cell in the DE3 notebook."}
+    return {"ready": row.get("state") == "READY", "state": row.get("state"), "host": row.get("host"),
+            "port": 5432, "database": "postgres", "user": cred.username, "password": cred.password}
+$$;
+USE ROLE ACCOUNTADMIN;
 
 -- Snowflake CoWork (formerly Snowflake Intelligence) lists agents in SNOWFLAKE_INTELLIGENCE.AGENTS
 CREATE DATABASE IF NOT EXISTS SNOWFLAKE_INTELLIGENCE;
