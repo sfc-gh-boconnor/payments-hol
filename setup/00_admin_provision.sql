@@ -68,6 +68,8 @@ CREATE SCHEMA IF NOT EXISTS BARCLAYS_HOL.RAW_DATA  COMMENT = 'Published source d
 CREATE SCHEMA IF NOT EXISTS BARCLAYS_HOL.ANALYTICS COMMENT = 'Attendee-built data products: dbt models, AI enrichment, dynamic tables, semantic views';
 CREATE SCHEMA IF NOT EXISTS BARCLAYS_HOL.AGENTS    COMMENT = 'Attendee-built Cortex Agents, tools and MCP servers';
 CREATE SCHEMA IF NOT EXISTS BARCLAYS_HOL.GOVERNANCE COMMENT = 'Tags, masking and row access policies';
+-- Created here as well as in 04_lab_companion.sql: PG_CONNECTION_INFO (DE3) lives in LAB
+CREATE SCHEMA IF NOT EXISTS BARCLAYS_HOL.LAB       COMMENT = 'Lab Companion app: application service, check results and progress';
 
 GRANT USAGE ON DATABASE BARCLAYS_HOL TO ROLE HOL_PARTICIPANT;
 GRANT USAGE ON DATABASE BARCLAYS_HOL TO ROLE HOL_RESTRICTED;
@@ -99,7 +101,12 @@ GRANT EXECUTE DATA METRIC FUNCTION ON ACCOUNT   TO ROLE HOL_PARTICIPANT;
 GRANT EXECUTE TASK                 ON ACCOUNT   TO ROLE HOL_PARTICIPANT;
 GRANT CREATE CODE BUNDLE ON SCHEMA BARCLAYS_HOL.ANALYTICS TO ROLE HOL_PARTICIPANT;
 -- DA3 map app: Streamlit container runtime (Carto basemaps without External Offerings Terms)
-GRANT USAGE ON COMPUTE POOL SYSTEM_COMPUTE_POOL_CPU TO ROLE HOL_PARTICIPANT;
+-- New trial accounts may not have SYSTEM_COMPUTE_POOL_CPU yet, so the lab brings its own pool
+CREATE COMPUTE POOL IF NOT EXISTS HOL_COMPUTE_POOL_CPU
+  MIN_NODES = 1 MAX_NODES = 10 INSTANCE_FAMILY = CPU_X64_XS
+  AUTO_RESUME = TRUE AUTO_SUSPEND_SECS = 3600
+  COMMENT = 'Barclays HOL: Streamlit container runtime (DA3)';
+GRANT USAGE, MONITOR ON COMPUTE POOL HOL_COMPUTE_POOL_CPU TO ROLE HOL_PARTICIPANT;
 -- Container runtime installs streamlit/pydeck from PyPI, so it needs external access
 CREATE NETWORK RULE IF NOT EXISTS BARCLAYS_HOL.ANALYTICS.PYPI_NETWORK_RULE MODE = EGRESS TYPE = HOST_PORT
   VALUE_LIST = ('pypi.org', 'pypi.python.org', 'pythonhosted.org', 'files.pythonhosted.org');
