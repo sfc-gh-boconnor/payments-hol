@@ -61,6 +61,15 @@ snow stage copy "$ROOT/data/retail_bank/*.csv.gz" @BARCLAYS_HOL.RETAIL.RB_SEED/ 
   || { echo "FAILED: upload data/retail_bank (see /tmp/hol_rb_seed.log)"; exit 1; }
 run_sql setup/08_retail_bank_seed.sql
 
+step "4f Retail text and financial crime evidence (RB_* text tables, @RETAIL.FINCRIME_EVIDENCE, ML schema)"
+snow sql -c "$CONN" --role HOL_ADMIN -q "CREATE STAGE IF NOT EXISTS BARCLAYS_HOL.RETAIL.FINCRIME_EVIDENCE DIRECTORY = (ENABLE = TRUE) ENCRYPTION = (TYPE = 'SNOWFLAKE_SSE');" > /dev/null
+snow stage copy "$ROOT/data/retail_text/rb_*.csv.gz" @BARCLAYS_HOL.RETAIL.RB_SEED/text/ --overwrite -c "$CONN" --role HOL_ADMIN > /tmp/hol_rb_text.log 2>&1 \
+  && snow stage copy "$ROOT/data/retail_text/evidence/*" @BARCLAYS_HOL.RETAIL.FINCRIME_EVIDENCE/ --overwrite -c "$CONN" --role HOL_ADMIN >> /tmp/hol_rb_text.log 2>&1 \
+  || { echo "FAILED: upload data/retail_text (see /tmp/hol_rb_text.log)"; exit 1; }
+run_sql setup/10_retail_text_seed.sql
+# Cortex Search (AI5, optional): not approved at Barclays, so it can be switched off
+if [[ "${HOL_ENABLE_SEARCH:-1}" == "1" ]]; then run_sql setup/10b_search_lab.sql; else echo "  skipped 10b (HOL_ENABLE_SEARCH=0): AI5 will show as skippable"; fi
+
 step "4d CoWork pack for OPS3 (PAYMENTS_OPS_COWORK agent)"
 run_sql setup/09_cowork_pack.sql
 

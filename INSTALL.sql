@@ -50,6 +50,11 @@ EXECUTE IMMEDIATE FROM @BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/setup/0
 CREATE STAGE IF NOT EXISTS BARCLAYS_HOL.RETAIL.RB_SEED;
 COPY FILES INTO @BARCLAYS_HOL.RETAIL.RB_SEED FROM @BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/data/retail_bank/ PATTERN = '.*[.]csv[.]gz';   -- generated retail banking data product
 EXECUTE IMMEDIATE FROM @BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/setup/08_retail_bank_seed.sql;   -- RB_* Iceberg tables in RAW_DATA
+COPY FILES INTO @BARCLAYS_HOL.RETAIL.RB_SEED/text/ FROM @BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/data/retail_text/ PATTERN = '.*rb_[a-z_]+[.]csv[.]gz';   -- retail text
+CREATE STAGE IF NOT EXISTS BARCLAYS_HOL.RETAIL.FINCRIME_EVIDENCE DIRECTORY = (ENABLE = TRUE) ENCRYPTION = (TYPE = 'SNOWFLAKE_SSE');
+COPY FILES INTO @BARCLAYS_HOL.RETAIL.FINCRIME_EVIDENCE FROM @BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/data/retail_text/evidence/;   -- fin crime evidence files
+EXECUTE IMMEDIATE FROM @BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/setup/10_retail_text_seed.sql;   -- text tables, evidence, ML schema
+EXECUTE IMMEDIATE FROM @BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/setup/10b_search_lab.sql;   -- OPTIONAL: Cortex Search for AI5; delete this line where Search isn't approved
 EXECUTE IMMEDIATE FROM @BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/setup/09_cowork_pack.sql;   -- OPS3 CoWork agent
 EXECUTE IMMEDIATE FROM @BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/setup/04_lab_companion.sql;
 EXECUTE IMMEDIATE FROM @BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/setup/05_wake_schedule.sql;
