@@ -891,6 +891,18 @@
    ],
    "steps": [
     {
+     "title": "Go back Home and open the payments-hol Workspace",
+     "body": "1. Switch the toggle at the top left back to **Home**.\n2. Open **Projects > Workspaces**.\n3. Open the **My Workspace** dropdown (top left) and pick **payments-hol**.\n**Important:** go back to **Home** first. Workspaces isn't on the CoCo side, where you worked in DS0.\nWhat's in the Workspace:\n- the file explorer (left) holds the lab: `notebooks/`, `vignettes/`\n- Cortex Code is here too, as a sidebar: the round button at the bottom right\n**Tip:** Snowsight sometimes reopens **My Workspace**. Check the name at the top left whenever you come back.",
+     "where": "the **Home / CoCo** toggle > **Home**, then **Projects > Workspaces** > the **My Workspace** dropdown (top left) > **payments-hol**",
+     "prompt": "",
+     "sql": "",
+     "expect": "the payments-hol Workspace open, with `notebooks/` and `vignettes/` in the file explorer",
+     "checkId": "",
+     "pasteInto": "",
+     "media": "start_open_workspace.mp4",
+     "mediaCaption": "CoCo > Home > Workspaces > payments-hol, then the Cortex Code sidebar"
+    },
+    {
      "title": "Open the starter notebook and create its service",
      "body": "1. Open `notebooks/` > **ds1_attrition_model.ipynb** in the file explorer.\n- Can't see `notebooks/` and `vignettes/`? You're in the wrong Workspace. Pick **payments-hol** from the Workspace dropdown (top left).\n2. In the notebook toolbar, click the arrow next to the status dot (right of the blue run button).\n3. Choose **Create new service**.\n- Already created one in another module? Pick it under **Select service** instead, usually `USER_SERVICE_1`.\n4. Expand **Service settings** in **Connect your notebook** and fill it in as below. Only the three **bold** rows change.\n| Setting | Value |\n|---|---|\n| Service name | leave the default (e.g. `USER_SERVICE_1`) |\n| Runtime | leave as is (v3.0 · Python 3.12) |\n| Compute type | CPU |\n| **Compute pool** | **NOTEBOOK_POOL** (change it from HOL_COMPUTE_POOL_CPU) |\n| **Idle timeout** | **1 hour** (change it from 24 hours) |\n| **External access integrations** | **HOL_NOTEBOOK_ACCESS_INTEGRATION** |\n5. Click **Create and connect**. The first start takes 1-2 minutes.\n6. Check the role is **HOL_PARTICIPANT** and the warehouse is **BARCLAYS_WH** (role and warehouse button in the notebook toolbar).\nThe notebook runtime already has `snowflake-ml-python`, scikit-learn and XGBoost.",
      "where": "the **payments-hol** Workspace (not My Workspace) > file explorer > `notebooks/ds1_attrition_model.ipynb`",

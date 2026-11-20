@@ -16,6 +16,19 @@
 - Table `ML.RB_ATTRITION_SCORES`: a churn probability and risk band for every customer, scored with the registered model
 
 ## Steps
+### Go back Home and open the payments-hol Workspace
+Where: the **Home / CoCo** toggle > **Home**, then **Projects > Workspaces** > the **My Workspace** dropdown (top left) > **payments-hol**
+Media: start_open_workspace.mp4 | CoCo > Home > Workspaces > payments-hol, then the Cortex Code sidebar
+1. Switch the toggle at the top left back to **Home**.
+2. Open **Projects > Workspaces**.
+3. Open the **My Workspace** dropdown (top left) and pick **payments-hol**.
+**Important:** go back to **Home** first. Workspaces isn't on the CoCo side, where you worked in DS0.
+What's in the Workspace:
+- the file explorer (left) holds the lab: `notebooks/`, `vignettes/`
+- Cortex Code is here too, as a sidebar: the round button at the bottom right
+**Tip:** Snowsight sometimes reopens **My Workspace**. Check the name at the top left whenever you come back.
+Expect: the payments-hol Workspace open, with `notebooks/` and `vignettes/` in the file explorer
+
 ### Open the starter notebook and create its service
 Where: the **payments-hol** Workspace (not My Workspace) > file explorer > `notebooks/ds1_attrition_model.ipynb`
 Media: ds1_notebook_service.mp4 | Open the notebook > Create new service > NOTEBOOK_POOL, 1 hour, HOL_NOTEBOOK_ACCESS_INTEGRATION
