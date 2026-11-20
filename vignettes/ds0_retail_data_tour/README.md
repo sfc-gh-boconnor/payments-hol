@@ -15,7 +15,7 @@
 ## Steps
 ### Open Cortex Code
 Where: Snowsight home page, the **Home / CoCo** toggle (top left) > **CoCo**
-Media: start_open_coco.mp4 | Home > CoCo, then paste the first prompt
+Media: ds0_open_coco.mp4 | Home > CoCo, then paste DS0's first prompt
 1. At the top left of Snowsight, switch the toggle from **Home** to **CoCo**.
 2. Close the **CoCo mode (preview)** pop-up if it appears.
 3. Press **New session**.

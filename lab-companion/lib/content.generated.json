@@ -814,8 +814,8 @@
      "expect": "the Cortex Code screen with a **How can I help?** box",
      "checkId": "",
      "pasteInto": "",
-     "media": "start_open_coco.mp4",
-     "mediaCaption": "Home > CoCo, then paste the first prompt"
+     "media": "ds0_open_coco.mp4",
+     "mediaCaption": "Home > CoCo, then paste DS0's first prompt"
     },
     {
      "title": "Find the labels",
