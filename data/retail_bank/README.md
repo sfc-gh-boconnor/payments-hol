@@ -7,10 +7,13 @@ Synthetic retail banking customers on real UK geography, for the Payments HOL. L
 
 | File | Table | Rows | Size |
 | --- | --- | --- | --- |
-| `rb_customers.csv.gz` | `RB_CUSTOMERS` | 20,000 | 1.5 MB |
-| `rb_accounts.csv.gz` | `RB_ACCOUNTS` | ~40,000 | 0.6 MB |
-| `rb_monthly_snapshot.csv.gz` | `RB_MONTHLY_SNAPSHOT` | ~229,000 | 5.8 MB |
-| `rb_transactions.csv.gz` | `RB_TRANSACTIONS` | ~1.1 million | 16.5 MB |
+| `rb_customers.csv.gz` | `RB_CUSTOMERS` | 20,000 | 1.7 MB |
+| `rb_products.csv.gz` | `RB_PRODUCTS` | 25 | under 0.1 MB |
+| `rb_accounts.csv.gz` | `RB_ACCOUNTS` | ~44,000 | 0.7 MB |
+| `rb_employment.csv.gz` | `RB_EMPLOYMENT` | 20,000 | 0.3 MB |
+| `rb_salary_history.csv.gz` | `RB_SALARY_HISTORY` | ~40,000 | 0.3 MB |
+| `rb_monthly_snapshot.csv.gz` | `RB_MONTHLY_SNAPSHOT` | ~229,000 | 5.7 MB |
+| `rb_transactions.csv.gz` | `RB_TRANSACTIONS` | ~1.3 million | 19.0 MB |
 
 As-of date: **20 November 2026**. Snapshots cover December 2025 to November 2026. The transaction ledger covers the last 90 days for every customer still with the bank in that window.
 
@@ -49,6 +52,42 @@ Deciles from different nations aren't directly comparable.
 - `PREFERRED_CHANNEL`, `CREDIT_SCORE`, `CREDIT_BAND`, `VULNERABLE_FLAG` (aged 75+, long-term sick, low-income lone parent, plus some background) and `SEGMENT` follow from the profile.
 
 **Identity:** `FIRST_NAME`, `LAST_NAME`, `SEX` and `DATE_OF_BIRTH` are synthetic (Faker `en_GB`).
+
+## Products, pay and affordability
+
+**`RB_PRODUCTS`: generic product catalogue (25 products, no real bank's names)**
+- **Families:** current accounts (Everyday, Plus, Premier, Student, Young Adult), savings (Easy Access, Rewards, 1- and 2-year fixed), cash ISAs, credit cards, personal and car loans, mortgages (2- and 5-year fixed, tracker, standard variable rate) and insurance (home, travel, life).
+- **Per product:** monthly fee, rate, term, minimum income, minimum credit score and age, channels, launch date and whether it is still on sale.
+- **Two legacy savings products** are closed to new customers and pay under 1.4%. The rate-sensitive savers who leave sit on these.
+
+**`RB_ACCOUNTS.PRODUCT_ID` links every holding to the catalogue**
+- Card and loan holders meet their product's income and score rules.
+- Loans and mortgages carry `TERM_MONTHS` and `MONTHLY_PAYMENT_GBP` (amortising).
+- Fixed savings, ISAs and mortgages carry a `MATURITY_DATE`. About 860 mature in the next 3 months, a retention moment.
+- About 1 in 4 mortgages whose fix has ended drift onto the standard variable rate. The rest re-fix.
+
+**`RB_EMPLOYMENT`, one row per customer**
+- `INCOME_SOURCE` (salary, self-employment, pension, benefits, student income).
+- A synthetic `EMPLOYER_NAME` and `EMPLOYER_SECTOR`, matched to the occupation class and shared by colleagues in the same city. The names are invented, and a check rejects any that match a list of large UK employers.
+- `PAY_FREQUENCY` and `PAY_DAY`. Weekly pay is only for routine and semi-routine jobs.
+- `GROSS_ANNUAL_GBP`, `INCOME_TAX_ANNUAL_GBP`, `NATIONAL_INSURANCE_ANNUAL_GBP` and `NET_MONTHLY_GBP`:
+  - tax uses 2025/26 bands, with rUK thresholds frozen into 2026/27 and Scottish bands for Glasgow and Edinburgh;
+  - the personal allowance tapers above £100k;
+  - NI is 8% and 2% for employees, 6% and 2% for the self-employed, and none on pensions;
+  - it is an estimate: no student loan, pension contributions or other deductions.
+- Payroll credits in `RB_TRANSACTIONS` name the employer or payer, on the right day and frequency. `SALARY_IN_GBP` in the snapshot is net pay.
+
+**`RB_SALARY_HISTORY`, about three years per working customer**
+- Annual reviews each April, roughly in line with UK average earnings growth (5.5%, 4.8%, 3.8%).
+- Promotions, and income changes for the self-employed.
+- Each history ends at today's gross pay.
+
+**Affordability on `RB_CUSTOMERS`**
+- `TOTAL_DEBT_GBP`: open card, loan and mortgage balances, reconciled to the accounts.
+- `DEBT_TO_INCOME`.
+- `MONTHLY_COMMITMENTS_GBP`: repayments, insurance premiums, a 3% card minimum, housing (rent or mortgage, with us or another lender) and bills.
+- `DISPOSABLE_INCOME_GBP`: net pay minus commitments and average card spend over the last 3 months.
+- `AFFORDABILITY_BAND`: STRETCHED, TIGHT, COMFORTABLE or STRONG.
 
 ## ML signals (planted on purpose)
 
