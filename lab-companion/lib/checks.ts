@@ -46,6 +46,84 @@ export const CHECKS: Record<string, Check[]> = {
       hint: "Ask the facilitator: setup/02_publish_iceberg.sql or setup/08_retail_bank_seed.sql has not been run in this account.",
     },
   ],
+  DS0: [
+    {
+      id: "ds0_labels_toured",
+      label: "You profiled the monthly snapshot and the transaction ledger",
+      sql: `SELECT COUNT_IF(QUERY_TEXT ILIKE '%RB_MONTHLY_SNAPSHOT%') > 0 AND COUNT_IF(QUERY_TEXT ILIKE '%RB_TRANSACTIONS%') > 0 AS OK,
+                   COUNT_IF(QUERY_TEXT ILIKE '%RB_%') || ' of your recent queries touched the retail tables' AS DETAIL
+            FROM TABLE(BARCLAYS_HOL.INFORMATION_SCHEMA.QUERY_HISTORY_BY_USER(RESULT_LIMIT => 1000))
+            WHERE EXECUTION_STATUS = 'SUCCESS' AND START_TIME > DATEADD('day', -2, CURRENT_TIMESTAMP())`,
+      hint: "Run the Meet the features and See what fraud looks like prompts, and Allow the queries.",
+      asCaller: true,
+    },
+  ],
+  DS1: [
+    {
+      id: "ds1_features",
+      label: "Point-in-time feature view RB_CHURN_FEATURES exists",
+      sql: exists("ML", "RB_CHURN_FEATURES"),
+      hint: "Run the features cell under heading 1 of ds1_attrition_model (or ds1.sql).",
+    },
+    {
+      id: "ds1_experiment",
+      label: "Experiment RB_ATTRITION has at least two runs",
+      sql: `SHOW RUNS IN EXPERIMENT BARCLAYS_HOL.ML.RB_ATTRITION ->> SELECT COUNT(*) >= 2 AS OK, COUNT(*) || ' runs in RB_ATTRITION' AS DETAIL FROM $1`,
+      hint: "Run train_and_track under heading 2. The experiment must be named RB_ATTRITION in BARCLAYS_HOL.ML.",
+    },
+    {
+      id: "ds1_model_registered",
+      label: "RB_ATTRITION_MODEL is in the Model Registry",
+      sql: `SHOW MODELS LIKE 'RB_ATTRITION_MODEL' IN SCHEMA BARCLAYS_HOL.ML ->> SELECT COUNT(*) > 0 AS OK, COALESCE('default version ' || MAX("default_version_name"), 'not registered') AS DETAIL FROM $1`,
+      hint: "Run the register cell under heading 3.",
+    },
+    {
+      id: "ds1_scored",
+      label: "Every customer is scored in RB_ATTRITION_SCORES",
+      sql: rows("BARCLAYS_HOL.ML.RB_ATTRITION_SCORES", 10000),
+      hint: "Run the score cell under heading 4.",
+    },
+  ],
+  DS2: [
+    {
+      id: "ds2_experiment",
+      label: "Experiment RB_FRAUD has at least two runs",
+      sql: `SHOW RUNS IN EXPERIMENT BARCLAYS_HOL.ML.RB_FRAUD ->> SELECT COUNT(*) >= 2 AS OK, COUNT(*) || ' runs in RB_FRAUD' AS DETAIL FROM $1`,
+      hint: "Run train_and_track under heading 2 of ds2_fraud_anomaly.",
+    },
+    {
+      id: "ds2_model_registered",
+      label: "RB_FRAUD_ANOMALY is registered and its alerts are written",
+      sql: `SELECT COUNT(*) >= 1000 AS OK, COUNT(*) || ' alerts in RB_FRAUD_ALERTS' AS DETAIL FROM BARCLAYS_HOL.ML.RB_FRAUD_ALERTS`,
+      hint: "Run register_and_score under heading 3.",
+    },
+  ],
+  AI4: [
+    {
+      id: "ai4_call_insights",
+      label: "RB_CALL_INSIGHTS has enriched call transcripts",
+      sql: rows("BARCLAYS_HOL.ANALYTICS.RB_CALL_INSIGHTS", 50),
+      hint: "Run the Enrich call transcripts prompt, so Cortex Code creates BARCLAYS_HOL.ANALYTICS.RB_CALL_INSIGHTS.",
+    },
+    {
+      id: "ai4_evidence_read",
+      label: "You read the evidence files with AI SQL",
+      sql: `SELECT COUNT_IF(QUERY_TEXT ILIKE '%FINCRIME_EVIDENCE%' AND QUERY_TEXT ILIKE '%TO_FILE%') > 0 AS OK,
+                   COUNT_IF(QUERY_TEXT ILIKE '%FINCRIME_EVIDENCE%') || ' of your recent queries read the evidence stage' AS DETAIL
+            FROM TABLE(BARCLAYS_HOL.INFORMATION_SCHEMA.QUERY_HISTORY_BY_USER(RESULT_LIMIT => 1000))
+            WHERE EXECUTION_STATUS = 'SUCCESS' AND START_TIME > DATEADD('day', -2, CURRENT_TIMESTAMP())`,
+      hint: "Run the Read the fraud evidence prompt and Allow the AI_EXTRACT and AI_COMPLETE queries on @RETAIL.FINCRIME_EVIDENCE.",
+      asCaller: true,
+    },
+  ],
+  AI5: [
+    {
+      id: "ai5_search_service",
+      label: "A Cortex Search service exists in SEARCH_LAB",
+      sql: show("SHOW CORTEX SEARCH SERVICES IN SCHEMA BARCLAYS_HOL.SEARCH_LAB", "Search service"),
+      hint: "Run the Create a search service prompt. If SEARCH_LAB doesn't exist, Cortex Search isn't enabled here: skip this optional module.",
+    },
+  ],
   C1: [
     {
       id: "c1_iceberg_published",
@@ -435,6 +513,12 @@ const pre = {
 } satisfies Record<string, Check>
 
 export const PREREQS: Record<string, Check[]> = {
+  AI5: [{
+    id: "pre_search_lab",
+    label: "Cortex Search is enabled for this lab (SEARCH_LAB schema)",
+    sql: show("SHOW SCHEMAS LIKE 'SEARCH_LAB' IN DATABASE BARCLAYS_HOL", "SEARCH_LAB"),
+    hint: "Not set up in this account (Cortex Search isn't approved here): skip AI5, it's optional.",
+  }],
   C1: [CHECKS.C0[1]],
   DE1: [CHECKS.C1[0]],
   DE2: [pre.staging, pre.slaMart, pre.customerMart],

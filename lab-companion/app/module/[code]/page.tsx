@@ -35,7 +35,12 @@ export default async function ModulePage({ params }: { params: Promise<{ code: s
         eyebrow={`${m.code} · ${m.persona}`}
         title={m.title}
         description={m.question}
-        actions={m.minutes ? <Badge variant="outline" className="gap-1"><Clock className="h-3 w-3" />{m.minutes} min</Badge> : undefined}
+        actions={
+          <div className="flex items-center gap-2">
+            {m.optional && <Badge variant="outline" className="border-[var(--sf-orange)] text-[var(--sf-orange)]">Optional</Badge>}
+            {m.minutes ? <Badge variant="outline" className="gap-1"><Clock className="h-3 w-3" />{m.minutes} min</Badge> : null}
+          </div>
+        }
       />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
@@ -43,6 +48,11 @@ export default async function ModulePage({ params }: { params: Promise<{ code: s
           <Card>
             <CardHeader><CardTitle>What you'll build</CardTitle></CardHeader>
             <CardContent className="space-y-4 text-sm">
+              {m.optional && (
+                <div className="rounded-md border border-[var(--sf-orange)]/60 bg-[var(--sf-orange)]/10 p-3 text-sm">
+                  <span className="font-semibold">Optional module: </span><InlineMd text={m.optional} />
+                </div>
+              )}
               <ul className="list-disc space-y-1 pl-5">{m.build.map((b) => <li key={b}><InlineMd text={b} /></li>)}</ul>
               {!PREREQS[m.code] && (
                 <div className="rounded-md bg-muted/60 p-3 text-xs">

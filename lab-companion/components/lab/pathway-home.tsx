@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 
-type ModuleSummary = { code: string; title: string; minutes: number | null; persona: string; checkIds: string[] }
+type ModuleSummary = { code: string; title: string; minutes: number | null; persona: string; optional: string; checkIds: string[] }
 type Progress = Record<string, { ok: boolean }>
 
 export function PathwayHome({
@@ -51,11 +51,11 @@ export function PathwayHome({
         <CardHeader>
           <CardTitle>Choose your pathway</CardTitle>
           <CardDescription>
-            Everyone starts with C0 and C1. Each vignette stands alone - if it lists a prerequisite you have not built, run the catch-up script it names.
+            Most pathways start with C0 and C1; data scientists start with DS0. Modules marked Optional can be skipped. Each vignette stands alone - if it lists a prerequisite you have not built, run the catch-up script it names.
             {progress.data?.user && <> Signed in as <strong>{progress.data.user}</strong>.</>}
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           {names.map((p) => (
             <button
               key={p}
@@ -107,6 +107,7 @@ function ModuleRow({ m, step, passed, total, compact }: { m: ModuleSummary; step
           <div className="flex items-center gap-2">
             <span className="text-sm font-bold text-primary">{m.code}</span>
             <span className="truncate text-sm font-medium">{m.title}</span>
+            {m.optional && <Badge variant="outline" className="shrink-0 border-[var(--sf-orange)] text-[10px] text-[var(--sf-orange)]" title={m.optional}>Optional</Badge>}
           </div>
           <div className="mt-0.5 flex items-center gap-3 text-xs text-muted-foreground">
             <span>{m.persona}</span>

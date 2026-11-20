@@ -52,8 +52,26 @@ export const DATA_PRODUCTS: DataProduct[] = [
       { name: "RB_MONTHLY_SNAPSHOT", grain: "one customer-month", rows: 229161 },
       { name: "RB_TRANSACTIONS", grain: "one transaction", rows: 1296242 },
     ],
-    modules: ["C0"],
+    modules: ["C0", "DS0", "DS1", "DS2"],
     alsoWorksFor: "attrition, next best product, affordability, fraud detection",
+  },
+  {
+    id: "voice",
+    name: "Customer voice and financial crime",
+    business: "Retail",
+    schema: "BARCLAYS_HOL.RAW_DATA (RB_ text) + @RETAIL.FINCRIME_EVIDENCE",
+    summary: "Call transcripts, emails, complaints, fraud case notes, SAR narratives and card disputes, plus phishing screenshots and police report PDFs. Every record links to a retail customer, and fraud records to the transaction. Synthetic.",
+    tables: [
+      { name: "RB_CALL_TRANSCRIPTS", grain: "one call, with start and end time", rows: 1000 },
+      { name: "RB_EMAILS", grain: "one customer email", rows: 300 },
+      { name: "RB_COMPLAINTS", grain: "one complaint", rows: 200 },
+      { name: "RB_FRAUD_CASES", grain: "one fraud investigation", rows: 300 },
+      { name: "RB_SAR_NARRATIVES", grain: "one Suspicious Activity Report", rows: 60 },
+      { name: "RB_DISPUTES", grain: "one card dispute", rows: 120 },
+      { name: "RB_EVIDENCE_FILES", grain: "one evidence file on the stage", rows: 150 },
+    ],
+    modules: ["AI4", "AI5"],
+    alsoWorksFor: "complaints handling, vulnerability, APP scam reimbursement, SAR quality",
   },
   {
     id: "branches",
@@ -134,7 +152,9 @@ export const ARCHITECTURE = [
   ] },
   { lane: "Understand", items: [
     { name: "Semantic views", detail: "business definitions", modules: ["DA1"] },
-    { name: "Cortex AI SQL", detail: "sentiment, classify, summarise", modules: ["DA2"] },
+    { name: "Cortex AI SQL", detail: "sentiment, classify, extract, images and PDFs", modules: ["DA2", "AI4"] },
+    { name: "ML models", detail: "experiments and the Model Registry", modules: ["DS1", "DS2"] },
+    { name: "Cortex Search (optional)", detail: "not yet approved at Barclays", modules: ["AI5"] },
   ] },
   { lane: "Act", items: [
     { name: "Cortex Agents", detail: "and the MCP server", modules: ["OPS1", "OPS2", "AI1", "AI2"] },

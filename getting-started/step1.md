@@ -34,7 +34,7 @@ In Snowsight go to **Projects > Workspaces**, click the **My Workspace** dropdow
 
 ## Pathways
 
-Everyone does the shared core (C0 and C1) first, then two blocks of modules for their pathway: **Data Engineer**, **Data Analyst**, **Payments Ops**, **AI Builder** or **Governance**. The lab ends with everyone asking the **Corporate Payments 360** agent about what they built.
+Everyone does the shared core (C0 and C1) first, then two blocks of modules for their pathway: **Data Engineer**, **Data Analyst**, **Payments Ops**, **Data Scientist**, **AI Builder** or **Governance**. The lab ends with everyone asking the **Corporate Payments 360** agent about what they built.
 
 The Lab Companion shows the modules, order and timings for your pathway.
 

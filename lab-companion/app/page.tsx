@@ -6,7 +6,7 @@ import { MODULES, PATHWAYS, checkIds } from "@/lib/content"
 export const dynamic = "force-dynamic"
 
 export default function Home() {
-  const modules = MODULES.map((m) => ({ code: m.code, title: m.title, minutes: m.minutes, persona: m.persona, checkIds: checkIds(m.code) }))
+  const modules = MODULES.map((m) => ({ code: m.code, title: m.title, minutes: m.minutes, persona: m.persona, optional: m.optional, checkIds: checkIds(m.code) }))
   return (
     <main className="mx-auto w-full max-w-7xl space-y-6 px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
       <PageHeader

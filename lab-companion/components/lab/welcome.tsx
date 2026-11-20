@@ -12,8 +12,8 @@ const GAINS = [
 const PRODUCTS = [
   { name: "Payments operations", modules: "C1, DE1-DE3, OPS2", business: "Corporate", elsewhere: "card disputes, fraud alerts, faster-payments SLAs" },
   { name: "Client 360", modules: "DA0, DA1, OPS1, AI1-AI3", business: "Corporate and RM", elsewhere: "next best action, credit reviews, KYC refresh" },
-  { name: "Retail banking", modules: "C0, data map", business: "Retail", elsewhere: "attrition, next best product, affordability, fraud" },
-  { name: "Customer voice", modules: "DA2, OPS3", business: "Corporate and retail", elsewhere: "complaints handling, call notes, app reviews" },
+  { name: "Retail banking", modules: "C0, DS0-DS2", business: "Retail", elsewhere: "attrition, next best product, affordability, fraud" },
+  { name: "Customer voice and fin crime", modules: "DA2, OPS3, AI4, AI5", business: "Corporate and retail", elsewhere: "complaints, vulnerability, APP scams, SARs" },
   { name: "Branch network and catchment", modules: "DA3", business: "Retail", elsewhere: "ATM placement, mortgage branches, SME lending reach" },
   { name: "Trust and governance", modules: "GOV1-GOV3", business: "Every data product", elsewhere: "PII controls, audit evidence, AI model access" },
 ]

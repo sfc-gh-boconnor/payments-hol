@@ -6,6 +6,7 @@
    "persona": "All personas",
    "minutes": 20,
    "prerequisites": "Facilitator setup complete",
+   "optional": "",
    "question": "What data do we have, how does it fit together, and which part do I want to work on today?",
    "build": [
     "Nothing yet: you tour every data product in the account with Cortex Code, from corporate payments to retail customers and the branch network, then pick where to zoom in."
@@ -86,6 +87,7 @@
    "persona": "All personas",
    "minutes": 20,
    "prerequisites": "C0",
+   "optional": "",
    "question": "What has the platform team published to us, and what can we (not) do with it?",
    "build": [
     "Nothing yet: you zoom into one data product, the nine read-only corporate payments Iceberg tables, with Cortex Code, and get to know the Workspace you'll build everything else in."
@@ -156,6 +158,7 @@
    "persona": "Data Engineer",
    "minutes": 60,
    "prerequisites": "Core C1 only",
+   "optional": "",
    "question": "Turn the published Iceberg sources into governed, tested data products - and publish them back to the lake as Iceberg.",
    "build": [
     "The dbt project in the Workspace (4 staging views, 2 marts, pre-written tests), run from the Workspace dbt pane",
@@ -264,6 +267,7 @@
    "persona": "Data Engineer",
    "minutes": 45,
    "prerequisites": "`setup/catchup/core_analytics.sql` (or DE1 + DA2)",
+   "optional": "",
    "question": "Keep an ops-floor SLA monitor fresh without orchestration code, and prove the data feeding it is trustworthy.",
    "build": [
     "`DT_LIVE_SLA_BREACHES` (1-minute lag)",
@@ -336,6 +340,7 @@
    "persona": "Data Engineer (Payments Operations)",
    "minutes": 45,
    "prerequisites": "C1 only. Uses `BARCLAYS_HOL.REALTIME`, the shared interactive warehouse `HOL_INTERACTIVE_WH`, and grants to create a Snowflake Postgres instance and mirror it (all set up at provisioning)",
+   "optional": "",
    "question": "A corporate client's payments are failing right now. How does the operations floor see it within seconds, not after tonight's dbt build, and serve that view to everyone watching at once?",
    "build": [
     "A **Snowflake Postgres** instance `HOL_PAYMENTS_PG`: the operational payments database the payment engine writes to",
@@ -441,6 +446,7 @@
    "persona": "Data Analyst",
    "minutes": 30,
    "prerequisites": "Core C1 only",
+   "optional": "",
    "question": "Can ops and RMs get the client 360 from C1 as a live, interactive report they can filter themselves, refreshed every morning?",
    "build": [
     "An interactive, Barclays-branded HTML payments report, built by Cortex Code",
@@ -492,6 +498,7 @@
    "persona": "Data Analyst",
    "minutes": 60,
    "prerequisites": "`setup/catchup/core_analytics.sql`",
+   "optional": "",
    "question": "Give RMs and ops a single, trusted definition of a corporate client's payments health that anyone can query in plain English.",
    "build": [
     "Contract views `V_CLIENT_PAYMENT_SUMMARY`, `V_CLIENT_ALERTS`",
@@ -552,6 +559,7 @@
    "persona": "Data Analyst",
    "minutes": 45,
    "prerequisites": "`setup/catchup/core_analytics.sql` (or DE1)",
+   "optional": "",
    "question": "What are corporate clients actually complaining about, by scheme and by relationship manager - without reading 2,000 comments?",
    "build": [
     "`FEEDBACK_ENRICHED` (sentiment + topic)",
@@ -645,6 +653,7 @@
    "persona": "Data Analyst (Retail Banking)",
    "minutes": 45,
    "prerequisites": "C1 only. Uses the retail branch network in `BARCLAYS_HOL.RETAIL`, built at provisioning",
+   "optional": "",
    "question": "Which branches could we consolidate, which nearby branches would absorb their customers, and how much longer would those customers have to travel?",
    "build": [
     "Notebook `da3_branch_network` with a network map, drive-time catchments and an H3 density map",
@@ -785,11 +794,250 @@
    "sql": "-- =====================================================\n-- VIGNETTE DA3: BRANCH NETWORK AND CATCHMENT ANALYSIS   (~45 min)\n-- Persona:  Data Analyst (Retail Banking)\n-- Question: \"Which branches could we consolidate, who absorbs their\n--            customers, and how much longer would those customers travel?\"\n-- Prereq:   C1 only. Uses BARCLAYS_HOL.RETAIL (setup/07_retail_geo_seed.sql),\n--           including real road-network travel times and catchments that were\n--           precomputed with OpenRouteService on Snowpark Container Services.\n-- In the lab you build this in a Workspace Notebook (da3_branch_network)\n-- with Cortex Code; this file is the reference SQL for each cell.\n-- =====================================================\n\nUSE ROLE HOL_PARTICIPANT;\nUSE WAREHOUSE BARCLAYS_WH;\nUSE SCHEMA BARCLAYS_HOL.ANALYTICS;\n\n-- -----------------------------------------------------\n-- DA3.1 Map the network (notebook: SQL cell + altair map of LON/LAT)\n-- -----------------------------------------------------\nSELECT 'BRANCH' AS KIND, BRANCH_NAME AS NAME, CITY, LAT, LON FROM BARCLAYS_HOL.RETAIL.BRANCHES\nUNION ALL\nSELECT 'ATM', ATM_ID, NULL, LAT, LON FROM BARCLAYS_HOL.RETAIL.ATMS WHERE SITE_TYPE = 'STANDALONE';\n\n-- -----------------------------------------------------\n-- DA3.2 Drive-time catchments: who lives within a 10 and 20 minute drive\n-- of each branch (ORS isochrones + ST_WITHIN)\n-- -----------------------------------------------------\nSELECT b.BRANCH_NAME, b.CITY, i.MINUTES,\n       ROUND(ANY_VALUE(ST_AREA(i.CATCHMENT)) / 1e6, 1) AS CATCHMENT_KM2,\n       COUNT(c.CUSTOMER_ID) AS CUSTOMERS_IN_CATCHMENT\nFROM BARCLAYS_HOL.RETAIL.BRANCH_ISOCHRONES i\nJOIN BARCLAYS_HOL.RETAIL.BRANCHES b USING (BRANCH_ID)\nLEFT JOIN BARCLAYS_HOL.RETAIL.RETAIL_CUSTOMERS c\n  ON c.CITY = b.CITY AND ST_WITHIN(c.HOME_LOCATION, i.CATCHMENT)\nWHERE i.PROFILE = 'driving-car'\nGROUP BY 1, 2, 3\nORDER BY b.CITY, b.BRANCH_NAME, i.MINUTES;\n\n-- -----------------------------------------------------\n-- DA3.3 Nearest branch by real drive time: each customer's fastest and\n-- second-fastest branch from the ORS matrix (by the customer's H3 cell)\n-- -----------------------------------------------------\nCREATE OR REPLACE TABLE CUSTOMER_NEAREST_BRANCH AS\nWITH ranked AS (\n    SELECT c.CUSTOMER_ID, t.BRANCH_ID, t.DURATION_S / 60 AS DRIVE_MIN, t.DISTANCE_M / 1000 AS DRIVE_KM,\n           ROW_NUMBER() OVER (PARTITION BY c.CUSTOMER_ID ORDER BY t.DURATION_S) AS RN\n    FROM BARCLAYS_HOL.RETAIL.RETAIL_CUSTOMERS c\n    JOIN BARCLAYS_HOL.RETAIL.BRANCH_CELL_TRAVEL t\n      ON t.H3_CELL = c.HOME_H3_CELL AND t.PROFILE = 'driving-car'\n    JOIN BARCLAYS_HOL.RETAIL.BRANCHES b ON b.BRANCH_ID = t.BRANCH_ID AND b.CITY = c.CITY\n    QUALIFY RN <= 2\n),\nwalk AS (\n    SELECT c.CUSTOMER_ID, MIN(t.DURATION_S) / 60 AS NEAREST_WALK_MIN\n    FROM BARCLAYS_HOL.RETAIL.RETAIL_CUSTOMERS c\n    JOIN BARCLAYS_HOL.RETAIL.BRANCH_CELL_TRAVEL t ON t.H3_CELL = c.HOME_H3_CELL AND t.PROFILE = 'foot-walking'\n    GROUP BY 1\n)\nSELECT c.CUSTOMER_ID, c.CITY, c.AGE_BAND, c.SEGMENT, c.DIGITAL_ACTIVE,\n       MAX(IFF(r.RN = 1, r.BRANCH_ID, NULL))          AS NEAREST_BRANCH_ID,\n       ROUND(MAX(IFF(r.RN = 1, r.DRIVE_MIN, NULL)), 1) AS NEAREST_DRIVE_MIN,\n       ROUND(MAX(IFF(r.RN = 1, r.DRIVE_KM, NULL)), 2)  AS NEAREST_DRIVE_KM,\n       MAX(IFF(r.RN = 2, r.BRANCH_ID, NULL))          AS SECOND_BRANCH_ID,\n       ROUND(MAX(IFF(r.RN = 2, r.DRIVE_MIN, NULL)), 1) AS SECOND_DRIVE_MIN,\n       ROUND(ANY_VALUE(w.NEAREST_WALK_MIN), 1)        AS NEAREST_WALK_MIN\nFROM BARCLAYS_HOL.RETAIL.RETAIL_CUSTOMERS c\nJOIN ranked r USING (CUSTOMER_ID)\nLEFT JOIN walk w USING (CUSTOMER_ID)\nGROUP BY c.CUSTOMER_ID, c.CITY, c.AGE_BAND, c.SEGMENT, c.DIGITAL_ACTIVE;\n\n-- -----------------------------------------------------\n-- DA3.4 Overlapping catchments: branch pairs whose 10 minute drive\n-- catchments overlap most (ST_INTERSECTION of the isochrones)\n-- -----------------------------------------------------\nSELECT * FROM (\nSELECT a.CITY, a.BRANCH_NAME AS BRANCH_A, b.BRANCH_NAME AS BRANCH_B,\n       ROUND(ST_DISTANCE(a.LOCATION, b.LOCATION) / 1000, 2) AS STRAIGHT_LINE_KM,\n       ROUND(ST_AREA(ST_INTERSECTION(ia.CATCHMENT, ib.CATCHMENT)) / LEAST(ST_AREA(ia.CATCHMENT), ST_AREA(ib.CATCHMENT)) * 100) AS OVERLAP_PCT\nFROM BARCLAYS_HOL.RETAIL.BRANCHES a\nJOIN BARCLAYS_HOL.RETAIL.BRANCHES b ON a.CITY = b.CITY AND a.BRANCH_ID < b.BRANCH_ID\nJOIN BARCLAYS_HOL.RETAIL.BRANCH_ISOCHRONES ia ON ia.BRANCH_ID = a.BRANCH_ID AND ia.PROFILE = 'driving-car' AND ia.MINUTES = 10\nJOIN BARCLAYS_HOL.RETAIL.BRANCH_ISOCHRONES ib ON ib.BRANCH_ID = b.BRANCH_ID AND ib.PROFILE = 'driving-car' AND ib.MINUTES = 10\n) WHERE OVERLAP_PCT >= 80\nORDER BY OVERLAP_PCT DESC, STRAIGHT_LINE_KM;\n\n-- -----------------------------------------------------\n-- DA3.5 Customer density with H3 (resolution 8, ~0.7 km2 cells)\n-- notebook: altair heat map of cells (H3_CELL_TO_POINT gives the centre)\n-- -----------------------------------------------------\nSELECT HOME_H3_CELL AS H3_CELL,\n       ST_Y(H3_CELL_TO_POINT(HOME_H3_CELL)) AS LAT, ST_X(H3_CELL_TO_POINT(HOME_H3_CELL)) AS LON,\n       ANY_VALUE(CITY) AS CITY, COUNT(*) AS CUSTOMERS\nFROM BARCLAYS_HOL.RETAIL.RETAIL_CUSTOMERS\nGROUP BY 1, 2, 3\nORDER BY CUSTOMERS DESC;\n\n-- -----------------------------------------------------\n-- DA3.6 Closure impact: if a branch closes, its customers move to their\n-- second-fastest branch. Added drive time, lost walk-in access, cost saved.\n-- -----------------------------------------------------\nCREATE OR REPLACE TABLE BRANCH_CLOSURE_IMPACT AS\nWITH visits AS (\n    SELECT BRANCH_ID, COUNT(*) AS VISITS_12M FROM BARCLAYS_HOL.RETAIL.BRANCH_VISITS GROUP BY 1\n),\nwalk_after AS (\n    -- walking time to the receiving branch for each customer\n    SELECT n.CUSTOMER_ID, t.DURATION_S / 60 AS WALK_MIN_AFTER\n    FROM CUSTOMER_NEAREST_BRANCH n\n    JOIN BARCLAYS_HOL.RETAIL.RETAIL_CUSTOMERS c USING (CUSTOMER_ID)\n    JOIN BARCLAYS_HOL.RETAIL.BRANCH_CELL_TRAVEL t\n      ON t.H3_CELL = c.HOME_H3_CELL AND t.BRANCH_ID = n.SECOND_BRANCH_ID AND t.PROFILE = 'foot-walking'\n),\nmoved AS (\n    SELECT n.NEAREST_BRANCH_ID AS BRANCH_ID,\n           COUNT(*) AS CUSTOMERS,\n           ROUND(AVG(n.SECOND_DRIVE_MIN - n.NEAREST_DRIVE_MIN), 1) AS AVG_ADDED_DRIVE_MIN,\n           ROUND(APPROX_PERCENTILE(n.SECOND_DRIVE_MIN - n.NEAREST_DRIVE_MIN, 0.9), 1) AS P90_ADDED_DRIVE_MIN,\n           COUNT_IF(n.NEAREST_WALK_MIN <= 15 AND COALESCE(w.WALK_MIN_AFTER, 999) > 15) AS LOSE_WALK_IN_ACCESS,\n           COUNT_IF(NOT n.DIGITAL_ACTIVE OR n.AGE_BAND = '75+') AS VULNERABLE_CUSTOMERS,\n           MODE(n.SECOND_BRANCH_ID) AS MAIN_RECEIVING_BRANCH_ID\n    FROM CUSTOMER_NEAREST_BRANCH n\n    LEFT JOIN walk_after w USING (CUSTOMER_ID)\n    GROUP BY 1\n)\nSELECT b.BRANCH_ID, b.BRANCH_NAME, b.CITY, b.FORMAT, b.ANNUAL_COST_GBP AS ANNUAL_SAVING_GBP,\n       COALESCE(v.VISITS_12M, 0) AS VISITS_12M,\n       ROUND(b.ANNUAL_COST_GBP / NULLIF(v.VISITS_12M, 0), 2) AS COST_PER_VISIT_GBP,\n       m.CUSTOMERS AS CUSTOMERS_AFFECTED, m.AVG_ADDED_DRIVE_MIN, m.P90_ADDED_DRIVE_MIN,\n       m.LOSE_WALK_IN_ACCESS, m.VULNERABLE_CUSTOMERS, r.BRANCH_NAME AS MAIN_RECEIVING_BRANCH,\n       CASE WHEN m.P90_ADDED_DRIVE_MIN >= 10 OR m.VULNERABLE_CUSTOMERS >= 200 THEN 'HIGH'\n            WHEN m.P90_ADDED_DRIVE_MIN >= 4 OR m.LOSE_WALK_IN_ACCESS >= 100 THEN 'MEDIUM' ELSE 'LOW' END AS DISRUPTION_RISK\nFROM BARCLAYS_HOL.RETAIL.BRANCHES b\nJOIN moved m ON m.BRANCH_ID = b.BRANCH_ID\nLEFT JOIN visits v ON v.BRANCH_ID = b.BRANCH_ID\nLEFT JOIN BARCLAYS_HOL.RETAIL.BRANCHES r ON r.BRANCH_ID = m.MAIN_RECEIVING_BRANCH_ID;\n\nSELECT BRANCH_NAME, CITY, ANNUAL_SAVING_GBP, COST_PER_VISIT_GBP, AVG_ADDED_DRIVE_MIN, P90_ADDED_DRIVE_MIN,\n       LOSE_WALK_IN_ACCESS, VULNERABLE_CUSTOMERS, DISRUPTION_RISK, MAIN_RECEIVING_BRANCH\nFROM BRANCH_CLOSURE_IMPACT\nORDER BY DISRUPTION_RISK = 'LOW' DESC, COST_PER_VISIT_GBP DESC\nLIMIT 10;\n\n-- -----------------------------------------------------\n-- DA3.7 Semantic view for Cortex Analyst (drive minutes, no GEOGRAPHY)\n-- -----------------------------------------------------\nCREATE OR REPLACE SEMANTIC VIEW SV_BRANCH_NETWORK\n  TABLES (\n    closures AS BARCLAYS_HOL.ANALYTICS.BRANCH_CLOSURE_IMPACT\n      PRIMARY KEY (BRANCH_ID)\n      WITH SYNONYMS = ('branches', 'branch closures', 'consolidation candidates')\n      COMMENT = 'One row per branch: what happens if it closes',\n    customers AS BARCLAYS_HOL.ANALYTICS.CUSTOMER_NEAREST_BRANCH\n      PRIMARY KEY (CUSTOMER_ID)\n      WITH SYNONYMS = ('retail customers', 'catchment')\n      COMMENT = 'Each retail customer with their fastest and second-fastest branch by drive time'\n  )\n  RELATIONSHIPS (\n    customers (NEAREST_BRANCH_ID) REFERENCES closures\n  )\n  FACTS (\n    closures.annual_saving_gbp AS ANNUAL_SAVING_GBP COMMENT = 'Annual running cost saved if the branch closes (GBP)',\n    closures.visits_12m AS VISITS_12M COMMENT = 'Branch visits in the last 12 months',\n    closures.cost_per_visit_gbp AS COST_PER_VISIT_GBP COMMENT = 'Annual cost divided by visits',\n    closures.avg_added_drive_min AS AVG_ADDED_DRIVE_MIN WITH SYNONYMS = ('extra travel time') COMMENT = 'Average extra drive minutes to the next-fastest branch (OpenRouteService)',\n    closures.p90_added_drive_min AS P90_ADDED_DRIVE_MIN COMMENT = '90th percentile extra drive minutes',\n    closures.lose_walk_in_access AS LOSE_WALK_IN_ACCESS COMMENT = 'Customers who lose a branch within a 15 minute walk',\n    closures.vulnerable_customers AS VULNERABLE_CUSTOMERS COMMENT = 'Affected customers who are 75+ or not digitally active',\n    customers.nearest_drive_min AS NEAREST_DRIVE_MIN COMMENT = 'Drive minutes from home to the fastest branch',\n    customers.nearest_walk_min AS NEAREST_WALK_MIN COMMENT = 'Walking minutes from home to the nearest branch'\n  )\n  DIMENSIONS (\n    closures.branch_name AS BRANCH_NAME WITH SYNONYMS = ('branch') COMMENT = 'Branch name',\n    closures.city AS CITY COMMENT = 'City',\n    closures.format AS FORMAT COMMENT = 'FULL or EXPRESS branch',\n    closures.disruption_risk AS DISRUPTION_RISK COMMENT = 'LOW, MEDIUM or HIGH service disruption if closed',\n    closures.main_receiving_branch AS MAIN_RECEIVING_BRANCH COMMENT = 'Branch that absorbs most customers',\n    customers.age_band AS AGE_BAND COMMENT = 'Customer age band',\n    customers.segment AS SEGMENT COMMENT = 'MASS, AFFLUENT or SMALL_BUSINESS',\n    customers.digital_active AS DIGITAL_ACTIVE COMMENT = 'Customer uses digital banking'\n  )\n  METRICS (\n    closures.total_saving_gbp AS SUM(closures.annual_saving_gbp) COMMENT = 'Total annual saving (GBP)',\n    closures.branch_count AS COUNT(closures.branch_name) COMMENT = 'Number of branches',\n    customers.customer_count AS COUNT(customers.customer_id) COMMENT = 'Number of customers',\n    customers.avg_drive_min AS ROUND(AVG(customers.nearest_drive_min), 1) COMMENT = 'Average drive minutes to the fastest branch'\n  )\n  COMMENT = 'DA3 retail branch network and consolidation impact (OpenRouteService travel times)';\n\nSELECT * FROM SEMANTIC_VIEW(SV_BRANCH_NETWORK\n  METRICS closures.total_saving_gbp, closures.branch_count\n  DIMENSIONS closures.city, closures.disruption_risk)\nORDER BY CITY, DISRUPTION_RISK;\n\n-- -----------------------------------------------------\n-- DA3.8 Branch network agent (in the lab: + > Agent > Create with CoCo)\n-- -----------------------------------------------------\nCREATE OR REPLACE AGENT BARCLAYS_HOL.ANALYTICS.BRANCH_NETWORK_ADVISOR\n  COMMENT = 'DA3: retail branch consolidation advisor'\n  PROFILE = '{\"display_name\": \"Branch Network Advisor\", \"color\": \"orange\"}'\n  FROM SPECIFICATION\n  $$\n  models:\n    orchestration: auto\n  instructions:\n    response: >\n      You advise a UK retail bank on its branch network. For a consolidation question, return:\n      a ranked list of candidate branches with annual saving and cost per visit, the branch that\n      absorbs their customers and the added drive time (average and p90 minutes), customers who\n      lose walk-in access, the disruption risk and vulnerable customers affected, and a short\n      90-day transition plan. Never recommend closing a HIGH disruption-risk branch without\n      saying why and what mitigation is needed.\n    orchestration: \"Use the Analyst tool for every question about branches, closures, catchments, travel time and customers.\"\n    sample_questions:\n      - question: \"What is the consolidation opportunity in Leeds?\"\n      - question: \"Which 3 branches could close with the least added travel time?\"\n      - question: \"Which branch would be hardest to close, and why?\"\n  tools:\n    - tool_spec:\n        type: \"cortex_analyst_text_to_sql\"\n        name: \"Analyst\"\n        description: \"Retail branch network: closure impact per branch (saving, visits, added drive time, lost walk-in access, disruption risk) and customer catchments.\"\n  tool_resources:\n    Analyst:\n      semantic_view: \"BARCLAYS_HOL.ANALYTICS.SV_BRANCH_NETWORK\"\n      execution_environment:\n        type: \"warehouse\"\n        warehouse: \"BARCLAYS_WH\"\n  $$;\n\nSELECT 'DA3 complete' AS STATUS;\n"
   },
   {
+   "code": "DS0",
+   "title": "Tour the retail data as a data scientist",
+   "persona": "Data Scientist",
+   "minutes": 20,
+   "prerequisites": "Facilitator setup complete",
+   "optional": "",
+   "question": "What can we predict from the retail banking data, what does a good training set look like, and where are the traps?",
+   "build": [
+    "Nothing yet: you tour the retail data product with Cortex Code as a data scientist (the labels, the features, the class balance and the leakage traps), then pick a model to build in DS1 or DS2."
+   ],
+   "steps": [
+    {
+     "title": "Open Cortex Code",
+     "body": "1. At the top left of Snowsight, switch the toggle from **Home** to **CoCo**.\n2. Close the **CoCo mode (preview)** pop-up if it appears.\n3. Press **New session**.\n4. Paste each prompt in this module into the **How can I help?** box.\nWhen Cortex Code wants to run a query, it shows a **Run this command?** card:\n- **Allow** lets it run\n- **Skip** stops it\n**Tip:** you're signed in as `HOL_PARTICIPANT`, with `BARCLAYS_WH` and `BARCLAYS_HOL` as your defaults. Cortex Code uses them, so you don't need to set a role or warehouse.",
+     "where": "Snowsight home page, the **Home / CoCo** toggle (top left) > **CoCo**",
+     "prompt": "",
+     "sql": "",
+     "expect": "the Cortex Code screen with a **How can I help?** box",
+     "checkId": "",
+     "pasteInto": "",
+     "media": "start_open_coco.mp4",
+     "mediaCaption": "Home > CoCo, then paste the first prompt"
+    },
+    {
+     "title": "Find the labels",
+     "body": "**Tip:** rare labels are normal in banking. Accuracy is a useless metric when 98% of customers stay.",
+     "where": "",
+     "prompt": "I'm a data scientist exploring the retail banking tables in BARCLAYS_HOL.RAW_DATA (the RB_ tables). Which columns could be targets for a model? For attrition (RB_CUSTOMERS.CHURNED and CHURN_DATE) and fraud (RB_TRANSACTIONS.IS_FRAUD and FRAUD_TYPE), show the rate, the counts and how they change by month, and say how imbalanced each one is.",
+     "sql": "",
+     "expect": "about 9% of customers left over the year and about 0.4% of transactions are fraud, in four fraud types, so both labels are heavily imbalanced",
+     "checkId": "",
+     "pasteInto": ""
+    },
+    {
+     "title": "Meet the features",
+     "body": "",
+     "where": "",
+     "prompt": "For attrition, which signals in RB_CUSTOMERS, RB_ACCOUNTS joined to RB_PRODUCTS, RB_EMPLOYMENT and RB_MONTHLY_SNAPSHOT look different for customers who left? Compare leavers with stayers on tenure, product count, savings rate (and legacy savings products), salary trend, app logins, branch visits, home branch and complaints. Show it as one table.",
+     "sql": "",
+     "expect": "leavers have shorter tenure (about 59 months against 89), fewer products and three times the complaints, and are five times as likely to be branch-reliant at one of the three closure branches. Low-rate legacy savers only stand out when the balance is large.",
+     "checkId": "",
+     "pasteInto": ""
+    },
+    {
+     "title": "Spot the leakage",
+     "body": "**Important:** a model that sees the future looks brilliant in training and fails in production.",
+     "where": "",
+     "prompt": "If I train an attrition model on these tables, which columns would leak the answer? Check CHURN_DATE, CHURN_REASON, RB_MONTHLY_SNAPSHOT.CHURNED_FLAG, RB_ACCOUNTS.CLOSED_DATE and STATUS, and the snapshot months just before a customer leaves. Explain how to build point-in-time features from an observation date, so the model only sees what we knew at the time.",
+     "sql": "",
+     "expect": "all of those columns leak, and so do the last months before leaving, when salary credits fade. The fix is one observation date (for example 31 Aug 2026), features only from before it, and the label from the 3 months after.",
+     "checkId": "",
+     "pasteInto": ""
+    },
+    {
+     "title": "See what fraud looks like",
+     "body": "",
+     "where": "",
+     "prompt": "For RB_TRANSACTIONS, profile the four fraud types: typical amount, hour of day, online or not, new payee, merchant country and how quickly the transactions follow each other. What features would an anomaly detector need, given we can't rely on labels for new fraud patterns?",
+     "sql": "",
+     "expect": "card testing is a burst of tiny online payments then a big one; impossible travel is two countries within an hour; account takeover is night-time transfers to new payees; APP scams are large Faster Payments to new payees, often from older customers",
+     "checkId": "",
+     "pasteInto": ""
+    },
+    {
+     "title": "Pick your model",
+     "body": "- **DS1** trains the attrition model in a notebook, tracks it in an experiment and registers it\n- **DS2** (optional) builds the fraud anomaly model the same way",
+     "where": "",
+     "prompt": "Summarise what we found as a short modelling brief for two models: an attrition classifier (target, observation window, features, leakage to avoid, metric) and a fraud anomaly detector (features, how to evaluate without trusting labels). Which tables would each read?",
+     "sql": "",
+     "expect": "a two-part brief. Then build them:",
+     "checkId": "ds0_labels_toured",
+     "pasteInto": ""
+    }
+   ],
+   "check": "You have profiled the retail labels and features, including the monthly snapshot and the transaction ledger.",
+   "note": "At Barclays a model like this goes through model risk review. Point-in-time features, a tracked experiment and a registered, versioned model are the evidence that review asks for.",
+   "kind": "vignette",
+   "track": "Data Scientist",
+   "sqlPath": "vignettes/ds0_retail_data_tour/ds0.sql",
+   "sql": "-- =====================================================\n-- DS0: TOUR THE RETAIL DATA AS A DATA SCIENTIST - reference queries\n-- Run as HOL_PARTICIPANT.\n-- =====================================================\nUSE SECONDARY ROLES NONE;\nUSE WAREHOUSE BARCLAYS_WH;\n\n-- 1. The labels and how imbalanced they are\nSELECT 'attrition (customers who left)' AS LABEL, COUNT_IF(CHURNED) AS POSITIVES, COUNT(*) AS TOTAL,\n       ROUND(100 * COUNT_IF(CHURNED) / COUNT(*), 2) AS PCT FROM BARCLAYS_HOL.RAW_DATA.RB_CUSTOMERS\nUNION ALL\nSELECT 'fraud (transactions)', COUNT_IF(IS_FRAUD), COUNT(*), ROUND(100 * COUNT_IF(IS_FRAUD) / COUNT(*), 2)\nFROM BARCLAYS_HOL.RAW_DATA.RB_TRANSACTIONS;\n\n-- 2. Leavers against stayers\nSELECT c.CHURNED,\n       ROUND(AVG(DATEDIFF(month, c.CUSTOMER_SINCE, '2026-11-20'::DATE))) AS AVG_TENURE_MONTHS,\n       ROUND(AVG(h.PRODUCTS), 2) AS AVG_PRODUCTS,\n       ROUND(100 * AVG(h.LEGACY_SAVER), 1) AS PCT_LEGACY_SAVER,\n       ROUND(100 * AVG(IFF(c.HOME_BRANCH_ID IN ('BR-MAN-90', 'BR-LDS-90', 'BR-CDF-90') AND NOT c.DIGITAL_ACTIVE, 1, 0)), 1) AS PCT_BRANCH_RELIANT_AT_CLOSURE,\n       ROUND(AVG(c.COMPLAINTS_12M), 2) AS AVG_COMPLAINTS\nFROM BARCLAYS_HOL.RAW_DATA.RB_CUSTOMERS c\nJOIN (SELECT a.CUSTOMER_ID, COUNT(*) AS PRODUCTS, MAX(IFF(p.TIER = 'LEGACY', 1, 0)) AS LEGACY_SAVER\n      FROM BARCLAYS_HOL.RAW_DATA.RB_ACCOUNTS a JOIN BARCLAYS_HOL.RAW_DATA.RB_PRODUCTS p ON p.PRODUCT_ID = a.PRODUCT_ID\n      GROUP BY 1) h ON h.CUSTOMER_ID = c.CUSTOMER_ID\nGROUP BY 1;\n\n-- 3. Leakage: salary credits fade in the months before a customer leaves\nSELECT DATEDIFF(month, s.MONTH, c.CHURN_DATE) AS MONTHS_BEFORE_LEAVING, ROUND(AVG(s.SALARY_IN_GBP)) AS AVG_SALARY_IN\nFROM BARCLAYS_HOL.RAW_DATA.RB_MONTHLY_SNAPSHOT s\nJOIN BARCLAYS_HOL.RAW_DATA.RB_CUSTOMERS c ON c.CUSTOMER_ID = s.CUSTOMER_ID\nWHERE c.CHURNED AND DATEDIFF(month, s.MONTH, c.CHURN_DATE) BETWEEN 0 AND 6\nGROUP BY 1 ORDER BY 1 DESC;\n\n-- 4. What each fraud type looks like\nSELECT FRAUD_TYPE, COUNT(*) AS TXNS, ROUND(MEDIAN(-AMOUNT_GBP), 2) AS MEDIAN_AMOUNT,\n       ROUND(AVG(HOUR(TXN_TS)), 1) AS AVG_HOUR, ROUND(100 * AVG(IFF(IS_ONLINE, 1, 0))) AS PCT_ONLINE,\n       ROUND(100 * AVG(IFF(IS_NEW_PAYEE, 1, 0))) AS PCT_NEW_PAYEE, ROUND(100 * AVG(IFF(MERCHANT_COUNTRY <> 'GB', 1, 0))) AS PCT_ABROAD\nFROM BARCLAYS_HOL.RAW_DATA.RB_TRANSACTIONS\nWHERE IS_FRAUD GROUP BY 1 ORDER BY 2 DESC;\n"
+  },
+  {
+   "code": "DS1",
+   "title": "Predict attrition with an experiment and the Model Registry",
+   "persona": "Data Scientist",
+   "minutes": 45,
+   "prerequisites": "DS0 recommended. Uses the RB_ tables in `BARCLAYS_HOL.RAW_DATA` and the `BARCLAYS_HOL.ML` schema, built at provisioning",
+   "optional": "",
+   "question": "Which retail customers will leave in the next 3 months, why, and who should the retention team call first?",
+   "build": [
+    "View `ML.RB_CHURN_FEATURES`: point-in-time features observed on 31 Aug 2026, labelled with who left in the 3 months after",
+    "Experiment `ML.RB_ATTRITION` with two tracked runs (logistic baseline and XGBoost) and their metrics",
+    "Model `ML.RB_ATTRITION_MODEL` in the Model Registry, best run as the default version",
+    "Table `ML.RB_ATTRITION_SCORES`: a churn probability and risk band for every customer, scored with the registered model"
+   ],
+   "steps": [
+    {
+     "title": "Open the starter notebook and create its service",
+     "body": "1. Open `notebooks/` > **ds1_attrition_model.ipynb** in the file explorer.\n- Can't see `notebooks/` and `vignettes/`? You're in the wrong Workspace. Pick **payments-hol** from the Workspace dropdown (top left).\n2. In the notebook toolbar, click the arrow next to the status dot (right of the blue run button).\n3. Choose **Create new service**.\n- Already created one in another module? Pick it under **Select service** instead, usually `USER_SERVICE_1`.\n4. Expand **Service settings** in **Connect your notebook** and fill it in as below. Only the three **bold** rows change.\n| Setting | Value |\n|---|---|\n| Service name | leave the default (e.g. `USER_SERVICE_1`) |\n| Runtime | leave as is (v3.0 · Python 3.12) |\n| Compute type | CPU |\n| **Compute pool** | **NOTEBOOK_POOL** (change it from HOL_COMPUTE_POOL_CPU) |\n| **Idle timeout** | **1 hour** (change it from 24 hours) |\n| **External access integrations** | **HOL_NOTEBOOK_ACCESS_INTEGRATION** |\n5. Click **Create and connect**. The first start takes 1-2 minutes.\n6. Check the role is **HOL_PARTICIPANT** and the warehouse is **BARCLAYS_WH** (role and warehouse button in the notebook toolbar).\nThe notebook runtime already has `snowflake-ml-python`, scikit-learn and XGBoost.",
+     "where": "the **payments-hol** Workspace (not My Workspace) > file explorer > `notebooks/ds1_attrition_model.ipynb`",
+     "prompt": "",
+     "sql": "",
+     "expect": "the starter notebook open in payments-hol with its numbered headings, and the status dot showing the service connected",
+     "checkId": "",
+     "pasteInto": ""
+    },
+    {
+     "title": "Build point-in-time features",
+     "body": "**Important:** the label comes from after the observation date, and every feature from before it. That's what stops the model seeing the future.",
+     "where": "the Cortex Code sidebar, with `ds1_attrition_model` open",
+     "prompt": "In the open notebook ds1_attrition_model, put each cell I ask for under its matching numbered heading. Under heading 1, add a SQL cell named features that creates the view BARCLAYS_HOL.ML.RB_CHURN_FEATURES with one row per retail customer who was still a customer on the observation date 31 Aug 2026. Use only data from on or before that date: tenure, age, segment, IMD decile, housing tenure, credit score, digital active, whether their home branch is one of BR-MAN-90, BR-LDS-90 or BR-CDF-90, drive minutes to it, and from RB_MONTHLY_SNAPSHOT the last 3 months' average logins, branch visits and card spend, latest balances and products held, salary trend (last 3 months against the 3 before), and from RB_ACCOUNTS joined to RB_PRODUCTS the lowest savings rate and whether they hold a legacy saver. The label CHURNED_NEXT_3M is 1 if CHURN_DATE falls in the 3 months after the observation date. Don't use CHURNED, CHURN_REASON, CHURNED_FLAG, CLOSED_DATE or STATUS. Then add a SQL cell named class_balance and run both.",
+     "sql": "",
+     "expect": "about 18,400 customers, of whom about 2% leave in the next 3 months",
+     "checkId": "ds1_features",
+     "pasteInto": ""
+    },
+    {
+     "title": "Train two models and track them in an experiment",
+     "body": "Then compare the runs:\n1. Open **AI & ML > Experiments** in Snowsight (in a new browser tab).\n2. Open **RB_ATTRITION**, tick both runs and press **Compare**.\n**Tip:** accuracy would be about 98% for a model that predicts nobody leaves. Lift in the top decile is what the retention team cares about.",
+     "where": "",
+     "prompt": "Under heading 2, add a Python cell named load that reads RB_CHURN_FEATURES into pandas with the active Snowpark session, and a cell named train_and_track that splits 70/30 stratified, then trains a logistic regression baseline (balanced class weights, scaled features) and an XGBoost classifier (scale_pos_weight for the imbalance) as scikit-learn pipelines. Track each as a run in the Snowflake experiment RB_ATTRITION in BARCLAYS_HOL.ML using snowflake.ml.experiment.ExperimentTracking: log parameters including the observation date, and metrics AUC, average precision, precision in the top decile and lift in the top decile. Give each run a unique name with a timestamp, because finished runs can't be reopened. Run both cells.",
+     "sql": "",
+     "expect": "two finished runs. XGBoost scores an AUC of about 0.87 against about 0.86 for the baseline, and its top decile holds about 7 times the average rate of leavers.",
+     "checkId": "ds1_experiment",
+     "pasteInto": ""
+    },
+    {
+     "title": "Register the best model",
+     "body": "Then look at it: **AI & ML > Models** > **RB_ATTRITION_MODEL** shows the version, its metrics and the comment.",
+     "where": "",
+     "prompt": "Under heading 3, add a Python cell named register that picks the run with the best AUC and logs its pipeline to the Snowflake Model Registry (snowflake.ml.registry.Registry) in BARCLAYS_HOL.ML as model RB_ATTRITION_MODEL, with its metrics, sample input data, target platform WAREHOUSE and a comment naming the experiment and observation date. Let the registry generate the version name, then make the new version the default. Run it and show the model's versions.",
+     "sql": "",
+     "expect": "RB_ATTRITION_MODEL with one version (more if you re-run), metrics attached and set as the default",
+     "checkId": "ds1_model_registered",
+     "pasteInto": ""
+    },
+    {
+     "title": "Score every customer",
+     "body": "",
+     "where": "",
+     "prompt": "Under heading 4, add a Python cell named score that runs the default version of RB_ATTRITION_MODEL from the registry with predict_proba on every row of RB_CHURN_FEATURES, and writes CUSTOMER_ID, CHURN_PROBABILITY and RISK_BAND (HIGH for the top 5%, MEDIUM for the next 15%, LOW otherwise) to the table BARCLAYS_HOL.ML.RB_ATTRITION_SCORES. Then add a SQL cell named risk_bands showing, per band, the customer count, average probability and the actual share who left. Run both.",
+     "sql": "",
+     "expect": "about 900 HIGH, 2,800 MEDIUM and 14,800 LOW customers. About a third of the HIGH band really did leave, against about 2% overall.",
+     "checkId": "ds1_scored",
+     "pasteInto": ""
+    },
+    {
+     "title": "Explain the drivers",
+     "body": "",
+     "where": "",
+     "prompt": "Under heading 5, add a Python cell named drivers that shows the XGBoost feature importances as a bar chart and explains the top five in plain English for a retention manager. Then add a SQL cell named retention_list that joins RB_ATTRITION_SCORES to RB_CUSTOMERS and RETAIL.BRANCHES for the 20 HIGH-risk customers with the highest probability: name, city, home branch, products held and a suggested retention action for each. Run both.",
+     "sql": "",
+     "expect": "the top drivers include complaints, short tenure, falling salary credits and branch reliance at a closure branch, then a call list of 20 customers with an action each",
+     "checkId": "",
+     "pasteInto": ""
+    }
+   ],
+   "check": "The feature view, an experiment with at least two runs, a registered model and the scores table all exist in `BARCLAYS_HOL.ML`.",
+   "note": "At Barclays a model like this goes to model risk review before anyone acts on it. Here, the review evidence comes built in: the experiment holds every run that was tried, the registry holds the exact version that scored customers, and lineage links the two.",
+   "kind": "vignette",
+   "track": "Data Scientist",
+   "sqlPath": "vignettes/ds1_attrition_model/ds1.sql",
+   "sql": "-- =====================================================\n-- DS1: PREDICT ATTRITION - reference SQL\n-- Point-in-time features for the attrition model: what we knew about each customer on\n-- 31 Aug 2026, and whether they left in the 3 months after. Run as HOL_PARTICIPANT.\n-- The notebook (notebooks/ds1_attrition_model.ipynb) trains on this view; this file is\n-- the fallback and the answer key.\n-- =====================================================\nUSE SECONDARY ROLES NONE;\nUSE WAREHOUSE BARCLAYS_WH;\nUSE SCHEMA BARCLAYS_HOL.ML;\n\nCREATE OR REPLACE VIEW RB_CHURN_FEATURES COMMENT = 'DS1 point-in-time attrition features, observed 2026-08-31, label = left by 2026-11-30' AS\nWITH obs AS (SELECT '2026-08-31'::DATE AS OBS_DATE),\nsnap AS (  -- only months up to the observation date: no peeking at the future\n    SELECT s.CUSTOMER_ID,\n           AVG(IFF(s.MONTH >  DATEADD(month, -3, o.OBS_DATE), s.SALARY_IN_GBP, NULL)) AS SALARY_L3M,\n           AVG(IFF(s.MONTH <= DATEADD(month, -3, o.OBS_DATE), s.SALARY_IN_GBP, NULL)) AS SALARY_P3M,\n           AVG(IFF(s.MONTH >  DATEADD(month, -3, o.OBS_DATE), s.APP_LOGINS, NULL))    AS LOGINS_L3M,\n           AVG(IFF(s.MONTH >  DATEADD(month, -3, o.OBS_DATE), s.BRANCH_VISITS, NULL)) AS BRANCH_VISITS_L3M,\n           AVG(IFF(s.MONTH >  DATEADD(month, -3, o.OBS_DATE), s.CARD_SPEND_GBP, NULL)) AS CARD_SPEND_L3M,\n           MAX_BY(s.CURRENT_BALANCE_GBP, s.MONTH) AS CURRENT_BALANCE,\n           MAX_BY(s.SAVINGS_BALANCE_GBP, s.MONTH) AS SAVINGS_BALANCE,\n           MAX_BY(s.PRODUCTS_HELD, s.MONTH)       AS PRODUCTS_HELD,\n           SUM(s.PROFIT_GBP)                      AS PROFIT_TO_DATE\n    FROM BARCLAYS_HOL.RAW_DATA.RB_MONTHLY_SNAPSHOT s, obs o\n    WHERE s.MONTH <= o.OBS_DATE\n    GROUP BY s.CUSTOMER_ID\n),\nsav AS (\n    SELECT a.CUSTOMER_ID, MIN(a.INTEREST_RATE_PCT) AS MIN_SAVINGS_RATE,\n           MAX(IFF(p.TIER = 'LEGACY', 1, 0)) AS ON_LEGACY_SAVER\n    FROM BARCLAYS_HOL.RAW_DATA.RB_ACCOUNTS a JOIN BARCLAYS_HOL.RAW_DATA.RB_PRODUCTS p ON p.PRODUCT_ID = a.PRODUCT_ID, obs o\n    WHERE p.PRODUCT_FAMILY = 'SAVINGS' AND a.OPENED_DATE <= o.OBS_DATE\n    GROUP BY a.CUSTOMER_ID\n)\nSELECT c.CUSTOMER_ID,\n       DATEDIFF(month, c.CUSTOMER_SINCE, o.OBS_DATE) AS TENURE_MONTHS,\n       c.AGE, c.SEGMENT, c.IMD_DECILE, c.HOUSING_TENURE, c.CREDIT_SCORE,\n       IFF(c.DIGITAL_ACTIVE, 1, 0) AS DIGITAL_ACTIVE,\n       IFF(c.HOME_BRANCH_ID IN ('BR-MAN-90', 'BR-LDS-90', 'BR-CDF-90'), 1, 0) AS BRANCH_AT_RISK,\n       c.HOME_BRANCH_DRIVE_S / 60 AS BRANCH_DRIVE_MIN,\n       s.PRODUCTS_HELD, s.CURRENT_BALANCE, s.SAVINGS_BALANCE, s.CARD_SPEND_L3M, s.LOGINS_L3M, s.BRANCH_VISITS_L3M,\n       s.SALARY_L3M / NULLIF(s.SALARY_P3M, 0) AS SALARY_TREND,  -- below 1: pay starting to go elsewhere\n       COALESCE(sv.MIN_SAVINGS_RATE, 0) AS MIN_SAVINGS_RATE, COALESCE(sv.ON_LEGACY_SAVER, 0) AS ON_LEGACY_SAVER,\n       s.PROFIT_TO_DATE,\n       -- the label: left in the 3 months after the observation date\n       IFF(c.CHURN_DATE > o.OBS_DATE AND c.CHURN_DATE <= DATEADD(month, 3, o.OBS_DATE), 1, 0) AS CHURNED_NEXT_3M\nFROM BARCLAYS_HOL.RAW_DATA.RB_CUSTOMERS c\nJOIN snap s ON s.CUSTOMER_ID = c.CUSTOMER_ID\nLEFT JOIN sav sv ON sv.CUSTOMER_ID = c.CUSTOMER_ID\nCROSS JOIN obs o\nWHERE c.CUSTOMER_SINCE <= o.OBS_DATE\n  AND (c.CHURN_DATE IS NULL OR c.CHURN_DATE > o.OBS_DATE);  -- still a customer on the observation date\n\n-- Class balance: about 2-3% leave in the next 3 months\nSELECT CHURNED_NEXT_3M, COUNT(*) AS CUSTOMERS, ROUND(RATIO_TO_REPORT(COUNT(*)) OVER () * 100, 1) AS PCT\nFROM RB_CHURN_FEATURES GROUP BY 1 ORDER BY 1;\n\n-- Leakage traps to leave out: CHURN_DATE, CHURN_REASON, CHURNED, RB_MONTHLY_SNAPSHOT.CHURNED_FLAG,\n-- any snapshot month after OBS_DATE, RB_ACCOUNTS.CLOSED_DATE and STATUS.\n\n-- After the notebook: the experiment, the registered model and the scores\nSHOW EXPERIMENTS IN SCHEMA BARCLAYS_HOL.ML;\nSHOW MODELS IN SCHEMA BARCLAYS_HOL.ML;\nSELECT RISK_BAND, COUNT(*) AS CUSTOMERS FROM BARCLAYS_HOL.ML.RB_ATTRITION_SCORES GROUP BY 1 ORDER BY 1;\n"
+  },
+  {
+   "code": "DS2",
+   "title": "Fraud anomaly detection",
+   "persona": "Data Scientist",
+   "minutes": 40,
+   "prerequisites": "DS0 recommended (DS1 if you want the service already created). Uses `BARCLAYS_HOL.RAW_DATA.RB_TRANSACTIONS` and the `BARCLAYS_HOL.ML` schema",
+   "optional": "An extension to DS1: skip it if you're short of time. Uses the same notebook service, experiments and Model Registry.",
+   "question": "New fraud patterns arrive before anyone has labelled them. Can we flag transactions that don't look like the customer, without training on labels, and how much fraud would the fraud team catch?",
+   "build": [
+    "View `ML.RB_TXN_FEATURES`: behaviour per outgoing transaction (amount against the customer's usual, time of day, new payee, abroad, velocity, country change)",
+    "Experiment `ML.RB_FRAUD` with two isolation forest runs, measured against the fraud labels",
+    "Model `ML.RB_FRAUD_ANOMALY` in the Model Registry",
+    "Table `ML.RB_FRAUD_ALERTS`: the top 0.5% most anomalous transactions, for the fraud team to review"
+   ],
+   "steps": [
+    {
+     "title": "Open the starter notebook",
+     "body": "1. Open `notebooks/` > **ds2_fraud_anomaly.ipynb** in the file explorer.\n2. In the notebook toolbar, click the arrow next to the status dot and pick your service under **Select service** (usually `USER_SERVICE_1`, from DS1).\n- No service yet? Choose **Create new service** and fill it in as in DS1: **NOTEBOOK_POOL**, **1 hour** idle timeout, **HOL_NOTEBOOK_ACCESS_INTEGRATION**.\n3. Check the role is **HOL_PARTICIPANT** and the warehouse is **BARCLAYS_WH**.",
+     "where": "the **payments-hol** Workspace > file explorer > `notebooks/ds2_fraud_anomaly.ipynb`",
+     "prompt": "",
+     "sql": "",
+     "expect": "the starter notebook open with its numbered headings, connected to your service",
+     "checkId": "",
+     "pasteInto": ""
+    },
+    {
+     "title": "Build behavioural features",
+     "body": "",
+     "where": "the Cortex Code sidebar, with `ds2_fraud_anomaly` open",
+     "prompt": "In the open notebook ds2_fraud_anomaly, put each cell I ask for under its matching numbered heading. Under heading 1, add a SQL cell named features that creates the view BARCLAYS_HOL.ML.RB_TXN_FEATURES with one row per outgoing transaction (AMOUNT_GBP below 0) in BARCLAYS_HOL.RAW_DATA.RB_TRANSACTIONS. Features: log amount, amount divided by that customer's median, hour of day, is night (midnight to 5am), is online, is new payee, is abroad, is a Faster Payment, the customer's number of payments in the previous 30 minutes, whether the country changed within 2 hours of their previous payment, and whether the customer is 65 or over (from RB_CUSTOMERS). Keep IS_FRAUD and FRAUD_TYPE for evaluation only. Run it and show the fraud rate.",
+     "sql": "",
+     "expect": "about 1.2 million outgoing transactions, 0.4% of them labelled fraud",
+     "checkId": "",
+     "pasteInto": ""
+    },
+    {
+     "title": "Train anomaly models without labels and track them",
+     "body": "**Important:** the labels never touch training. They're only there to tell you whether the model would have caught real fraud.",
+     "where": "",
+     "prompt": "Under heading 2, add a Python cell named train_and_track that samples 300,000 rows of RB_TXN_FEATURES with the active session and trains two scikit-learn IsolationForest models on the features only (no labels): 100 trees with contamination 0.005, and 300 trees with contamination 0.01. Track each as a run in the Snowflake experiment RB_FRAUD in BARCLAYS_HOL.ML with ExperimentTracking, using unique run names with a timestamp. Score with -score_samples, flag the top 0.5% as alerts, then log the parameters, AUC and average precision against IS_FRAUD, precision and recall at the 0.5% alert rate, and recall for each FRAUD_TYPE. Run it.",
+     "sql": "",
+     "expect": "both runs score an AUC of about 0.99 against the labels. At a 0.5% alert rate, about 6 in 10 alerts are real fraud and about 3 in 4 frauds are caught: nearly all APP scams and account takeovers, most card testing, but only about 1 in 8 impossible-travel payments.",
+     "checkId": "ds2_experiment",
+     "pasteInto": ""
+    },
+    {
+     "title": "Register and score every transaction",
+     "body": "",
+     "where": "",
+     "prompt": "Under heading 3, add a Python cell named register_and_score that logs the run with the best average precision to the Snowflake Model Registry in BARCLAYS_HOL.ML as RB_FRAUD_ANOMALY (sample input, metrics, target platform WAREHOUSE, a comment saying it was trained without labels), makes that version the default, then runs it with score_samples on every row of RB_TXN_FEATURES in Snowflake and saves the top 0.5% most anomalous transactions to the table BARCLAYS_HOL.ML.RB_FRAUD_ALERTS with TXN_ID, CUSTOMER_ID, TXN_TS and ANOMALY_SCORE. Then add a SQL cell named alerts_by_type counting the alerts by FRAUD_TYPE (null means not labelled fraud). Run both.",
+     "sql": "",
+     "expect": "about 6,000 alerts, about 3,800 of them labelled fraud. The rest are unusual but genuine payments, which the fraud team would clear.",
+     "checkId": "ds2_model_registered",
+     "pasteInto": ""
+    },
+    {
+     "title": "Find what the model misses",
+     "body": "**Tip:** the alerts link to the fraud case notes, SAR narratives and evidence files in AI4, where AI SQL reads them.",
+     "where": "",
+     "prompt": "Under heading 4, add a SQL cell named misses that shows the fraud the model didn't flag, by FRAUD_TYPE, and explains why impossible travel slips through when each payment looks normal on its own. Then test a simple rule, COUNTRY_CHANGE_2H = 1, on its own: how many transactions it flags and how many are impossible travel. Suggest how to combine the model and the rule.",
+     "sql": "",
+     "expect": "most of the missed fraud is impossible travel. The country-change rule flags about 2,100 transactions, about 300 of them impossible travel. Models and rules work best together.",
+     "checkId": "",
+     "pasteInto": ""
+    }
+   ],
+   "check": "An experiment with at least two runs, a registered anomaly model and the alerts table all exist in `BARCLAYS_HOL.ML`.",
+   "note": "Fraud models change often, so the registry's versions and the experiment's runs are how a bank shows which model was live when a payment was stopped, and why it was chosen.",
+   "kind": "vignette",
+   "track": "Data Scientist",
+   "sqlPath": "vignettes/ds2_fraud_anomaly/ds2.sql",
+   "sql": "-- =====================================================\n-- DS2: FRAUD ANOMALY DETECTION - reference SQL\n-- Per-transaction behavioural features for an unsupervised anomaly model. Labels\n-- (IS_FRAUD, FRAUD_TYPE) are kept only to evaluate it. Run as HOL_PARTICIPANT.\n-- The notebook (notebooks/ds2_fraud_anomaly.ipynb) trains on this view.\n-- =====================================================\nUSE SECONDARY ROLES NONE;\nUSE WAREHOUSE BARCLAYS_WH;\nUSE SCHEMA BARCLAYS_HOL.ML;\n\nCREATE OR REPLACE VIEW RB_TXN_FEATURES COMMENT = 'DS2 behavioural features per outgoing retail transaction; IS_FRAUD kept for evaluation only' AS\nWITH t AS (\n    SELECT TXN_ID, CUSTOMER_ID, TXN_TS, -AMOUNT_GBP AS AMOUNT, CHANNEL, CATEGORY, MERCHANT_COUNTRY,\n           IS_ONLINE, IS_NEW_PAYEE, IS_FRAUD, FRAUD_TYPE\n    FROM BARCLAYS_HOL.RAW_DATA.RB_TRANSACTIONS\n    WHERE AMOUNT_GBP < 0  -- money going out\n),\nusual AS (\n    SELECT CUSTOMER_ID, MEDIAN(AMOUNT) AS MEDIAN_AMOUNT, STDDEV(AMOUNT) AS SD_AMOUNT\n    FROM t GROUP BY 1\n)\nSELECT t.TXN_ID, t.CUSTOMER_ID, t.TXN_TS,\n       LN(1 + t.AMOUNT) AS LOG_AMOUNT,\n       t.AMOUNT / NULLIF(u.MEDIAN_AMOUNT, 0) AS AMOUNT_VS_USUAL,  -- how unusual for this customer\n       HOUR(t.TXN_TS) AS HOUR_OF_DAY,\n       IFF(HOUR(t.TXN_TS) BETWEEN 0 AND 5, 1, 0) AS IS_NIGHT,\n       IFF(t.IS_ONLINE, 1, 0) AS IS_ONLINE,\n       IFF(t.IS_NEW_PAYEE, 1, 0) AS IS_NEW_PAYEE,\n       IFF(t.MERCHANT_COUNTRY <> 'GB', 1, 0) AS IS_ABROAD,\n       IFF(t.CHANNEL = 'FPS_OUT', 1, 0) AS IS_FASTER_PAYMENT,\n       -- velocity: this customer's payments in the 30 minutes before\n       COUNT(*) OVER (PARTITION BY t.CUSTOMER_ID ORDER BY t.TXN_TS\n                      RANGE BETWEEN INTERVAL '30 minutes' PRECEDING AND CURRENT ROW) - 1 AS TXNS_PRIOR_30M,\n       -- impossible travel: a different country within 2 hours\n       IFF(LAG(t.MERCHANT_COUNTRY) OVER (PARTITION BY t.CUSTOMER_ID ORDER BY t.TXN_TS) <> t.MERCHANT_COUNTRY\n           AND DATEDIFF(minute, LAG(t.TXN_TS) OVER (PARTITION BY t.CUSTOMER_ID ORDER BY t.TXN_TS), t.TXN_TS) <= 120, 1, 0) AS COUNTRY_CHANGE_2H,\n       IFF(c.AGE >= 65, 1, 0) AS CUSTOMER_65_PLUS,\n       IFF(t.IS_FRAUD, 1, 0) AS IS_FRAUD, t.FRAUD_TYPE  -- evaluation only, never a feature\nFROM t\nJOIN usual u ON u.CUSTOMER_ID = t.CUSTOMER_ID\nJOIN BARCLAYS_HOL.RAW_DATA.RB_CUSTOMERS c ON c.CUSTOMER_ID = t.CUSTOMER_ID;\n\nSELECT COUNT(*) AS TXNS, SUM(IS_FRAUD) AS FRAUD, ROUND(100 * AVG(IS_FRAUD), 2) AS FRAUD_PCT FROM RB_TXN_FEATURES;\n\n-- After the notebook: how many of the flagged transactions are labelled fraud, by type\nSELECT f.FRAUD_TYPE, COUNT(*) AS FLAGGED\nFROM BARCLAYS_HOL.ML.RB_FRAUD_ALERTS a JOIN RB_TXN_FEATURES f ON f.TXN_ID = a.TXN_ID\nGROUP BY 1 ORDER BY 2 DESC;\nSHOW MODELS LIKE 'RB_FRAUD_ANOMALY' IN SCHEMA BARCLAYS_HOL.ML;\n"
+  },
+  {
    "code": "OPS1",
    "title": "Corporate Payments 360 agent",
    "persona": "Payments Ops analyst",
    "minutes": 45,
    "prerequisites": "`core_analytics.sql`, DA1 (`SV_CLIENT_360`), `semantic_view_and_agent.sql` (`SV_PAYMENTS`)",
+   "optional": "",
    "question": "Before I call a client, tell me everything: payments health, open incidents and what they have been complaining about.",
    "build": [
     "Agent `SNOWFLAKE_INTELLIGENCE.AGENTS.CORPORATE_PAYMENTS_360` with two Analyst tools and charting"
@@ -849,6 +1097,7 @@
    "persona": "Payments Ops analyst / team lead",
    "minutes": 30,
    "prerequisites": "`setup/catchup/core_analytics.sql`",
+   "optional": "",
    "question": "Which open alerts should my team work first, what should we do, and which unhappy clients are linked to them?",
    "build": [
     "`DT_NEGATIVE_SENTIMENT_FEED`",
@@ -910,6 +1159,7 @@
    "persona": "Payments Ops lead / relationship manager (business user)",
    "minutes": 45,
    "prerequisites": "C1 only. Uses the ready-made agent **Payments Ops CoWork** (`SNOWFLAKE_INTELLIGENCE.AGENTS.PAYMENTS_OPS_COWORK`), built at provisioning",
+   "optional": "",
    "question": "I run payments operations, not SQL. Can I ask about failures in plain English, get a chart I can keep, investigate why a sector is getting worse, have the weekly numbers sent to me automatically, hand a relationship manager a briefing deck, and publish a dashboard my team opens every morning?",
    "build": [
     "A saved **chart artifact** and a shared **thread** from a CoWork conversation",
@@ -1003,6 +1253,7 @@
    "persona": "AI Builder",
    "minutes": 45,
    "prerequisites": "`core_analytics.sql`, `semantic_view_and_agent.sql`",
+   "optional": "",
    "question": "Ops staff ask about specific payments by ID and about scheme rules - not just aggregates. Give the agent precise tools.",
    "build": [
     "UDF tools `PAYMENT_LOOKUP`, `SCHEME_RULES`",
@@ -1073,6 +1324,7 @@
    "persona": "AI Builder",
    "minutes": 30,
    "prerequisites": "DA1, OPS1, AI1 and the knowledge extension from facilitator setup",
+   "optional": "",
    "question": "Teams use different AI clients. Expose governed payments tools to all of them once.",
    "build": [
     "MCP server `BARCLAYS_HOL.AGENTS.PAYMENTS_MCP` with Analyst, Agent, UDF and knowledge-extension tools"
@@ -1122,6 +1374,7 @@
    "persona": "AI Builder",
    "minutes": 30,
    "prerequisites": "Facilitator setup 00 (installs `SNOWFLAKE_DOCS_CKE`), DA1",
+   "optional": "",
    "question": "Agents need trusted unstructured knowledge, but internal (PII) data cannot be vectorised yet. What can we do?",
    "build": [
     "Agent `SNOWFLAKE_INTELLIGENCE.AGENTS.PAYMENTS_PLATFORM_COPILOT` combining `SV_CLIENT_360` with a provider-hosted search service"
@@ -1176,11 +1429,177 @@
    "sql": "-- =====================================================\n-- VIGNETTE AI3: MARKETPLACE KNOWLEDGE EXTENSION (instead of Cortex Search)   (~30 min)\n-- Persona: AI Builder\n-- Question: \"Our agents need trusted unstructured knowledge, but we are not\n--            allowed to vectorise internal (PII) data yet. What can we do?\"\n-- Prereq:   Facilitator setup 00 (installs SNOWFLAKE_DOCS_CKE), DA1 (SV_CLIENT_360)\n--\n-- A Cortex Knowledge Extension (CKE) is a search service that a Marketplace\n-- provider builds, hosts and refreshes. You query it through a share - no\n-- internal data is embedded, indexed or sent to the provider.\n-- =====================================================\n\nUSE ROLE HOL_PARTICIPANT;\nUSE SECONDARY ROLES NONE;   -- see exactly what an attendee sees\nUSE WAREHOUSE BARCLAYS_WH;\n\n-- -----------------------------------------------------\n-- AI3.1 What did we get from the Marketplace?\n-- Snowsight: Data Products > Marketplace > search \"Cortex Knowledge Extension\"\n-- (Finance publishers such as Investopedia are listed; personalised listings\n--  must be requested by the account admin.)\n-- -----------------------------------------------------\nSHOW CORTEX SEARCH SERVICES IN DATABASE SNOWFLAKE_DOCS_CKE;\n-- Note: we did not create this service, we cannot see its source table,\n-- and we pay only for the queries we run.\n\n-- -----------------------------------------------------\n-- AI3.2 Query it directly\n-- -----------------------------------------------------\nSELECT r.value:DOCUMENT_TITLE::STRING AS TITLE,\n       r.value:SOURCE_URL::STRING     AS URL,\n       LEFT(r.value:CHUNK::STRING, 200) AS EXCERPT\nFROM TABLE(FLATTEN(PARSE_JSON(SNOWFLAKE.CORTEX.SEARCH_PREVIEW(\n        'SNOWFLAKE_DOCS_CKE.SHARED.CKE_SNOWFLAKE_DOCS_SERVICE',\n        '{\"query\": \"How do I apply a masking policy to a column?\",\n          \"columns\": [\"DOCUMENT_TITLE\", \"SOURCE_URL\", \"CHUNK\"],\n          \"limit\": 3}')):results)) r;\n\n-- -----------------------------------------------------\n-- AI3.3 Combine governed internal data + external knowledge in one agent\n-- -----------------------------------------------------\nCREATE OR REPLACE AGENT SNOWFLAKE_INTELLIGENCE.AGENTS.PAYMENTS_PLATFORM_COPILOT\n  COMMENT = 'Barclays HOL - client data (semantic view) + Snowflake docs (Marketplace knowledge extension)'\n  PROFILE = '{\"display_name\": \"Payments Platform Copilot\", \"color\": \"orange\"}'\n  FROM SPECIFICATION\n  $$\n  models:\n    orchestration: auto\n  instructions:\n    response: >\n      Be concise. When you use documentation, cite the source URL.\n      Never present documentation content as if it were bank data.\n    orchestration: >\n      Use Client360 for any question about our clients, payments, alerts or feedback.\n      Use PlatformDocs for how-to questions about Snowflake features\n      (Iceberg, dynamic tables, policies, semantic views, agents).\n      A question may need both, e.g. \"which clients have X, and how do I monitor that?\"\n  tools:\n    - tool_spec:\n        type: cortex_analyst_text_to_sql\n        name: Client360\n        description: Corporate client payments health, alerts and feedback sentiment.\n    - tool_spec:\n        type: cortex_search\n        name: PlatformDocs\n        description: Official Snowflake documentation from a Marketplace Cortex Knowledge Extension.\n  tool_resources:\n    Client360:\n      semantic_view: BARCLAYS_HOL.ANALYTICS.SV_CLIENT_360\n      execution_environment:\n        type: warehouse\n        warehouse: BARCLAYS_WH\n    PlatformDocs:\n      name: SNOWFLAKE_DOCS_CKE.SHARED.CKE_SNOWFLAKE_DOCS_SERVICE\n      max_results: 4\n      title_column: DOCUMENT_TITLE\n      id_column: SOURCE_URL\n  $$;\n\n-- -----------------------------------------------------\n-- AI3.4 Try it in Snowflake CoWork (\"Payments Platform Copilot\"):\n--   \"Which 3 clients have the most open critical alerts, and how could I build\n--    a dynamic table that keeps that list up to date?\"\n--   \"How do Snowflake-managed Iceberg tables differ from ones using an external volume?\"\n-- Or from SQL:\nSELECT SNOWFLAKE.CORTEX.DATA_AGENT_RUN(\n  'SNOWFLAKE_INTELLIGENCE.AGENTS.PAYMENTS_PLATFORM_COPILOT',\n  $${\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"Which 3 clients have the most open critical alerts, and how could I build a dynamic table to keep that list up to date?\"}]}]}$$\n) AS RESPONSE;\n-- -----------------------------------------------------\n\n-- Discussion: the same pattern works for licensed external content already\n-- used by the investment bank (LSEG, FactSet, S&P - several publish CKEs),\n-- giving retail and corporate banking AI over trusted text with no PII risk.\n\nSELECT 'AI3 complete' AS STATUS;\n"
   },
   {
+   "code": "AI4",
+   "title": "AI SQL on the voice of the customer and financial crime evidence",
+   "persona": "AI Builder",
+   "minutes": 40,
+   "prerequisites": "None. Uses the retail text and evidence in `BARCLAYS_HOL.RAW_DATA` and `@RETAIL.FINCRIME_EVIDENCE`, built at provisioning",
+   "optional": "",
+   "question": "What are retail customers telling us on calls and in complaints before they leave, and can AI read a fraud case file (notes, phishing screenshots, police reports) so an investigator can decide faster?",
+   "build": [
+    "Table `ANALYTICS.RB_CALL_INSIGHTS`: sentiment, call reason and vulnerability cues for recent calls, joined to who left",
+    "Structured fields pulled out of complaints and police report PDFs with AI_EXTRACT",
+    "A \"why they left\" summary from leavers' calls with AI_AGG",
+    "Phishing screenshot analysis and a fraud case decision draft with AI_COMPLETE"
+   ],
+   "steps": [
+    {
+     "title": "Open Cortex Code",
+     "body": "1. At the top left of Snowsight, switch the toggle from **Home** to **CoCo**.\n2. Press **New session**.\n3. Paste each prompt in this module into the **How can I help?** box, and **Allow** the queries.\n**Tip:** every function in this module is an approved AI SQL function, governed by the account's AI gateway. Nothing leaves Snowflake.",
+     "where": "the **CoCo** tab, **New session**",
+     "prompt": "",
+     "sql": "",
+     "expect": "the Cortex Code screen with a **How can I help?** box",
+     "checkId": "",
+     "pasteInto": ""
+    },
+    {
+     "title": "Meet the unstructured data",
+     "body": "**Tip:** the people and the text are synthetic, written to match each customer's records: leavers call before they leave, fraud victims call about their own fraud.",
+     "where": "",
+     "prompt": "Show me the unstructured retail data in BARCLAYS_HOL.RAW_DATA: RB_CALL_TRANSCRIPTS, RB_EMAILS, RB_COMPLAINTS, RB_FRAUD_CASES, RB_SAR_NARRATIVES, RB_DISPUTES and RB_EVIDENCE_FILES, plus the files on stage @BARCLAYS_HOL.RETAIL.FINCRIME_EVIDENCE. Give row counts, how each links to RB_CUSTOMERS and RB_TRANSACTIONS, and show one call transcript in full.",
+     "sql": "",
+     "expect": "1,000 call transcripts (each with start and end times), 300 emails, 200 complaints, 300 fraud cases, 60 SAR narratives, 120 disputes and 150 evidence files. Every row links to a retail customer, and fraud calls, cases and disputes link to the actual transaction.",
+     "checkId": "",
+     "pasteInto": ""
+    },
+    {
+     "title": "Enrich call transcripts",
+     "body": "**Tip:** score once into a table, then query it as often as you like. Re-running AI functions on the same text spends credits again.",
+     "where": "",
+     "prompt": "Create the table BARCLAYS_HOL.ANALYTICS.RB_CALL_INSIGHTS from the 300 most recent calls in RB_CALL_TRANSCRIPTS (since 1 Aug 2026), with AI_SENTIMENT's overall sentiment, a CALL_REASON from AI_CLASSIFY (savings rates, branch access, service complaint, fraud or scam, financial difficulty, card or app problem, product question, account admin), and VULNERABILITY_CUES from AI_CLASSIFY in multi-label mode (mentions health or disability, bereavement, money worries, none). Join RB_CUSTOMERS for CHURNED and AFFORDABILITY_BAND. Then show, by call reason, the call count, the share negative and the share of callers who later left.",
+     "sql": "",
+     "expect": "about 300 enriched calls. Service complaints and savings-rate calls are the most negative, and those callers are the most likely to have left.",
+     "checkId": "ai4_call_insights",
+     "pasteInto": ""
+    },
+    {
+     "title": "Pull fields out of complaints",
+     "body": "",
+     "where": "",
+     "prompt": "For 10 complaints in RB_COMPLAINTS, use AI_EXTRACT to pull out the product, any amount in pounds and the customer's requested outcome, as columns next to CATEGORY and STATUS.",
+     "sql": "",
+     "expect": "one row per complaint with product, amount and requested outcome filled in from the free text",
+     "checkId": "",
+     "pasteInto": ""
+    },
+    {
+     "title": "Find out why customers left",
+     "body": "",
+     "where": "",
+     "prompt": "Use AI_AGG over every call transcript from customers who churned, in the 3 months before their CHURN_DATE, to list the top 5 reasons they gave, how often each came up, and one action the bank could take for each.",
+     "sql": "",
+     "expect": "one summary naming reasons such as low savings rates, branch closures, unresolved complaints and switching offers, each with an action",
+     "checkId": "",
+     "pasteInto": ""
+    },
+    {
+     "title": "Read the fraud evidence",
+     "body": "",
+     "where": "",
+     "prompt": "Using RB_EVIDENCE_FILES and the stage @BARCLAYS_HOL.RETAIL.FINCRIME_EVIDENCE: for 5 police report PDFs, use AI_EXTRACT with TO_FILE to pull the crime reference number, date reported and amount lost, and compare the amount with LOSS_GBP in RB_FRAUD_CASES. Then for 3 phishing screenshots, use AI_COMPLETE with the image to say which organisation the message impersonates and list its red flags.",
+     "sql": "",
+     "expect": "crime references starting NFRC, amounts that match the case losses, and screenshots identified as fake parcel-delivery, HMRC refund or bank \"new payee\" messages, each with red flags such as a lookalike web address",
+     "checkId": "ai4_evidence_read",
+     "pasteInto": ""
+    },
+    {
+     "title": "Draft a fraud case decision",
+     "body": "**Important:** AI drafts, people decide. The investigator still owns the reimbursement decision and the SAR.",
+     "where": "",
+     "prompt": "For one APP scam case in RB_FRAUD_CASES, combine the investigator notes, the customer's fraud call transcript and the recorded decision, and use AI_COMPLETE to draft a 150-word case summary with a reimbursement recommendation that cites the evidence. Then use AI_CLASSIFY to check 10 SAR narratives in RB_SAR_NARRATIVES against a simple standard: complete, missing the reason for suspicion, missing dates or amounts, or missing the action taken.",
+     "sql": "",
+     "expect": "a decision draft that quotes the amounts and dates from the case, and a quality label for each SAR narrative",
+     "checkId": "",
+     "pasteInto": ""
+    }
+   ],
+   "check": "The call insights table exists, and you have read the financial crime evidence with AI SQL.",
+   "note": "At Barclays, AI SQL functions are approved and run through the AI gateway, so this is work a fraud or complaints team could do today. Search over these documents is the next step (AI5, optional, as Cortex Search isn't approved yet).",
+   "kind": "vignette",
+   "track": "AI Builder",
+   "sqlPath": "vignettes/ai4_aisql_customer_voice/ai4.sql",
+   "sql": "-- =====================================================\n-- AI4: AI SQL ON CALL TRANSCRIPTS, COMPLAINTS AND FINANCIAL CRIME EVIDENCE - reference SQL\n-- Approved AI SQL functions only (AI_SENTIMENT, AI_CLASSIFY, AI_EXTRACT, AI_AGG, AI_COMPLETE).\n-- Run as HOL_PARTICIPANT. Samples keep the AI credits small; drop the LIMITs to do the lot.\n-- =====================================================\nUSE SECONDARY ROLES NONE;\nUSE WAREHOUSE BARCLAYS_WH;\nUSE SCHEMA BARCLAYS_HOL.ANALYTICS;\n\n-- 1. Enrich call transcripts once: sentiment, reason and vulnerability cues\nCREATE OR REPLACE TABLE RB_CALL_INSIGHTS AS\nSELECT t.CALL_ID, t.CUSTOMER_ID, t.CALL_START_TS, t.QUEUE, t.TOPIC,\n       AI_SENTIMENT(t.TRANSCRIPT):categories[0]:sentiment::VARCHAR AS SENTIMENT,\n       AI_CLASSIFY(t.TRANSCRIPT, ['savings rates', 'branch access', 'service complaint', 'fraud or scam',\n                                 'financial difficulty', 'card or app problem', 'product question', 'account admin']):labels[0]::VARCHAR AS CALL_REASON,\n       AI_CLASSIFY(t.TRANSCRIPT, ['mentions health or disability', 'mentions bereavement', 'mentions money worries', 'none'],\n                   {'output_mode': 'multi'}):labels AS VULNERABILITY_CUES,\n       c.CHURNED, c.AFFORDABILITY_BAND\nFROM BARCLAYS_HOL.RAW_DATA.RB_CALL_TRANSCRIPTS t\nJOIN BARCLAYS_HOL.RAW_DATA.RB_CUSTOMERS c ON c.CUSTOMER_ID = t.CUSTOMER_ID\nWHERE t.CALL_START_TS >= '2026-08-01'\nLIMIT 300;\n\n-- Does call sentiment line up with who left?\nSELECT CALL_REASON, COUNT(*) AS CALLS, ROUND(100 * AVG(IFF(SENTIMENT = 'negative', 1, 0))) AS PCT_NEGATIVE,\n       ROUND(100 * AVG(IFF(CHURNED, 1, 0))) AS PCT_CALLERS_WHO_LEFT\nFROM RB_CALL_INSIGHTS GROUP BY 1 ORDER BY CALLS DESC;\n\n-- 2. Pull structured fields out of complaints\nSELECT COMPLAINT_ID, CATEGORY,\n       AI_EXTRACT(text => COMPLAINT_TEXT, responseFormat => {\n           'product': 'Which bank product is the complaint about?',\n           'amount_gbp': 'What amount of money in pounds is mentioned, as a number?',\n           'requested_outcome': 'What does the customer want the bank to do?'}):response AS EXTRACTED\nFROM BARCLAYS_HOL.RAW_DATA.RB_COMPLAINTS\nLIMIT 10;\n\n-- 3. What leavers said in the 3 months before leaving, in one paragraph\nSELECT AI_AGG(t.TRANSCRIPT, 'These calls are from retail bank customers who closed their accounts soon after. List the top 5 reasons they gave, with how often each came up, and one action the bank could take for each.') AS WHY_THEY_LEFT\nFROM BARCLAYS_HOL.RAW_DATA.RB_CALL_TRANSCRIPTS t\nJOIN BARCLAYS_HOL.RAW_DATA.RB_CUSTOMERS c ON c.CUSTOMER_ID = t.CUSTOMER_ID\nWHERE c.CHURNED AND t.CALL_START_TS BETWEEN DATEADD(month, -3, c.CHURN_DATE) AND c.CHURN_DATE;\n\n-- 4. Police report PDFs: extract the crime reference and loss, and reconcile to the case\nSELECT e.CASE_ID, f.LOSS_GBP AS CASE_LOSS_GBP,\n       AI_EXTRACT(file => TO_FILE('@BARCLAYS_HOL.RETAIL.FINCRIME_EVIDENCE', e.FILE_NAME), responseFormat => {\n           'crime_reference': 'What is the crime reference number?',\n           'date_reported': 'What date was it reported?',\n           'amount_lost': 'What amount was lost, as a number?'}):response AS FROM_PDF\nFROM BARCLAYS_HOL.RAW_DATA.RB_EVIDENCE_FILES e\nJOIN BARCLAYS_HOL.RAW_DATA.RB_FRAUD_CASES f ON f.CASE_ID = e.CASE_ID\nWHERE e.EVIDENCE_TYPE = 'POLICE_REPORT_PDF'\nLIMIT 5;\n\n-- 5. Phishing screenshots: who is being impersonated, and the red flags\nSELECT e.CASE_ID, e.FILE_NAME,\n       AI_COMPLETE('claude-sonnet-4-5',\n                   'This is a screenshot a fraud victim sent to their bank. Which organisation does the message impersonate, and what are its red flags? Answer in two short lines.',\n                   TO_FILE('@BARCLAYS_HOL.RETAIL.FINCRIME_EVIDENCE', e.FILE_NAME)) AS ANALYSIS\nFROM BARCLAYS_HOL.RAW_DATA.RB_EVIDENCE_FILES e\nWHERE e.EVIDENCE_TYPE = 'PHISHING_SCREENSHOT'\nLIMIT 3;\n\n-- 6. One fraud case file, summarised into a decision draft from every source\nSELECT f.CASE_ID,\n       AI_COMPLETE('claude-sonnet-4-5', CONCAT(\n           'You are a fraud operations team leader. Draft a 150-word case summary and a reimbursement recommendation, ',\n           'citing the evidence. Case notes: ', f.INVESTIGATOR_NOTES,\n           ' Customer call: ', COALESCE(ANY_VALUE(t.TRANSCRIPT), 'none'),\n           ' Decision recorded: ', f.DECISION)) AS DECISION_DRAFT\nFROM BARCLAYS_HOL.RAW_DATA.RB_FRAUD_CASES f\nLEFT JOIN BARCLAYS_HOL.RAW_DATA.RB_CALL_TRANSCRIPTS t ON t.CUSTOMER_ID = f.CUSTOMER_ID AND t.QUEUE = 'FRAUD'\nWHERE f.FRAUD_TYPE = 'APP_SCAM'\nGROUP BY f.CASE_ID, f.INVESTIGATOR_NOTES, f.DECISION\nLIMIT 1;\n\n-- 7. SAR narrative quality check against a simple standard\nSELECT SAR_ID,\n       AI_CLASSIFY(NARRATIVE, ['complete: who, what, when, why suspicious and action', 'missing the reason for suspicion',\n                               'missing dates or amounts', 'missing the action taken']):labels[0]::VARCHAR AS QUALITY\nFROM BARCLAYS_HOL.RAW_DATA.RB_SAR_NARRATIVES\nLIMIT 10;\n"
+  },
+  {
+   "code": "AI5",
+   "title": "Cortex Search over call transcripts and case notes",
+   "persona": "AI Builder",
+   "minutes": 25,
+   "prerequisites": "AI4 recommended. Needs the `BARCLAYS_HOL.SEARCH_LAB` schema from `setup/10b_search_lab.sql`",
+   "optional": "Cortex Search is not yet approved at Barclays. This module shows what it would unlock: skip it if your account doesn't allow it (the prerequisite check below tells you).",
+   "question": "Can a complaints handler or fraud investigator find \"every call like this one\" in plain English, instead of keyword searches and spreadsheets?",
+   "build": [
+    "Cortex Search service `SEARCH_LAB.RB_CALL_SEARCH` over all 1,000 call transcripts, filterable by queue, topic and whether the customer left",
+    "Cortex Search service `SEARCH_LAB.RB_FINCRIME_SEARCH` over fraud case notes and SAR narratives",
+    "Plain-English searches with filters, and a comparison with AI4's AI SQL approach"
+   ],
+   "steps": [
+    {
+     "title": "Open Cortex Code",
+     "body": "1. Switch the toggle at the top left from **Home** to **CoCo**.\n2. Press **New session** if you aren't carrying on from AI4.\n**Important:** Cortex Search is not approved at Barclays yet. Everything here is a preview of what approval would add on top of the approved AI SQL in AI4.",
+     "where": "the **CoCo** tab, in your AI4 session or a **New session**",
+     "prompt": "",
+     "sql": "",
+     "expect": "the Cortex Code screen with a **How can I help?** box",
+     "checkId": "",
+     "pasteInto": ""
+    },
+    {
+     "title": "Create a search service over call transcripts",
+     "body": "**Tip:** the service indexes the text itself and keeps itself up to date. There's no embedding pipeline to build.",
+     "where": "",
+     "prompt": "Create a Cortex Search service BARCLAYS_HOL.SEARCH_LAB.RB_CALL_SEARCH on the TRANSCRIPT column of BARCLAYS_HOL.RAW_DATA.RB_CALL_TRANSCRIPTS, joined to RB_CUSTOMERS so it carries CHURNED as 'yes' or 'no'. Return CALL_ID, CUSTOMER_ID, CALL_START_TS, QUEUE, TOPIC and CHURNED, make QUEUE, TOPIC and CHURNED filterable attributes, use warehouse BARCLAYS_WH and a target lag of 1 day. Then show the service.",
+     "sql": "",
+     "expect": "the service is created and shows as active after a minute or two",
+     "checkId": "ai5_search_service",
+     "pasteInto": ""
+    },
+    {
+     "title": "Search in plain English",
+     "body": "",
+     "where": "",
+     "prompt": "Use SNOWFLAKE.CORTEX.SEARCH_PREVIEW on RB_CALL_SEARCH to find the 5 calls most like \"customer upset that their local branch is closing and they can't use the app\", then the 5 most like \"caller told to move money to a safe account\" filtered to the FRAUD queue. Show CALL_ID, CUSTOMER_ID, the topic and whether they left.",
+     "sql": "",
+     "expect": "the first search returns retention calls from customers who left, and the second returns fraud reports. The words in your query don't have to appear in the transcript.",
+     "checkId": "",
+     "pasteInto": ""
+    },
+    {
+     "title": "Search the financial crime narratives",
+     "body": "",
+     "where": "",
+     "prompt": "Create a second Cortex Search service BARCLAYS_HOL.SEARCH_LAB.RB_FINCRIME_SEARCH over fraud case investigator notes (RB_FRAUD_CASES) and SAR narratives (RB_SAR_NARRATIVES) together, with a DOC_TYPE attribute (FRAUD_CASE or SAR) and FRAUD_TYPE. Then search it for \"money mule receiving funds and moving them on within minutes\" and show the top 5 with their document type and customer.",
+     "sql": "",
+     "expect": "SAR narratives and account takeover cases describing funds moved on quickly to new payees",
+     "checkId": "",
+     "pasteInto": ""
+    },
+    {
+     "title": "Compare search with AI SQL",
+     "body": "",
+     "where": "",
+     "prompt": "Compare what we did with Cortex Search here against AI4, where AI_CLASSIFY and AI_AGG read the same transcripts. When is a search service the right tool, when is AI SQL enough, and how would an agent use RB_CALL_SEARCH as a tool?",
+     "sql": "",
+     "expect": "search for finding similar documents and grounding an agent, AI SQL for scoring, classifying and summarising everything in a table",
+     "checkId": "",
+     "pasteInto": ""
+    }
+   ],
+   "check": "Your Cortex Search service over call transcripts exists in `BARCLAYS_HOL.SEARCH_LAB`.",
+   "note": "Until Cortex Search is approved, AI4's AI SQL covers the scoring and summarising, and AI3's knowledge extension covers documentation search. This module is the business case for approving it: plain-English retrieval over the bank's own documents, governed in the same account.",
+   "kind": "vignette",
+   "track": "AI Builder",
+   "sqlPath": "vignettes/ai5_cortex_search/ai5.sql",
+   "sql": "-- =====================================================\n-- AI5 (OPTIONAL): CORTEX SEARCH OVER CALL TRANSCRIPTS AND CASE NOTES - reference SQL\n-- Cortex Search is not yet approved at Barclays: this module shows what it would unlock.\n-- Needs setup/10b_search_lab.sql. Run as HOL_PARTICIPANT.\n-- =====================================================\nUSE SECONDARY ROLES NONE;\nUSE WAREHOUSE BARCLAYS_WH;\nUSE SCHEMA BARCLAYS_HOL.SEARCH_LAB;\n\n-- 1. A search service over every call transcript, with filterable attributes\nCREATE OR REPLACE CORTEX SEARCH SERVICE RB_CALL_SEARCH\n    ON TRANSCRIPT\n    ATTRIBUTES QUEUE, TOPIC, CHURNED\n    WAREHOUSE = BARCLAYS_WH\n    TARGET_LAG = '1 day'\n    COMMENT = 'AI5: semantic search over retail call transcripts'\nAS\nSELECT t.CALL_ID, t.CUSTOMER_ID, t.CALL_START_TS, t.QUEUE, t.TOPIC, IFF(c.CHURNED, 'yes', 'no') AS CHURNED, t.TRANSCRIPT\nFROM BARCLAYS_HOL.RAW_DATA.RB_CALL_TRANSCRIPTS t\nJOIN BARCLAYS_HOL.RAW_DATA.RB_CUSTOMERS c ON c.CUSTOMER_ID = t.CUSTOMER_ID;\n\n-- 2. Ask it in plain English, with and without a filter\nSELECT PARSE_JSON(SNOWFLAKE.CORTEX.SEARCH_PREVIEW('BARCLAYS_HOL.SEARCH_LAB.RB_CALL_SEARCH',\n    '{\"query\": \"customer upset that their local branch is closing and they cannot use the app\", \"columns\": [\"CALL_ID\", \"CUSTOMER_ID\", \"QUEUE\", \"CHURNED\"], \"limit\": 5}'))['results'] AS RESULTS;\n\nSELECT PARSE_JSON(SNOWFLAKE.CORTEX.SEARCH_PREVIEW('BARCLAYS_HOL.SEARCH_LAB.RB_CALL_SEARCH',\n    '{\"query\": \"caller told to move money to a safe account\", \"columns\": [\"CALL_ID\", \"CUSTOMER_ID\", \"TOPIC\"], \"filter\": {\"@eq\": {\"QUEUE\": \"FRAUD\"}}, \"limit\": 5}'))['results'] AS RESULTS;\n\n-- 3. A second service over the financial crime narratives (case notes and SARs together)\nCREATE OR REPLACE CORTEX SEARCH SERVICE RB_FINCRIME_SEARCH\n    ON BODY\n    ATTRIBUTES DOC_TYPE, FRAUD_TYPE\n    WAREHOUSE = BARCLAYS_WH\n    TARGET_LAG = '1 day'\n    COMMENT = 'AI5: semantic search over fraud case notes and SAR narratives'\nAS\nSELECT CASE_ID AS DOC_ID, 'FRAUD_CASE' AS DOC_TYPE, FRAUD_TYPE, CUSTOMER_ID, INVESTIGATOR_NOTES AS BODY FROM BARCLAYS_HOL.RAW_DATA.RB_FRAUD_CASES\nUNION ALL\nSELECT SAR_ID, 'SAR', NULL, CUSTOMER_ID, NARRATIVE FROM BARCLAYS_HOL.RAW_DATA.RB_SAR_NARRATIVES;\n\nSELECT PARSE_JSON(SNOWFLAKE.CORTEX.SEARCH_PREVIEW('BARCLAYS_HOL.SEARCH_LAB.RB_FINCRIME_SEARCH',\n    '{\"query\": \"money mule receiving funds and moving them on within minutes\", \"columns\": [\"DOC_ID\", \"DOC_TYPE\", \"CUSTOMER_ID\"], \"limit\": 5}'))['results'] AS RESULTS;\n\nSHOW CORTEX SEARCH SERVICES IN SCHEMA BARCLAYS_HOL.SEARCH_LAB;\n"
+  },
+  {
    "code": "GOV1",
    "title": "PII policies",
    "persona": "Governance / Risk",
    "minutes": 45,
    "prerequisites": "`setup/catchup/core_analytics.sql`",
+   "optional": "",
    "question": "Prove account identifiers are protected wherever they flow - dashboards, semantic views, agents - and that people only see clients in their region.",
    "build": [
     "`GOVERNANCE.ACCOUNT_REGISTER`",
@@ -1262,6 +1681,7 @@
    "persona": "Governance / Risk / Audit",
    "minutes": 30,
    "prerequisites": "C1 only. GOV2 uses a ready-made audit pack in `BARCLAYS_HOL.AUDIT_PACK`, so it doesn't depend on any other module",
+   "optional": "",
    "question": "If a source Iceberg table changes, what breaks? And who - human or agent - has been reading client data?",
    "build": [
     "Lineage and access-history queries",
@@ -1353,6 +1773,7 @@
    "persona": "AI governance lead / platform team",
    "minutes": 40,
    "prerequisites": "C1 only. Uses the account's Cortex AI Gateway (`SNOWFLAKE`, created by Snowflake)",
+   "optional": "",
    "question": "Our teams use coding agents, SDK apps and Snowflake agents. How do we control which models they can reach, see what every request did, and attribute AI spend to each person, without slowing the builders down?",
    "build": [
     "Notebook `gov3_ai_gateway` that calls two model families through the gateway and reads back what it recorded",

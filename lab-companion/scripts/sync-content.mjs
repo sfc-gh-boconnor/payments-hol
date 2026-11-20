@@ -11,8 +11,8 @@ import { fileURLToPath } from "node:url"
 const APP = dirname(dirname(fileURLToPath(import.meta.url)))
 const ROOT = dirname(APP)
 
-const ORDER = ["de", "da", "ops", "ai", "gov"]
-const PERSONA_OF = { de: "Data Engineer", da: "Data Analyst", ops: "Payments Ops", ai: "AI Builder", gov: "Governance" }
+const ORDER = ["de", "da", "ds", "ops", "ai", "gov"]
+const PERSONA_OF = { de: "Data Engineer", da: "Data Analyst", ops: "Payments Ops", ai: "AI Builder", gov: "Governance", ds: "Data Scientist" }
 
 // "## Steps" holds one "### Title" block per step. Inside a block:
 //   Paste: <where the prompt goes, if not the Cortex Code sidebar>
@@ -74,6 +74,8 @@ function parseReadme(md) {
     persona: meta.persona ?? "",
     minutes: Number((meta.time ?? "").replace(/\D/g, "")) || null,
     prerequisites: meta.prerequisites ?? "",
+    // "| **Optional** | why |" marks a module attendees can skip (e.g. a feature not yet approved)
+    optional: meta.optional ?? "",
     question: text("Business question"),
     build: list("What you'll build"),
     steps: parseSteps(sections.Steps ?? []),
