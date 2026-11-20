@@ -19,6 +19,7 @@
 ## Steps
 ### Open the starter notebook
 Where: the **payments-hol** Workspace > file explorer > `notebooks/ds2_fraud_anomaly.ipynb`
+Media: ds2_notebook_service.mp4 | Open the notebook > service settings: NOTEBOOK_POOL, 1 hour, HOL_NOTEBOOK_ACCESS_INTEGRATION
 1. Open `notebooks/` > **ds2_fraud_anomaly.ipynb** in the file explorer.
 2. In the notebook toolbar, click the arrow next to the status dot and pick your service under **Select service** (usually `USER_SERVICE_1`, from DS1).
 - No service yet? Choose **Create new service** and fill it in as in DS1: **NOTEBOOK_POOL**, **1 hour** idle timeout, **HOL_NOTEBOOK_ACCESS_INTEGRATION**.

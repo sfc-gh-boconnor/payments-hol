@@ -983,7 +983,9 @@
      "sql": "",
      "expect": "the starter notebook open with its numbered headings, connected to your service",
      "checkId": "",
-     "pasteInto": ""
+     "pasteInto": "",
+     "media": "ds2_notebook_service.mp4",
+     "mediaCaption": "Open the notebook > service settings: NOTEBOOK_POOL, 1 hour, HOL_NOTEBOOK_ACCESS_INTEGRATION"
     },
     {
      "title": "Build behavioural features",
