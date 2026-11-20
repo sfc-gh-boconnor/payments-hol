@@ -51,7 +51,7 @@ export function PathwayHome({
         <CardHeader>
           <CardTitle>Choose your pathway</CardTitle>
           <CardDescription>
-            Everyone starts with C1. Each vignette stands alone - if it lists a prerequisite you have not built, run the catch-up script it names.
+            Everyone starts with C0 and C1. Each vignette stands alone - if it lists a prerequisite you have not built, run the catch-up script it names.
             {progress.data?.user && <> Signed in as <strong>{progress.data.user}</strong>.</>}
           </CardDescription>
         </CardHeader>

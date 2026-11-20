@@ -1,4 +1,5 @@
-import { ArrowDown, Bot, Lightbulb, ShieldCheck, Sparkles, Workflow } from "lucide-react"
+import Link from "next/link"
+import { ArrowDown, ArrowRight, Bot, Lightbulb, ShieldCheck, Sparkles, Workflow } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 
 const GAINS = [
@@ -11,13 +12,14 @@ const GAINS = [
 const PRODUCTS = [
   { name: "Payments operations", modules: "C1, DE1-DE3, OPS2", business: "Corporate", elsewhere: "card disputes, fraud alerts, faster-payments SLAs" },
   { name: "Client 360", modules: "DA0, DA1, OPS1, AI1-AI3", business: "Corporate and RM", elsewhere: "next best action, credit reviews, KYC refresh" },
+  { name: "Retail banking", modules: "C0, data map", business: "Retail", elsewhere: "attrition, next best product, affordability, fraud" },
   { name: "Customer voice", modules: "DA2, OPS3", business: "Corporate and retail", elsewhere: "complaints handling, call notes, app reviews" },
   { name: "Branch network and catchment", modules: "DA3", business: "Retail", elsewhere: "ATM placement, mortgage branches, SME lending reach" },
   { name: "Trust and governance", modules: "GOV1-GOV3", business: "Every data product", elsewhere: "PII controls, audit evidence, AI model access" },
 ]
 
 const HOW = [
-  "Start with C1 to explore the data with Cortex Code.",
+  "Start with C0 to tour all the data, then C1 to explore one data product.",
   "Pick the pathway that matches your role. Each module stands alone.",
   "Paste the prompts, then press Check my work to confirm it worked.",
 ]
@@ -51,8 +53,11 @@ export function Welcome() {
         </div>
         <div>
           <h3 className="text-sm">Data products you&apos;ll touch</h3>
-          <p className="mt-1 text-xs text-muted-foreground">Payments is the worked example. Every pattern carries over to the others, and to your own.</p>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <p className="mt-1 text-xs text-muted-foreground">
+            Payments is the worked example. Every pattern carries over to the others, and to your own.{" "}
+            <Link href="/data" className="inline-flex items-center gap-1 font-semibold text-primary hover:underline">See the data map <ArrowRight className="h-3 w-3" aria-hidden /></Link>
+          </p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             {PRODUCTS.map((p) => (
               <div key={p.name} className="flex flex-col rounded-lg border border-t-4 border-t-primary p-4">
                 <div className="text-sm font-semibold">{p.name}</div>

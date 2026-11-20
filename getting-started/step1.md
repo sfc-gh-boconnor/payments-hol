@@ -24,7 +24,7 @@ Log in to Snowsight and switch to the role **`HOL_PARTICIPANT`**.
 
 The Lab Companion is your lab guide, installed in your account. It has the step-by-step instructions and SQL, and a **Check my work** button for every module that checks what you have actually built and tracks your progress. Your facilitator will share its URL.
 
-Choose your pathway, start with **C1**, and press **Check my work** at the end of each module.
+Choose your pathway, start with **C0** (a tour of all the data) and **C1**, and press **Check my work** at the end of each module.
 
 ### 4. Open the lab Workspace
 
@@ -34,7 +34,7 @@ In Snowsight go to **Projects > Workspaces**, click the **My Workspace** dropdow
 
 ## Pathways
 
-Everyone does the shared core (C1 and C2) first, then two blocks of modules for their pathway: **Data Engineer**, **Data Analyst**, **Payments Ops**, **AI Builder** or **Governance**. The lab ends with everyone asking the **Corporate Payments 360** agent about what they built.
+Everyone does the shared core (C0 and C1) first, then two blocks of modules for their pathway: **Data Engineer**, **Data Analyst**, **Payments Ops**, **AI Builder** or **Governance**. The lab ends with everyone asking the **Corporate Payments 360** agent about what they built.
 
 The Lab Companion shows the modules, order and timings for your pathway.
 

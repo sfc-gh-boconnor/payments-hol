@@ -7,7 +7,7 @@ Every attendee does the **shared core**, then follows one pathway. Vignettes are
 | Time | Block | Content |
 |---|---|---|
 | 0:00 | Context (20 min) | Barclays enterprise data platform: Iceberg, read-only sources, approved AI capabilities. Use the reference architecture deck. |
-| 0:20 | Shared core (45 min) | [C1 Explore the Iceberg data product](../core/C1_explore_iceberg.sql), [C2 Data product tour](../core/C2_data_product_tour.md) |
+| 0:20 | Shared core (40 min) | [C0 Tour the data estate](../core/C0_README.md), [C1 Explore the Iceberg data product](../core/C1_README.md) |
 | 1:05 | Pathway block A (60 min) | First one or two vignettes in your pathway |
 | 2:05 | Break (15 min) | |
 | 2:20 | Pathway block B (60 min) | Remaining vignettes in your pathway |

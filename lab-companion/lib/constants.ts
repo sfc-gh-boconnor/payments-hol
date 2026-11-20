@@ -7,6 +7,8 @@ export const LOGO_SRC = "/brand/snowflake-bug-color-rgb.svg"
 /** Pages listed under "Go to" in the ⌘K command palette. */
 export const NAV_ITEMS: { label: string; href: string }[] = [
   { label: "Pathways and modules", href: "/" },
+  { label: "Data map", href: "/data" },
+  { label: "C0 Tour the data estate", href: "/module/C0" },
   { label: "C1 Explore the Iceberg data product", href: "/module/C1" },
   { label: "Facilitator progress", href: "/facilitator" },
 ]

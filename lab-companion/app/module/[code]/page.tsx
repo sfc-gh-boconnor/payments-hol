@@ -58,7 +58,7 @@ export default async function ModulePage({ params }: { params: Promise<{ code: s
             <CardHeader><CardTitle>Steps</CardTitle></CardHeader>
             <CardContent>
               <div className="mb-5 space-y-3">
-                {/same session/i.test(m.steps[0]?.where ?? "") ? (
+                {/same session|C0 session|C1 session/i.test(m.steps[0]?.where ?? "") ? (
                 <p className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs">
                   <span className="font-semibold">Carry on in your existing Cortex Code session</span> for this module, as the first step says. Don&apos;t start a new one: Cortex Code reuses what it has already worked out.
                 </p>

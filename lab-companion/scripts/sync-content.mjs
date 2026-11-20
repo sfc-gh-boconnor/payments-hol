@@ -84,11 +84,13 @@ function parseReadme(md) {
 
 const modules = []
 
-modules.push({
-  ...parseReadme(readFileSync(join(ROOT, "core/C1_README.md"), "utf8")), kind: "core",
-  sqlPath: "core/C1_explore_iceberg.sql",
-  sql: readFileSync(join(ROOT, "core/C1_explore_iceberg.sql"), "utf8"),
-})
+for (const [readme, sqlPath] of [["core/C0_README.md", "core/C0_tour_data_estate.sql"], ["core/C1_README.md", "core/C1_explore_iceberg.sql"]]) {
+  modules.push({
+    ...parseReadme(readFileSync(join(ROOT, readme), "utf8")), kind: "core",
+    sqlPath,
+    sql: readFileSync(join(ROOT, sqlPath), "utf8"),
+  })
+}
 
 const vdirs = readdirSync(join(ROOT, "vignettes"))
   .sort((a, b) => ORDER.indexOf(a.match(/^[a-z]+/)[0]) - ORDER.indexOf(b.match(/^[a-z]+/)[0]) || a.localeCompare(b))

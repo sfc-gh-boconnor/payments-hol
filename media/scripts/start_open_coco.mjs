@@ -1,4 +1,4 @@
-// Getting started: switch the left nav from Home to CoCo and put C1's first
+// Getting started: switch the left nav from Home to CoCo and put C0's first
 // prompt into the "How can I help?" box. The prompt is typed, not sent.
 import { clickWithHighlight, highlight } from "../lib.mjs"
 
@@ -10,9 +10,9 @@ export const outputWidth = 720
 export const crop = { x: 0, y: 0, width: 1024, height: 470 }
 
 const PROMPT =
-  "List the Iceberg tables in BARCLAYS_HOL.RAW_DATA with their row counts, and show the Iceberg metadata " +
-  "location for BARCLAYS_HOL.RAW_DATA.PAYMENTS. Explain what Snowflake-managed Iceberg means for other " +
-  "engines reading this data."
+  "Give me a tour of the BARCLAYS_HOL database. For the RAW_DATA, RETAIL, ANALYTICS and AUDIT_PACK schemas, list every table " +
+  "with its row count and say whether it is Iceberg. Group them into data products: corporate payments, retail banking " +
+  "(the RB_ tables), branch network, analytics and governance."
 
 export async function run({ page, mark }) {
   // The Home / CoCo toggle is a radio group of two buttons at the top of the side nav

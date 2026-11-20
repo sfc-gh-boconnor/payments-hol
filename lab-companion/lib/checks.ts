@@ -26,12 +26,32 @@ const show = (showSql: string, what: string) =>
   `${showSql} ->> SELECT COUNT(*) > 0 AS OK, IFF(COUNT(*) > 0, '${what} found', '${what} not found') AS DETAIL FROM $1`
 
 export const CHECKS: Record<string, Check[]> = {
+  C0: [
+    {
+      id: "c0_retail_toured",
+      label: "You queried the retail products and employment tables",
+      sql: `SELECT COUNT_IF(QUERY_TEXT ILIKE '%RB_PRODUCTS%') > 0 AND COUNT_IF(QUERY_TEXT ILIKE '%RB_EMPLOYMENT%') > 0 AS OK,
+                   COUNT_IF(QUERY_TEXT ILIKE '%RB_%') || ' of your recent queries touched the retail tables' AS DETAIL
+            FROM TABLE(BARCLAYS_HOL.INFORMATION_SCHEMA.QUERY_HISTORY_BY_USER(RESULT_LIMIT => 1000))
+            WHERE EXECUTION_STATUS = 'SUCCESS' AND START_TIME > DATEADD('day', -2, CURRENT_TIMESTAMP())`,
+      hint: "Run the Meet a retail customer prompt and Allow the queries, so Cortex Code joins RB_ACCOUNTS to RB_PRODUCTS and RB_EMPLOYMENT.",
+      asCaller: true,
+    },
+    {
+      id: "c0_estate_published",
+      label: "All 16 source tables are published as Iceberg (9 corporate, 7 retail)",
+      sql: `SELECT COUNT_IF(IS_ICEBERG = 'YES') = 16 AS OK,
+                   COUNT_IF(IS_ICEBERG = 'YES' AND LEFT(TABLE_NAME, 3) <> 'RB_') || ' corporate and ' || COUNT_IF(IS_ICEBERG = 'YES' AND LEFT(TABLE_NAME, 3) = 'RB_') || ' retail Iceberg tables' AS DETAIL
+            FROM BARCLAYS_HOL.INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'RAW_DATA'`,
+      hint: "Ask the facilitator: setup/02_publish_iceberg.sql or setup/08_retail_bank_seed.sql has not been run in this account.",
+    },
+  ],
   C1: [
     {
       id: "c1_iceberg_published",
       label: "Nine source tables are published as Iceberg",
       sql: `SELECT COUNT_IF(IS_ICEBERG = 'YES') = 9 AS OK, COUNT_IF(IS_ICEBERG = 'YES') || ' of 9 Iceberg tables' AS DETAIL
-            FROM BARCLAYS_HOL.INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'RAW_DATA'`,
+            FROM BARCLAYS_HOL.INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'RAW_DATA' AND LEFT(TABLE_NAME, 3) <> 'RB_'`,
       hint: "Ask the facilitator - setup/02_publish_iceberg.sql has not been run in this account.",
     },
     {
@@ -415,6 +435,7 @@ const pre = {
 } satisfies Record<string, Check>
 
 export const PREREQS: Record<string, Check[]> = {
+  C1: [CHECKS.C0[1]],
   DE1: [CHECKS.C1[0]],
   DE2: [pre.staging, pre.slaMart, pre.customerMart],
   DA1: [pre.staging, pre.feedback, pre.svPayments],

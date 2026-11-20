@@ -1,14 +1,14 @@
 {
  "modules": [
   {
-   "code": "C1",
-   "title": "Explore the Iceberg data product",
+   "code": "C0",
+   "title": "Tour the data estate",
    "persona": "All personas",
-   "minutes": 25,
+   "minutes": 20,
    "prerequisites": "Facilitator setup complete",
-   "question": "What has the platform team published to us, and what can we (not) do with it?",
+   "question": "What data do we have, how does it fit together, and which part do I want to work on today?",
    "build": [
-    "Nothing yet: you explore the nine read-only Snowflake-managed Iceberg tables with Cortex Code, and get to know the Workspace you'll build everything else in."
+    "Nothing yet: you tour every data product in the account with Cortex Code, from corporate payments to retail customers and the branch network, then pick where to zoom in."
    ],
    "steps": [
     {
@@ -24,10 +24,78 @@
      "mediaCaption": "Home > CoCo, then paste the first prompt"
     },
     {
-     "title": "See what has been published",
+     "title": "What data do we have?",
+     "body": "**Tip:** the **Data map** page of this app (top right) shows the same estate as a picture.",
+     "where": "",
+     "prompt": "Give me a tour of the BARCLAYS_HOL database. For the RAW_DATA, RETAIL, ANALYTICS and AUDIT_PACK schemas, list every table with its row count and say whether it is Iceberg. Group them into data products: corporate payments, retail banking (the RB_ tables), branch network, analytics and governance.",
+     "sql": "",
+     "expect": "about 35 tables in five data products: nine corporate payments Iceberg tables (PAYMENTS has 50,000 rows), seven RB_ retail Iceberg tables (20,000 customers, about 1.3 million transactions), 57 branches with ATMs and drive times, and analytics and governance tables that fill in as you build",
+     "checkId": "",
+     "pasteInto": ""
+    },
+    {
+     "title": "How does it fit together?",
+     "body": "**Tip:** compare the diagram with the **Data map** page. The joins should match.",
+     "where": "",
+     "prompt": "How do these data products join? Draw a simple text diagram of the keys between them: corporate payments to accounts, customers and relationship managers, and retail customers to their home branch, products, employer and transactions. Point out any links that cross from one data product to another.",
+     "sql": "",
+     "expect": "corporate PAYMENTS > ACCOUNTS > CUSTOMERS > RELATIONSHIP_MANAGERS; retail RB_CUSTOMERS > RB_ACCOUNTS > RB_PRODUCTS, plus RB_EMPLOYMENT and RB_TRANSACTIONS; and the bridge RB_CUSTOMERS.HOME_BRANCH_ID > RETAIL.BRANCHES, where retail customers meet the branch network",
+     "checkId": "",
+     "pasteInto": ""
+    },
+    {
+     "title": "Meet a retail customer",
+     "body": "**Tip:** the people are synthetic. The addresses, postcodes and area statistics are real open data.",
+     "where": "",
+     "prompt": "Pick one salaried retail customer from BARCLAYS_HOL.RAW_DATA.RB_CUSTOMERS who holds a mortgage. Show me their profile and area deprivation decile, their home branch and drive time from RETAIL.BRANCHES, their employer, gross and net monthly pay from RB_EMPLOYMENT, every product they hold by name from RB_ACCOUNTS joined to RB_PRODUCTS, their affordability band, and their last ten transactions.",
+     "sql": "",
+     "expect": "one customer end to end: a real UK address, a home branch a few minutes' drive away, an employer and payroll credits on their pay day, products by name (such as a fixed mortgage and an easy access saver) and an affordability band",
+     "checkId": "c0_retail_toured",
+     "pasteInto": ""
+    },
+    {
+     "title": "Meet a corporate client",
      "body": "",
      "where": "",
-     "prompt": "List the Iceberg tables in BARCLAYS_HOL.RAW_DATA with their row counts, and show the Iceberg metadata location for BARCLAYS_HOL.RAW_DATA.PAYMENTS. Explain what Snowflake-managed Iceberg means for other engines reading this data.",
+     "prompt": "Now do the same for one corporate client in BARCLAYS_HOL.RAW_DATA.CUSTOMERS: their relationship manager, accounts, payment count and failure rate by payment scheme, and their most recent feedback.",
+     "sql": "",
+     "expect": "one client, their RM, a few accounts, a failure rate by scheme (CHAPS, BACS, FPS and so on) and a feedback comment",
+     "checkId": "",
+     "pasteInto": ""
+    },
+    {
+     "title": "Pick your zoom",
+     "body": "Next: **C1** zooms into one data product, the corporate payments Iceberg tables. Every pathway starts there, then goes its own way.",
+     "where": "",
+     "prompt": "Based on what we've seen, suggest three questions a retail bank could answer with this data, one each for attrition, product affordability and fraud, and say which tables each would need.",
+     "sql": "",
+     "expect": "three questions, each with the tables it would use",
+     "checkId": "c0_estate_published",
+     "pasteInto": ""
+    }
+   ],
+   "check": "Every data product is in your account, and you have queried the retail customer, product and employment tables.",
+   "note": "At Barclays these would be separate data products with their own owners: payments operations, retail customer, branch network. Snowflake keeps them in one governed account, so a question that crosses them is a join, not a project.",
+   "kind": "core",
+   "sqlPath": "core/C0_tour_data_estate.sql",
+   "sql": "-- =====================================================\n-- C0: TOUR THE DATA ESTATE - reference queries\n-- What Cortex Code should arrive at for each C0 prompt. Run as HOL_PARTICIPANT.\n-- =====================================================\nUSE WAREHOUSE BARCLAYS_WH;\n\n-- 1. What data do we have? Every table by data product, with row counts\nSELECT CASE\n         WHEN TABLE_SCHEMA = 'RAW_DATA' AND TABLE_NAME LIKE 'RB\\\\_%' THEN 'Retail banking'\n         WHEN TABLE_SCHEMA = 'RAW_DATA' THEN 'Corporate payments'\n         WHEN TABLE_SCHEMA = 'RETAIL' THEN 'Branch network'\n         WHEN TABLE_SCHEMA = 'ANALYTICS' THEN 'Analytics'\n         ELSE 'Governance' END AS DATA_PRODUCT,\n       TABLE_SCHEMA, TABLE_NAME, IS_ICEBERG, ROW_COUNT\nFROM BARCLAYS_HOL.INFORMATION_SCHEMA.TABLES\nWHERE TABLE_SCHEMA IN ('RAW_DATA', 'RETAIL', 'ANALYTICS', 'AUDIT_PACK')\nORDER BY DATA_PRODUCT, TABLE_SCHEMA, TABLE_NAME;\n\n-- 2. How does it fit together? The retail bridge to the branch network\nSELECT b.CITY, b.BRANCH_NAME, COUNT(*) AS RETAIL_CUSTOMERS, ROUND(AVG(c.HOME_BRANCH_DRIVE_S) / 60, 1) AS AVG_DRIVE_MIN\nFROM BARCLAYS_HOL.RAW_DATA.RB_CUSTOMERS c\nJOIN BARCLAYS_HOL.RETAIL.BRANCHES b ON b.BRANCH_ID = c.HOME_BRANCH_ID\nGROUP BY ALL ORDER BY RETAIL_CUSTOMERS DESC LIMIT 10;\n\n-- 3. Meet a retail customer: profile, branch, employer and pay, products, affordability\nWITH one AS (\n    SELECT c.CUSTOMER_ID\n    FROM BARCLAYS_HOL.RAW_DATA.RB_CUSTOMERS c\n    JOIN BARCLAYS_HOL.RAW_DATA.RB_EMPLOYMENT e ON e.CUSTOMER_ID = c.CUSTOMER_ID\n    JOIN BARCLAYS_HOL.RAW_DATA.RB_ACCOUNTS a ON a.CUSTOMER_ID = c.CUSTOMER_ID AND a.PRODUCT = 'MORTGAGE'\n    WHERE e.INCOME_SOURCE = 'SALARY' AND NOT c.CHURNED\n    ORDER BY c.CUSTOMER_ID LIMIT 1\n)\nSELECT c.FIRST_NAME || ' ' || c.LAST_NAME AS CUSTOMER, c.AGE, c.ADDRESS_LINE_1, c.POSTCODE, c.CITY, c.IMD_DECILE,\n       b.BRANCH_NAME AS HOME_BRANCH, ROUND(c.HOME_BRANCH_DRIVE_S / 60, 1) AS DRIVE_MIN,\n       e.EMPLOYER_NAME, e.PAY_FREQUENCY, e.PAY_DAY, e.GROSS_ANNUAL_GBP, e.NET_MONTHLY_GBP,\n       LISTAGG(p.PRODUCT_NAME, ', ') WITHIN GROUP (ORDER BY p.PRODUCT_FAMILY) AS PRODUCTS,\n       c.TOTAL_DEBT_GBP, c.DISPOSABLE_INCOME_GBP, c.AFFORDABILITY_BAND\nFROM one\nJOIN BARCLAYS_HOL.RAW_DATA.RB_CUSTOMERS c ON c.CUSTOMER_ID = one.CUSTOMER_ID\nJOIN BARCLAYS_HOL.RETAIL.BRANCHES b ON b.BRANCH_ID = c.HOME_BRANCH_ID\nJOIN BARCLAYS_HOL.RAW_DATA.RB_EMPLOYMENT e ON e.CUSTOMER_ID = c.CUSTOMER_ID\nJOIN BARCLAYS_HOL.RAW_DATA.RB_ACCOUNTS a ON a.CUSTOMER_ID = c.CUSTOMER_ID AND a.STATUS = 'OPEN'\nJOIN BARCLAYS_HOL.RAW_DATA.RB_PRODUCTS p ON p.PRODUCT_ID = a.PRODUCT_ID\nGROUP BY ALL;\n\n-- 4. Meet a corporate client: RM, accounts, failure rate by scheme\nSELECT cu.CUSTOMER_NAME, rm.RM_NAME, p.PAYMENT_TYPE, COUNT(*) AS PAYMENTS,\n       ROUND(100 * COUNT_IF(p.STATUS = 'FAILED') / COUNT(*), 2) AS FAILED_PCT\nFROM BARCLAYS_HOL.RAW_DATA.PAYMENTS p\nJOIN BARCLAYS_HOL.RAW_DATA.ACCOUNTS a ON a.ACCOUNT_ID = p.ORIGINATOR_ACCOUNT_ID\nJOIN BARCLAYS_HOL.RAW_DATA.CUSTOMERS cu ON cu.CUSTOMER_ID = a.CUSTOMER_ID\nJOIN BARCLAYS_HOL.RAW_DATA.RELATIONSHIP_MANAGERS rm ON rm.RM_ID = cu.RM_ID\nWHERE cu.CUSTOMER_ID = (SELECT MIN(CUSTOMER_ID) FROM BARCLAYS_HOL.RAW_DATA.CUSTOMERS)\nGROUP BY ALL ORDER BY PAYMENTS DESC;\n"
+  },
+  {
+   "code": "C1",
+   "title": "Explore the Iceberg data product",
+   "persona": "All personas",
+   "minutes": 20,
+   "prerequisites": "C0",
+   "question": "What has the platform team published to us, and what can we (not) do with it?",
+   "build": [
+    "Nothing yet: you zoom into one data product, the nine read-only corporate payments Iceberg tables, with Cortex Code, and get to know the Workspace you'll build everything else in."
+   ],
+   "steps": [
+    {
+     "title": "See what has been published",
+     "body": "",
+     "where": "the **CoCo** tab, in your C0 session or a **New session**",
+     "prompt": "List the corporate payments Iceberg tables in BARCLAYS_HOL.RAW_DATA (not the RB_ retail tables) with their row counts, and show the Iceberg metadata location for BARCLAYS_HOL.RAW_DATA.PAYMENTS. Explain what Snowflake-managed Iceberg means for other engines reading this data.",
      "sql": "",
      "expect": "nine Iceberg tables (PAYMENTS has 50,000 rows) and a metadata JSON location",
      "checkId": "c1_iceberg_published",
@@ -59,7 +127,7 @@
      "title": "Learn the data model",
      "body": "",
      "where": "",
-     "prompt": "Describe the tables in BARCLAYS_HOL.RAW_DATA and how they join together. Draw the relationships as a simple text diagram.",
+     "prompt": "Describe the corporate payments tables in BARCLAYS_HOL.RAW_DATA (not the RB_ ones) and how they join together. Draw the relationships as a simple text diagram.",
      "sql": "",
      "expect": "customers -> relationship managers, customers -> accounts -> payments (via ORIGINATOR_ACCOUNT_ID), plus feedback, alerts, schemes, SLAs and error codes",
      "checkId": "",
@@ -76,7 +144,7 @@
      "pasteInto": ""
     }
    ],
-   "check": "Your role can read all nine Iceberg tables but cannot insert into them.",
+   "check": "Your role can read all nine corporate Iceberg tables but cannot insert into them.",
    "note": "At Barclays the same tables sit on the bank's own object storage via an external volume; the SQL is identical.",
    "kind": "core",
    "sqlPath": "core/C1_explore_iceberg.sql",

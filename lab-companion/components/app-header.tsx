@@ -20,6 +20,9 @@ export function AppHeader() {
           <span className="truncate font-heading text-sm font-black uppercase tracking-wide">{APP_TITLE}</span>
         </Link>
         <div className="ml-auto flex shrink-0 items-center gap-1.5">
+          <Link href="/data" className="hidden rounded-full px-3 py-1.5 font-heading text-xs font-extrabold uppercase tracking-wide text-white hover:bg-white/15 sm:block">
+            Data map
+          </Link>
           <CommandPalette />
           <span className="[&_button]:text-white [&_button:hover]:bg-white/15 [&_button:hover]:text-white">
             <ThemeToggle />

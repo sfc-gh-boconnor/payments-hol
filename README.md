@@ -20,7 +20,7 @@ v2 of [gemmamcginlay-sf/barclays-hol](https://github.com/gemmamcginlay-sf/barcla
 
 ```
 setup/          facilitator: provisioning, synthetic data, Iceberg publish, catch-up scripts
-core/           shared core for all attendees (C1 SQL, C2 tour)
+core/           shared core for all attendees (C0 data estate tour, C1 Iceberg data product)
 vignettes/      11 self-contained modules, each with README.md + .sql
 pathways/       persona agendas, half-day template, shorter formats
 dbt/            dbt project (runs as a dbt Project on Snowflake)
@@ -139,7 +139,7 @@ The provisioning script prints the app URL at the end.
 1. Log in and switch to role `HOL_PARTICIPANT`.
 2. Open the **Lab Companion** app (URL from the facilitator) and choose your pathway.
 3. Open the lab Workspace **payments-hol** (**Projects > Workspaces**, then the **My Workspace** dropdown > **payments-hol**) and the **Cortex Code** sidebar. Each Lab Companion step gives a prompt to paste; the module SQL is a fallback. DataOps accounts have it already; on any other account, create it from this repo with **Projects > Workspaces > From Git repository**.
-4. Start with C1, then press **Check my work** at the end of each module.
+4. Start with C0 (a tour of all the data) and C1, then press **Check my work** at the end of each module.
 
 Every attendee script starts with `USE SECONDARY ROLES NONE` so facilitators testing with admin rights see exactly what attendees see.
 
