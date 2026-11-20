@@ -18,6 +18,7 @@
 ## Steps
 ### Open the starter notebook and create its service
 Where: the **payments-hol** Workspace (not My Workspace) > file explorer > `notebooks/ds1_attrition_model.ipynb`
+Media: ds1_notebook_service.mp4 | Open the notebook > Create new service > NOTEBOOK_POOL, 1 hour, HOL_NOTEBOOK_ACCESS_INTEGRATION
 1. Open `notebooks/` > **ds1_attrition_model.ipynb** in the file explorer.
 - Can't see `notebooks/` and `vignettes/`? You're in the wrong Workspace. Pick **payments-hol** from the Workspace dropdown (top left).
 2. In the notebook toolbar, click the arrow next to the status dot (right of the blue run button).

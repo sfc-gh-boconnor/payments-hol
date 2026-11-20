@@ -898,7 +898,9 @@
      "sql": "",
      "expect": "the starter notebook open in payments-hol with its numbered headings, and the status dot showing the service connected",
      "checkId": "",
-     "pasteInto": ""
+     "pasteInto": "",
+     "media": "ds1_notebook_service.mp4",
+     "mediaCaption": "Open the notebook > Create new service > NOTEBOOK_POOL, 1 hour, HOL_NOTEBOOK_ACCESS_INTEGRATION"
     },
     {
      "title": "Build point-in-time features",
