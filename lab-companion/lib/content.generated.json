@@ -916,13 +916,15 @@
     },
     {
      "title": "Build point-in-time features",
-     "body": "**Important:** the label comes from after the observation date, and every feature from before it. That's what stops the model seeing the future.",
+     "body": "1. With `ds1_attrition_model` open, click the round **Cortex Code** button at the bottom right of the Workspace.\n2. In the sidebar, press **New chat** if it opens an earlier chat.\n3. Paste the prompt below into the **Ask, build** box and press **Enter**.\n4. **Allow** each command Cortex Code wants to run, then run the cells it adds.\n**Tip:** keep the notebook open while you work in the sidebar, so Cortex Code adds the cells to it.\n**Important:** the label comes from after the observation date, and every feature from before it. That's what stops the model seeing the future.",
      "where": "the Cortex Code sidebar, with `ds1_attrition_model` open",
      "prompt": "In the open notebook ds1_attrition_model, put each cell I ask for under its matching numbered heading. Under heading 1, add a SQL cell named features that creates the view BARCLAYS_HOL.ML.RB_CHURN_FEATURES with one row per retail customer who was still a customer on the observation date 31 Aug 2026. Use only data from on or before that date: tenure, age, segment, IMD decile, housing tenure, credit score, digital active, whether their home branch is one of BR-MAN-90, BR-LDS-90 or BR-CDF-90, drive minutes to it, and from RB_MONTHLY_SNAPSHOT the last 3 months' average logins, branch visits and card spend, latest balances and products held, salary trend (last 3 months against the 3 before), and from RB_ACCOUNTS joined to RB_PRODUCTS the lowest savings rate and whether they hold a legacy saver. The label CHURNED_NEXT_3M is 1 if CHURN_DATE falls in the 3 months after the observation date. Don't use CHURNED, CHURN_REASON, CHURNED_FLAG, CLOSED_DATE or STATUS. Then add a SQL cell named class_balance and run both.",
      "sql": "",
      "expect": "about 18,400 customers, of whom about 2% leave in the next 3 months",
      "checkId": "ds1_features",
-     "pasteInto": ""
+     "pasteInto": "",
+     "media": "ds1_coco_sidebar.mp4",
+     "mediaCaption": "Open the Cortex Code sidebar from the notebook, then paste the prompt"
     },
     {
      "title": "Train two models and track them in an experiment",
