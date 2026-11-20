@@ -34,9 +34,17 @@ function parseSteps(lines) {
     if (!s) continue
     const f = l.match(/^```(prompt|sql)\s*$/)
     if (f) { fence = { kind: f[1], buf: [] }; continue }
+    // "Media: file.mp4 | caption" attaches a short clip from public/media to the step
+    const media = l.match(/^Media: ([\w.-]+\.mp4)\s*(?:\|\s*(.*))?$/)
+    if (media) {
+      if (!existsSync(join(ROOT, "lab-companion/public/media", media[1]))) throw new Error(`Missing clip public/media/${media[1]} in step "${s.title}"`)
+      s.media = media[1]; s.mediaCaption = (media[2] ?? "").trim(); continue
+    }
     const kv = l.match(/^(Where|Expect|Check|Paste): (.*)$/)
     if (kv) { s[{ Where: "where", Expect: "expect", Check: "checkId", Paste: "pasteInto" }[kv[1]]] = kv[2].trim(); continue }
-    if (l.trim()) s.body = s.body ? `${s.body} ${l.trim()}` : l.trim()
+    // Every line keeps its own line: a plain line is its own paragraph, and list items
+    // ("- ", "1. ") and table rows ("| ") are rendered as lists and tables
+    if (l.trim()) s.body = s.body ? `${s.body}\n${l.trim()}` : l.trim()
   }
   if (fence) throw new Error(`Unclosed code fence in step "${s.title}"`)
   return steps

@@ -1,5 +1,6 @@
 import { PageHeader } from "@/components/page-header"
 import { PathwayHome } from "@/components/lab/pathway-home"
+import { Welcome } from "@/components/lab/welcome"
 import { MODULES, PATHWAYS, checkIds } from "@/lib/content"
 
 export const dynamic = "force-dynamic"
@@ -10,9 +11,10 @@ export default function Home() {
     <main className="mx-auto w-full max-w-7xl space-y-6 px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
       <PageHeader
         eyebrow="Hands-on lab"
-        title="Corporate Banking Payments Operations"
-        description="Build a payments data product on Snowflake - from Snowflake-managed Iceberg sources to governed AI agents. All data is synthetic."
+        title="Banking Data Products with Cortex Code"
+        description="Payments, client 360, customer voice and branch network data products on Snowflake, from Iceberg sources to governed AI agents."
       />
+      <Welcome />
       <PathwayHome pathways={PATHWAYS} modules={modules} />
     </main>
   )

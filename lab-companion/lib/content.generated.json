@@ -12,24 +12,16 @@
    ],
    "steps": [
     {
-     "title": "Open the payments-hol Workspace",
-     "body": "This shared Workspace is where you'll build every module. Take a quick tour: **Home** and the **+** button list everything you can create here (SQL file, Notebook, dbt Project, Streamlit App, Agent, Semantic view, Pipeline Builder). The file explorer on the left holds the lab project (`dbt/`, `vignettes/`). The bottom panel has Query History and, later, the dbt pane. Stay in **payments-hol** for the whole lab: every module's files, starter notebooks and the dbt project are here, and Cortex Code only finds them when this Workspace is open. Snowsight sometimes reopens **My Workspace**, so check the name top left whenever you come back.",
-     "where": "Snowsight > **Projects > Workspaces**, then the **My Workspace** dropdown (top left) > **payments-hol**",
-     "prompt": "",
-     "sql": "",
-     "expect": "the payments-hol Workspace open, with `dbt/`, `notebooks/` and `vignettes/` in the file explorer",
-     "checkId": "",
-     "pasteInto": ""
-    },
-    {
      "title": "Open Cortex Code",
-     "body": "Open the Cortex Code sidebar from the right-hand side of the Workspace. You'll paste every prompt in this lab into it. Start a new chat (**+** at the top of the sidebar) at the beginning of each module, so each one starts with a clean context. You're signed in as `HOL_PARTICIPANT` with the `BARCLAYS_WH` warehouse. Cortex Code still checks for a warehouse at the start of each chat, so each module page gives you a one-line context prompt to paste first. That saves it looking.",
-     "where": "payments-hol Workspace, the Cortex Code sidebar (right-hand panel)",
+     "body": "1. At the top left of Snowsight, switch the toggle from **Home** to **CoCo**.\n2. Close the **CoCo mode (preview)** pop-up if it appears.\n3. Press **New session**.\n4. Paste each prompt in this module into the **How can I help?** box.\nWhat's on the CoCo screen:\n- **New session** starts a fresh chat. Start one for each module, so it begins with a clean context.\n- **Automations** lists prompts scheduled to run on their own. You'll create one in GOV2.\nWhen Cortex Code wants to run a query, it shows a **Run this command?** card:\n- **Allow** lets it run\n- **Skip** stops it\n**Tip:** you're signed in as `HOL_PARTICIPANT`, with `BARCLAYS_WH` and `BARCLAYS_HOL` as your defaults. Cortex Code uses them, so you don't need to set a role or warehouse.",
+     "where": "Snowsight home page, the **Home / CoCo** toggle (top left) > **CoCo**",
      "prompt": "",
      "sql": "",
-     "expect": "",
+     "expect": "the Cortex Code screen with a **How can I help?** box",
      "checkId": "",
-     "pasteInto": ""
+     "pasteInto": "",
+     "media": "start_open_coco.mp4",
+     "mediaCaption": "Home > CoCo, then paste the first prompt"
     },
     {
      "title": "See what has been published",
@@ -40,6 +32,18 @@
      "expect": "nine Iceberg tables (PAYMENTS has 50,000 rows) and a metadata JSON location",
      "checkId": "c1_iceberg_published",
      "pasteInto": ""
+    },
+    {
+     "title": "Go back Home and open the payments-hol Workspace",
+     "body": "1. Switch the toggle at the top left back to **Home**.\n2. Open **Projects > Workspaces**.\n3. Open the **My Workspace** dropdown (top left) and pick **payments-hol**.\n**Important:** go back to **Home** first. Workspaces isn't on the CoCo side.\nWhat's in the Workspace:\n- **+** creates SQL files, notebooks, dbt projects, Streamlit apps, agents, semantic views and pipelines\n- the file explorer (left) holds the lab: `dbt/`, `notebooks/`, `vignettes/`\n- the bottom panel has Query History and, later, the dbt pane\n- Cortex Code is here too, as a sidebar: the round button at the bottom right\nUse **payments-hol** whenever a module says Workspace. Cortex Code only finds the lab files when it's open.\n**Tip:** Snowsight sometimes reopens **My Workspace**. Check the name at the top left whenever you come back.\nFor the rest of this module, use either the CoCo tab or the Workspace sidebar.",
+     "where": "the **Home / CoCo** toggle > **Home**, then **Projects > Workspaces** > the **My Workspace** dropdown (top left) > **payments-hol**",
+     "prompt": "",
+     "sql": "",
+     "expect": "the payments-hol Workspace open, with `dbt/`, `notebooks/` and `vignettes/` in the file explorer",
+     "checkId": "",
+     "pasteInto": "",
+     "media": "start_open_workspace.mp4",
+     "mediaCaption": "CoCo > Home > Workspaces > payments-hol, then the Cortex Code sidebar"
     },
     {
      "title": "Prove the guard-rails",
@@ -67,7 +71,7 @@
      "where": "",
      "prompt": "Using BARCLAYS_HOL.RAW_DATA, show payment count, volume in GBP millions and success rate by PAYMENT_TYPE. Then list the 10 corporate clients with the most failed payments, with their RM, sector, account count and feedback count. Run both queries.",
      "sql": "",
-     "expect": "six payment schemes, then a top-10 client table you can sanity-check against the reference SQL",
+     "expect": "six payment schemes, then a top-10 client table ranked by failed payments, with each client's RM and sector",
      "checkId": "",
      "pasteInto": ""
     }
@@ -94,23 +98,27 @@
    "steps": [
     {
      "title": "Open the dbt project in the Workspace",
-     "body": "Open `dbt/models/staging/schema.yml`: the sources point straight at the `RAW_DATA` Iceberg tables. dbt reads Iceberg exactly like native tables.",
+     "body": "1. Open `dbt/models/staging/schema.yml` in the file explorer.\n2. Paste this prompt into the Cortex Code sidebar.\nThe sources in `schema.yml` point straight at the `RAW_DATA` Iceberg tables. dbt reads Iceberg exactly like native tables.",
      "where": "Snowsight > **Projects > Workspaces** > **My Workspace** dropdown > **payments-hol**, then `dbt/` in the file explorer",
      "prompt": "Walk me through the dbt project in the dbt/ folder of this Workspace: what each staging and mart model does, where the sources come from, and which models are defined in models/marts/schema.yml but have no .sql file yet.",
      "sql": "",
      "expect": "4 staging models and 2 marts (`mart_payment_kpis`, `mart_sla_compliance`). `mart_customer_payments` and `mart_rm_performance` have tests in `schema.yml` but no SQL yet. Those are the two you'll build.",
      "checkId": "",
-     "pasteInto": ""
+     "pasteInto": "",
+     "media": "start_open_workspace.mp4",
+     "mediaCaption": "Home > Workspaces > payments-hol, then the Cortex Code sidebar"
     },
     {
      "title": "Run dbt build from the dbt pane",
-     "body": "Open the **dbt** tab in the bottom panel. It shows Profile **dev** and a blue **Run** button. Click the arrow next to Run to open **Select Operation**, choose **Build** (not Run) and press **Execute**. Build runs the models and their tests in dependency order; Run only creates the models and skips the tests that prove Cortex Code's marts are correct.",
+     "body": "1. Open the **dbt** tab in the bottom panel. It shows Profile **dev** and a blue **Run** button.\n2. Click the arrow next to **Run** to open **Select Operation**.\n3. Choose **Build** and press **Execute**.\n**Important:** choose **Build**, not **Run**. Run only creates the models and skips the tests that prove Cortex Code's marts are correct.\nBuild runs the models and their tests in dependency order.",
      "where": "the bottom panel of the Workspace > **dbt** tab (next to Query History)",
      "prompt": "",
      "sql": "",
      "expect": "the Output tab ends with every model and test passing (`ERROR=0`). Open the **DAG** tab to see the lineage from the Iceberg sources to the marts.",
      "checkId": "de1_staging",
-     "pasteInto": ""
+     "pasteInto": "",
+     "media": "de1_dbt_build.mp4",
+     "mediaCaption": "Open a dbt file > bottom panel > dbt tab > arrow next to the blue button > Build"
     },
     {
      "title": "Generate mart_customer_payments with Cortex Code",
@@ -134,17 +142,19 @@
     },
     {
      "title": "Build the whole project and check the tests",
-     "body": "Writing or compiling a model doesn't create its table: only a build does. Click the arrow next to **Run** to open **Select Operation**, choose **Build** and press **Execute**.",
+     "body": "1. Click the arrow next to **Run** to open **Select Operation**.\n2. Choose **Build** and press **Execute**.\nWriting or compiling a model doesn't create its table. Only a build does.",
      "where": "the bottom panel of the Workspace > **dbt** tab",
      "prompt": "",
      "sql": "",
      "expect": "the Output shows 8 models and every test passing (`ERROR=0`), including the tests for both Cortex Code marts. If a test fails, paste the error into Cortex Code, ask it to fix the model, and Build again.",
      "checkId": "de1_coco_marts",
-     "pasteInto": ""
+     "pasteInto": "",
+     "media": "de1_dbt_build.mp4",
+     "mediaCaption": "dbt tab > arrow next to the blue button > Build > Execute"
     },
     {
      "title": "Deploy the project",
-     "body": "The Workspace is where you develop; the deployed project object `BARCLAYS_HOL.ANALYTICS.BARCLAYS_DBT` is what production runs. It was deployed when the lab was set up, so it doesn't have the marts you just wrote yet.",
+     "body": "The Workspace is where you develop. The deployed project object `BARCLAYS_HOL.ANALYTICS.BARCLAYS_DBT` is what production runs.\nIt was deployed when the lab was set up, so it doesn't have the marts you just wrote yet.",
      "where": "",
      "prompt": "Deploy the dbt project in my payments-hol Workspace (snow://workspace/DEFAULT_DATABASE.PUBLIC.\"payments-hol\"/versions/live/dbt) to the existing dbt project object BARCLAYS_HOL.ANALYTICS.BARCLAYS_DBT with ALTER DBT PROJECT ... ADD VERSION FROM. Then list the models in the deployed project to confirm MART_CUSTOMER_PAYMENTS and MART_RM_PERFORMANCE are included.",
      "sql": "",
@@ -236,7 +246,7 @@
     },
     {
      "title": "Orchestrate the pipeline with Pipeline Builder",
-     "body": "**Autonomous Data Engineering:** describe a pipeline in plain English, refine it visually, and deploy it as a native **task graph** (public preview): no external orchestrator needed. Dynamic tables keep themselves fresh, but the dbt build and the data quality checks need scheduling. Pipeline Builder draws that as a task graph. Go to the Workspace **Home** page (the house icon at the top of the file explorer) and press **Pipeline Builder**. In the **Create Pipeline Builder** dialog, name it `payments_nightly` and for **Database and schema** choose **BARCLAYS_HOL.ANALYTICS**. Not `RAW_DATA`: the Iceberg sources are read-only, so creating it there fails with \"must have CREATE DCM PROJECT\". Then click **Generate with Cortex** at the bottom left of the dialog (not **Create**, which opens an empty canvas). A **Prompt** box opens in the dialog: paste this prompt there and click **Generate**:",
+     "body": "1. Go to the Workspace **Home** page (the house icon at the top of the file explorer).\n2. Press **Pipeline Builder**.\n3. In the **Create Pipeline Builder** dialog, set:\n- name: `payments_nightly`\n- **Database and schema**: **BARCLAYS_HOL.ANALYTICS**\n4. Click **Generate with Cortex** at the bottom left of the dialog.\n5. In the **Prompt** box that opens, paste this prompt and click **Generate**.\n**Important:** don't pick `RAW_DATA`. The Iceberg sources are read-only, so creating it there fails with \"must have CREATE DCM PROJECT\".\n**Tip:** click **Generate with Cortex**, not **Create**. Create opens an empty canvas.\nDynamic tables keep themselves fresh, but the dbt build and the data quality checks need scheduling. Pipeline Builder draws that as a task graph.\n**Autonomous Data Engineering:** describe a pipeline in plain English, refine it visually, and deploy it as a native **task graph** (public preview). No external orchestrator needed.",
      "where": "payments-hol Workspace **Home** page > **Pipeline Builder** (Preview)",
      "prompt": "Build a nightly pipeline in BARCLAYS_HOL.ANALYTICS on warehouse BARCLAYS_WH, scheduled at 05:00 Europe/London. Task 1 BARCLAYS_HOL.ANALYTICS.PIPE_DBT_BUILD runs EXECUTE DBT PROJECT BARCLAYS_HOL.ANALYTICS.BARCLAYS_DBT ARGS = 'build'. Task 2 BARCLAYS_HOL.ANALYTICS.PIPE_REFRESH_SLA runs after it: ALTER DYNAMIC TABLE BARCLAYS_HOL.ANALYTICS.DT_LIVE_SLA_BREACHES REFRESH. Task 3 BARCLAYS_HOL.ANALYTICS.PIPE_DQ_CHECKS runs after task 1: SELECT the NULL_COUNT on RM_NAME and DUPLICATE_COUNT on CUSTOMER_ID of BARCLAYS_HOL.ANALYTICS.MART_CUSTOMER_PAYMENTS. Set warehouse BARCLAYS_WH on each of the three tasks itself, not as a task-graph default. Set the task graph's desired state to Suspended so nothing runs after deploy.",
      "sql": "",
@@ -268,18 +278,20 @@
    ],
    "steps": [
     {
-     "title": "Open the DE3 starter notebook",
-     "body": "Open the starter notebook `de3_realtime_payments`: it has the title and one numbered heading per step, so Cortex Code puts each cell in the right place. If you can't see the `notebooks/` and `vignettes/` folders in the file explorer, you're in the wrong Workspace: switch to **payments-hol** from the Workspace dropdown (top left) before you go on. (No starter? Use **+ > Notebook** in payments-hol and name it `de3_realtime_payments`.) Choose the compute pool **NOTEBOOK_POOL** and the warehouse **BARCLAYS_WH**, and check the role is **HOL_PARTICIPANT**. Open the notebook's settings (**⋮** > **Notebook settings** > **External access**) and turn on **HOL_NOTEBOOK_ACCESS_INTEGRATION**: the notebook installs the Postgres driver from PyPI and connects to Postgres on port 5432.",
+     "title": "Open the starter notebook and create its service",
+     "body": "1. Open `notebooks/` > **de3_realtime_payments.ipynb** in the file explorer.\n- Can't see `notebooks/` and `vignettes/`? You're in the wrong Workspace. Pick **payments-hol** from the Workspace dropdown (top left).\n2. In the notebook toolbar, click the arrow next to the status dot (right of the blue run button).\n3. Choose **Create new service**.\n- Already created one in another module? Pick it under **Select service** instead, usually `USER_SERVICE_1`.\n4. Expand **Service settings** in **Connect your notebook** and fill it in as below. Only the three **bold** rows change.\n| Setting | Value |\n|---|---|\n| Service name | leave the default (e.g. `USER_SERVICE_1`) |\n| Artifact repositories | leave as is (`SNOWFLAKE.SNOWPARK.PYPI_SHARED_REPOSITORY`) |\n| Enable distributed compute | off |\n| Runtime | leave as is (v3.0 · Python 3.12) |\n| Compute type | CPU |\n| Custom image | leave empty |\n| **Compute pool** | **NOTEBOOK_POOL** (change it from HOL_COMPUTE_POOL_CPU) |\n| **Idle timeout** | **1 hour** (change it from 24 hours) |\n| **External access integrations** | **HOL_NOTEBOOK_ACCESS_INTEGRATION** (lets notebooks reach Postgres and the AI Gateway; set it here so one service works for every notebook module) |\n| Secrets | leave empty |\n5. Click **Create and connect**. The first start takes 1-2 minutes.\n6. Check the role is **HOL_PARTICIPANT** and the warehouse is **BARCLAYS_WH** (role and warehouse button in the notebook toolbar).\nThe starter notebook has one numbered heading per step, so Cortex Code puts each cell in the right place.\nA notebook runs on its own **notebook service**, which you create once.",
      "where": "the **payments-hol** Workspace (not My Workspace) > file explorer > `notebooks/de3_realtime_payments.ipynb`",
      "prompt": "",
      "sql": "",
-     "expect": "the starter notebook open in payments-hol with its numbered headings, a connected kernel and the external access integration enabled",
+     "expect": "the starter notebook open in payments-hol with its numbered headings, and the status dot showing the service connected",
      "checkId": "",
-     "pasteInto": ""
+     "pasteInto": "",
+     "media": "de3_notebook_service.mp4",
+     "mediaCaption": "Open the notebook > Create new service > NOTEBOOK_POOL, 1 hour, HOL_NOTEBOOK_ACCESS_INTEGRATION"
     },
     {
      "title": "Create the Postgres instance",
-     "body": "You don't write the Postgres code yourself: the Workspace has a tested helper, `vignettes/de3_realtime_payments/de3_postgres.py`, and these cells import it.",
+     "body": "You don't write the Postgres code yourself. The cells import a tested helper in the Workspace, `vignettes/de3_realtime_payments/de3_postgres.py`.",
      "where": "the Cortex Code sidebar, with `de3_realtime_payments` open",
      "prompt": "In the open notebook de3_realtime_payments, put each cell I ask for under its matching numbered heading. Under heading 1, add a Python cell named create_pg that runs !pip install psycopg2-binary, makes vignettes/de3_realtime_payments/de3_postgres.py importable (search upwards from the current working directory for a folder containing vignettes/de3_realtime_payments/de3_postgres.py and add that folder to sys.path), imports de3_postgres as pg, and runs host = pg.create_postgres(get_active_session()). Don't rewrite the helper and never print the password. Then add a markdown cell explaining what create_postgres does: the instance size and why, the network policy, and what happens to the one-time password.",
      "sql": "",
@@ -289,7 +301,7 @@
     },
     {
      "title": "Reveal the connection and connect",
-     "body": "Click **Reveal Postgres connection**: it reads the secret and shows the host, user and password with copy buttons. Paste them into a new Python cell under heading 2: ```python PG_HOST = \"<host>\" PG_USER = \"snowflake_admin\" PG_PASS = \"<password>\" ``` Run it, then paste this into the Cortex Code sidebar:",
+     "body": "1. In the Lab Companion, click **Reveal Postgres connection**. It shows the host, user and password with copy buttons.\n2. In the notebook, find the connection cell under heading 2 (`PG_HOST`, `PG_USER`, `PG_PASS`).\n3. Replace each `<...>` placeholder with the value you copied, keeping the quotes.\n4. Run the cell.\n5. Paste this prompt into the Cortex Code sidebar:",
      "where": "the Lab Companion > **DE3** > **Reveal Postgres connection**, then the notebook",
      "prompt": "Under heading 2, after my connection cell, add a Python cell named source_table that opens conn = pg.connect(PG_HOST, PG_USER, PG_PASS) and runs pg.create_source_table(conn), printing the row count it returns. Then explain the table it created in Postgres and why it has a primary key.",
      "sql": "",
@@ -356,6 +368,57 @@
    "sql": "-- =====================================================\n-- DE3: Real-time payments - reference SQL\n-- The Postgres side is Python (de3_postgres.py); this is the Snowflake SQL around it.\n-- Flow: Snowflake Postgres HOL_PAYMENTS_PG -> Data Mirror -> Snowflake-managed Iceberg\n--       PAYMENTS_MIRROR.PAYMENTS.PAYMENT_EVENTS (+ $live, $changes) -> interactive warehouse, dynamic table\n-- =====================================================\nUSE ROLE HOL_PARTICIPANT;\nUSE WAREHOUSE BARCLAYS_WH;\n\n-- 1. The instance (create_postgres runs the CREATE and saves the one-time password in the secret):\n--    CREATE POSTGRES INSTANCE HOL_PAYMENTS_PG COMPUTE_FAMILY = 'STANDARD_M' STORAGE_SIZE_GB = 10\n--      AUTHENTICATION_AUTHORITY = POSTGRES POSTGRES_VERSION = 18 NETWORK_POLICY = 'HOL_PG_POLICY';\nSHOW POSTGRES INSTANCES LIKE 'HOL_PAYMENTS_PG';\nDESCRIBE SECRET BARCLAYS_HOL.REALTIME.PG_ADMIN_SECRET;   -- metadata only: the password isn't shown\n\n-- 2. The mirror (start_mirror runs these)\nGRANT USAGE ON POSTGRES INSTANCE HOL_PAYMENTS_PG TO APPLICATION SNOWFLAKE;\n-- CALL SNOWFLAKE.POSTGRES.CREATE_MIRROR(\n--     mirror_name => 'payments_mirror', postgres_instance => 'HOL_PAYMENTS_PG', postgres_database => 'postgres',\n--     target_database => 'PAYMENTS_MIRROR', postgres_schemas => ['payments'],\n--     refresh_interval => '1 minute', target_table_type => 'ICEBERG');\nSELECT * FROM TABLE(SNOWFLAKE.POSTGRES.LIST_MIRRORS());\nCALL SNOWFLAKE.POSTGRES.LIST_MIRRORED_TABLES('payments_mirror');\nSHOW TABLES IN DATABASE PAYMENTS_MIRROR;   -- PAYMENT_EVENTS (Iceberg) and PAYMENT_EVENTS$CHANGES, owned by the mirror\n\n-- 3. Freshness: volume and failures per minute, and how far each view is behind\nSELECT DATE_TRUNC('minute', EVENT_TS) AS MINUTE, COUNT(*) AS EVENTS, COUNT_IF(STATUS = 'FAILED') AS FAILED\nFROM PAYMENTS_MIRROR.PAYMENTS.PAYMENT_EVENTS$live\nWHERE EVENT_TS >= DATEADD('minute', -15, SYSDATE())\nGROUP BY 1\nORDER BY 1;\n\nSELECT 'live' AS VIEW_NAME, DATEDIFF('second', MAX(EVENT_TS), SYSDATE()) AS SECONDS_BEHIND FROM PAYMENTS_MIRROR.PAYMENTS.PAYMENT_EVENTS$live\nUNION ALL\nSELECT 'base Iceberg table', DATEDIFF('second', MAX(EVENT_TS), SYSDATE()) FROM PAYMENTS_MIRROR.PAYMENTS.PAYMENT_EVENTS;\n\n-- The change feed: I = insert, D = delete (an update is a D plus an I)\nSELECT _CHANGE_TYPE, COUNT(*) AS CHANGES FROM PAYMENTS_MIRROR.PAYMENTS.PAYMENT_EVENTS$changes GROUP BY 1;\n\n-- 4. Ops floor on the shared interactive warehouse: zero-copy, straight off the mirrored Iceberg table\nUSE WAREHOUSE HOL_INTERACTIVE_WH;\n\nSELECT SCHEME, COUNT(*) AS FAILED_PAYMENTS, SUM(AMOUNT) AS FAILED_VALUE\nFROM PAYMENTS_MIRROR.PAYMENTS.PAYMENT_EVENTS\nWHERE STATUS = 'FAILED' AND EVENT_TS >= DATEADD('minute', -15, SYSDATE())\nGROUP BY SCHEME\nORDER BY FAILED_VALUE DESC;\n\nSELECT c.CUSTOMER_NAME, e.SCHEME, COUNT(*) AS FAILED_PAYMENTS, SUM(e.AMOUNT) AS FAILED_VALUE\nFROM PAYMENTS_MIRROR.PAYMENTS.PAYMENT_EVENTS e\nJOIN BARCLAYS_HOL.RAW_DATA.CUSTOMERS c ON c.CUSTOMER_ID = e.CUSTOMER_ID\nWHERE e.STATUS = 'FAILED' AND e.EVENT_TS >= DATEADD('minute', -15, SYSDATE())\nGROUP BY 1, 2\nORDER BY FAILED_VALUE DESC\nLIMIT 10;\n\n-- Interactive warehouses reject DML and procedures: switch back before creating anything\nUSE WAREHOUSE BARCLAYS_WH;\n\n-- 5. Incidents: failing clusters in the last 15 minutes, refreshed every minute\nCREATE OR REPLACE DYNAMIC TABLE BARCLAYS_HOL.REALTIME.DT_PAYMENT_INCIDENTS\n  TARGET_LAG = '1 minute'\n  WAREHOUSE = BARCLAYS_WH\n  COMMENT = 'DE3: failing payment clusters in the last 15 minutes, refreshed every minute'\nAS\nSELECT e.CUSTOMER_ID,\n       c.CUSTOMER_NAME,\n       e.SCHEME,\n       e.FAILURE_REASON,\n       COUNT(*)         AS FAILED_PAYMENTS,\n       SUM(e.AMOUNT)    AS FAILED_VALUE,\n       MIN(e.EVENT_TS)  AS FIRST_FAILURE,\n       MAX(e.EVENT_TS)  AS LAST_FAILURE\nFROM PAYMENTS_MIRROR.PAYMENTS.PAYMENT_EVENTS e\nJOIN BARCLAYS_HOL.RAW_DATA.CUSTOMERS c ON c.CUSTOMER_ID = e.CUSTOMER_ID\nWHERE e.STATUS = 'FAILED'\n  AND e.EVENT_TS >= DATEADD('minute', -15, SYSDATE())\nGROUP BY 1, 2, 3, 4\nHAVING COUNT(*) >= 5;\n\nSELECT * FROM BARCLAYS_HOL.REALTIME.DT_PAYMENT_INCIDENTS ORDER BY FAILED_PAYMENTS DESC;\n\n-- 6. After the lab: the instance bills while it runs\n-- ALTER POSTGRES INSTANCE HOL_PAYMENTS_PG SUSPEND;\n-- Facilitator teardown: CALL SNOWFLAKE.POSTGRES.DROP_MIRROR(mirror_name => 'payments_mirror', drop_target_database => TRUE);\n--                       DROP POSTGRES INSTANCE HOL_PAYMENTS_PG;\n"
   },
   {
+   "code": "DA0",
+   "title": "Interactive payments report with Cortex Code",
+   "persona": "Data Analyst",
+   "minutes": 30,
+   "prerequisites": "Core C1 only",
+   "question": "Can ops and RMs get the client 360 from C1 as a live, interactive report they can filter themselves, refreshed every morning?",
+   "build": [
+    "An interactive, Barclays-branded HTML payments report, built by Cortex Code",
+    "Your own variation of it: new brand, charts or filters",
+    "A daily Cortex Code automation that rebuilds the report with fresh data"
+   ],
+   "steps": [
+    {
+     "title": "Build an interactive report",
+     "body": "1. Paste the prompt below into the **How can I help?** box.\n2. Press **Allow** on each **Run this command?** card while it queries and builds.\n3. Open the preview link Cortex Code gives you.",
+     "where": "the **CoCo** tab, in your C1 session or a **New session**",
+     "prompt": "Using the payments, accounts, customers, relationship managers and feedback tables in BARCLAYS_HOL.RAW_DATA, build an interactive HTML report of corporate payments health. Show headline figures, a monthly trend, a breakdown by payment type, and a sortable table of clients with their RM, failed payments and feedback. Let me filter by payment type, region and channel. Brand it Barclays (navy and cyan, red for failures). My role is read-only. Preview it and give me the link.",
+     "sql": "",
+     "expect": "Cortex Code explores the tables, builds the report and gives you a preview link",
+     "checkId": "",
+     "pasteInto": "the **How can I help?** box in the **CoCo** tab"
+    },
+    {
+     "title": "Make it yours",
+     "body": "Now ask for your own changes, one prompt at a time. Some ideas:\n- **Rebrand it:** \"Re-skin the report in Snowflake brand colours: Snowflake Blue #29B5E8, Mid Blue #11567F, Midnight #000000.\"\n- **Add a chart:** \"Add a heatmap of failure rate by region and payment type.\"\n- **Add a filter:** \"Add a relationship manager filter that also filters the client table.\"\n- **Explain the numbers:** \"Add a short summary at the top of the three things ops should act on this week.\"\n- **Make it for one audience:** \"Make a one-page version for RMs that only shows their own clients.\"\n1. Paste one idea, or write your own.\n2. Open the new preview link and check the change.\n3. Repeat until you're happy with it.\n**Tip:** ask for one change at a time. If something breaks, say \"undo the last change\".",
+     "where": "the same CoCo session",
+     "prompt": "",
+     "sql": "",
+     "expect": "an updated preview after each prompt, with your changes and the totals unchanged",
+     "checkId": "",
+     "pasteInto": ""
+    },
+    {
+     "title": "Refresh the report every morning",
+     "body": "The report embeds its data, so it shows the numbers from when it was built. A daily automation rebuilds it with fresh data.\n1. Paste the prompt below.\n2. Check the summary Cortex Code shows: name, schedule and read-only.\n3. Let it run once now, so you can see the refreshed report.\n4. Find it later under **Automations** in the CoCo side nav (below **New session**).",
+     "where": "the same CoCo session",
+     "prompt": "Set up a daily Cortex Code automation called PAYMENTS_REPORT_REFRESH that runs at 07:00 Europe/London. Each run: re-run the queries behind the interactive payments report we just built, rebuild the same report with today's data, check the totals against BARCLAYS_HOL.RAW_DATA, and save it in the same place with today's date in the definitions section. It runs unattended, so it must not ask questions and must stay read-only. Create it paused, run it once now so I can see the result, then start the schedule.",
+     "sql": "",
+     "expect": "Cortex Code summarises the automation, creates it paused, runs it once and shows the rebuilt report, then asks before starting the schedule. Each run uses your default role (`HOL_PARTICIPANT`).",
+     "checkId": "",
+     "pasteInto": "the **How can I help?** box in the **CoCo** tab"
+    }
+   ],
+   "check": "Your report preview opens, filters change the headline figures, and **Reset** brings them back to 50,000 payments.",
+   "note": "At Barclays the same report would read from the governed data product views rather than RAW_DATA, and be shared through Snowflake Intelligence instead of a preview link.",
+   "kind": "vignette",
+   "track": "Data Analyst",
+   "sqlPath": "vignettes/da0_interactive_report/da0_report_totals.sql",
+   "sql": "-- DA0: the totals the interactive report must match (Cortex Code builds the report itself).\n-- Run as HOL_PARTICIPANT on BARCLAYS_WH. Expect 50,000 payments, 428 failed, 96.08% success.\nSELECT COUNT(*)                                                       AS payments,\n       COUNT_IF(STATUS = 'FAILED')                                    AS failed,\n       COUNT_IF(STATUS = 'RETURNED')                                  AS returned,\n       ROUND(100 * COUNT_IF(STATUS = 'COMPLETED') / COUNT(*), 2)      AS success_rate_pct,\n       ROUND(SUM(IFF(CURRENCY = 'GBP', AMOUNT, AMOUNT * FX_RATE)) / 1e9, 1) AS gbp_volume_bn\nFROM BARCLAYS_HOL.RAW_DATA.PAYMENTS;\n"
+  },
+  {
    "code": "DA1",
    "title": "Semantic view + Cortex Analyst",
    "persona": "Data Analyst",
@@ -379,7 +442,7 @@
     },
     {
      "title": "Create the semantic view with Cortex Code",
-     "body": "Compare with the worked example `SV_PAYMENTS` if you want a pattern to follow.",
+     "body": "**Tip:** compare with the worked example `SV_PAYMENTS` if you want a pattern to follow.",
      "where": "payments-hol Workspace > **+ > Semantic view**, or the Cortex Code sidebar",
      "prompt": "Create a semantic view BARCLAYS_HOL.ANALYTICS.SV_CLIENT_360 with four logical tables: clients (STG_CUSTOMERS, key CUSTOMER_ID), payments (V_CLIENT_PAYMENT_SUMMARY, key CUSTOMER_ID), feedback (FEEDBACK_ENRICHED, key FEEDBACK_ID) and alerts (V_CLIENT_ALERTS, key ALERT_ID), with payments, feedback and alerts each related to clients on CUSTOMER_ID. Add dimensions including clients.customer_name, clients.sector and clients.rm_name (synonyms \"relationship manager\", \"RM\"), and metrics including payments.payment_volume (sum of total volume GBP), payments.success_rate_pct, feedback.avg_sentiment, alerts.open_alert_count (status not RESOLVED) and alerts.critical_alert_count. Add business comments and synonyms, then deploy it.",
      "sql": "",
@@ -399,7 +462,7 @@
     },
     {
      "title": "Ask in plain English and add a verified query",
-     "body": "Ask Cortex Analyst \"Which clients have negative sentiment and a success rate below 96%?\" and read the SQL it generates.",
+     "body": "1. In Cortex Analyst, ask \"Which clients have negative sentiment and a success rate below 96%?\"\n2. Read the SQL it generates.\n3. Paste this prompt into the Cortex Code sidebar.",
      "where": "Snowsight > **AI & ML > Cortex Analyst** > `SV_CLIENT_360`, then the Cortex Code sidebar",
      "prompt": "Add a verified query to SV_CLIENT_360 for \"clients with negative sentiment and success rate below 96%\", using the SQL Cortex Analyst generated if it is correct.",
      "sql": "",
@@ -429,14 +492,16 @@
    ],
    "steps": [
     {
-     "title": "Open the DA2 starter notebook",
-     "body": "Open the starter notebook `da2_feedback_analysis`: it has the title and one numbered heading per step, so Cortex Code puts each cell in the right place. If you can't see the `notebooks/` and `vignettes/` folders in the file explorer, you're in the wrong Workspace: switch to **payments-hol** from the Workspace dropdown (top left) before you go on. (No starter? Use **+ > Notebook** in payments-hol and name it `da2_feedback_analysis`.) When it asks for compute, choose the compute pool **NOTEBOOK_POOL** and the warehouse **BARCLAYS_WH** (SQL cells run on the warehouse; Python and charts run on the pool). The first start can take a minute or two while the pool resumes. You'll build this whole module as cells in this notebook: Cortex Code adds them for you, and you run each one.",
+     "title": "Open the starter notebook and create its service",
+     "body": "1. Open `notebooks/` > **da2_feedback_analysis.ipynb** in the file explorer.\n- Can't see `notebooks/` and `vignettes/`? You're in the wrong Workspace. Pick **payments-hol** from the Workspace dropdown (top left).\n2. In the notebook toolbar, click the arrow next to the status dot (right of the blue run button).\n3. Choose **Create new service**.\n- Already created one in another module? Pick it under **Select service** instead, usually `USER_SERVICE_1`.\n4. Expand **Service settings** in **Connect your notebook** and fill it in as below. Only the three **bold** rows change.\n| Setting | Value |\n|---|---|\n| Service name | leave the default (e.g. `USER_SERVICE_1`) |\n| Artifact repositories | leave as is (`SNOWFLAKE.SNOWPARK.PYPI_SHARED_REPOSITORY`) |\n| Enable distributed compute | off |\n| Runtime | leave as is (v3.0 · Python 3.12) |\n| Compute type | CPU |\n| Custom image | leave empty |\n| **Compute pool** | **NOTEBOOK_POOL** (change it from HOL_COMPUTE_POOL_CPU) |\n| **Idle timeout** | **1 hour** (change it from 24 hours) |\n| **External access integrations** | **HOL_NOTEBOOK_ACCESS_INTEGRATION** (lets notebooks reach Postgres and the AI Gateway; set it here so one service works for every notebook module) |\n| Secrets | leave empty |\n5. Click **Create and connect**. The first start takes 1-2 minutes.\n6. Check the role is **HOL_PARTICIPANT** and the warehouse is **BARCLAYS_WH** (role and warehouse button in the notebook toolbar).\nThe starter notebook has one numbered heading per step, so Cortex Code puts each cell in the right place.\nA notebook runs on its own **notebook service**, which you create once.\nSQL cells run on the warehouse. Python and charts run on the service.\nYou'll build this whole module as cells in this notebook: Cortex Code adds them, and you run each one.",
      "where": "the **payments-hol** Workspace (not My Workspace) > file explorer > `notebooks/da2_feedback_analysis.ipynb`",
      "prompt": "",
      "sql": "",
-     "expect": "the starter notebook open in payments-hol, with its numbered headings and a connected kernel",
+     "expect": "the starter notebook open in payments-hol with its numbered headings, and the status dot showing the service connected",
      "checkId": "",
-     "pasteInto": ""
+     "pasteInto": "",
+     "media": "da2_notebook_service.mp4",
+     "mediaCaption": "Open the notebook > Create new service > NOTEBOOK_POOL, 1 hour, HOL_NOTEBOOK_ACCESS_INTEGRATION"
     },
     {
      "title": "Score sentiment by aspect",
@@ -522,14 +587,16 @@
    ],
    "steps": [
     {
-     "title": "Open the DA3 starter notebook",
-     "body": "Open the starter notebook `da3_branch_network`: it has the title and one numbered heading per step, so Cortex Code puts each cell in the right place. If you can't see the `notebooks/` and `vignettes/` folders in the file explorer, you're in the wrong Workspace: switch to **payments-hol** from the Workspace dropdown (top left) before you go on. (No starter? Use **+ > Notebook** in payments-hol and name it `da3_branch_network`.) When it asks for compute, choose the compute pool **NOTEBOOK_POOL** and the warehouse **BARCLAYS_WH**. You'll build the analysis as cells in this notebook: Cortex Code adds them for you, and you run each one. The data is a synthetic UK retail network in `BARCLAYS_HOL.RETAIL`: about 60 branches in 8 cities, ATMs, 20,000 retail customers with a home location and H3 cell, a year of branch visits, and the ORS travel times and catchments described above.",
+     "title": "Open the starter notebook and create its service",
+     "body": "1. Open `notebooks/` > **da3_branch_network.ipynb** in the file explorer.\n- Can't see `notebooks/` and `vignettes/`? You're in the wrong Workspace. Pick **payments-hol** from the Workspace dropdown (top left).\n2. In the notebook toolbar, click the arrow next to the status dot (right of the blue run button).\n3. Choose **Create new service**.\n- Already created one in another module? Pick it under **Select service** instead, usually `USER_SERVICE_1`.\n4. Expand **Service settings** in **Connect your notebook** and fill it in as below. Only the three **bold** rows change.\n| Setting | Value |\n|---|---|\n| Service name | leave the default (e.g. `USER_SERVICE_1`) |\n| Artifact repositories | leave as is (`SNOWFLAKE.SNOWPARK.PYPI_SHARED_REPOSITORY`) |\n| Enable distributed compute | off |\n| Runtime | leave as is (v3.0 · Python 3.12) |\n| Compute type | CPU |\n| Custom image | leave empty |\n| **Compute pool** | **NOTEBOOK_POOL** (change it from HOL_COMPUTE_POOL_CPU) |\n| **Idle timeout** | **1 hour** (change it from 24 hours) |\n| **External access integrations** | **HOL_NOTEBOOK_ACCESS_INTEGRATION** (lets notebooks reach Postgres and the AI Gateway; set it here so one service works for every notebook module) |\n| Secrets | leave empty |\n5. Click **Create and connect**. The first start takes 1-2 minutes.\n6. Check the role is **HOL_PARTICIPANT** and the warehouse is **BARCLAYS_WH** (role and warehouse button in the notebook toolbar).\nThe starter notebook has one numbered heading per step, so Cortex Code puts each cell in the right place.\nA notebook runs on its own **notebook service**, which you create once.\nYou'll build the analysis as cells in this notebook: Cortex Code adds them, and you run each one.\nThe data is a synthetic UK retail network in `BARCLAYS_HOL.RETAIL`:\n- about 60 branches in 8 cities\n- ATMs\n- 20,000 retail customers, each with a home location and H3 cell\n- a year of branch visits\n- the ORS travel times and catchments described above",
      "where": "the **payments-hol** Workspace (not My Workspace) > file explorer > `notebooks/da3_branch_network.ipynb`",
      "prompt": "",
      "sql": "",
-     "expect": "the starter notebook open in payments-hol, with its numbered headings and a connected kernel",
+     "expect": "the starter notebook open in payments-hol with its numbered headings, and the status dot showing the service connected",
      "checkId": "",
-     "pasteInto": ""
+     "pasteInto": "",
+     "media": "da3_notebook_service.mp4",
+     "mediaCaption": "Open the notebook > Create new service > NOTEBOOK_POOL, 1 hour, HOL_NOTEBOOK_ACCESS_INTEGRATION"
     },
     {
      "title": "Map the branch network",
@@ -603,7 +670,7 @@
     },
     {
      "title": "Build the branch network map app",
-     "body": "Notebook charts have no basemap, so build a Streamlit app that draws the network on a real map.",
+     "body": "Notebook charts have no basemap, so this Streamlit app draws the network on a real map.",
      "where": "payments-hol Workspace > **+ > Streamlit App**, then the Cortex Code sidebar",
      "prompt": "Build a Streamlit in Snowflake app BARCLAYS_HOL.ANALYTICS.BRANCH_NETWORK_MAP titled \"Branch network map\" on the container runtime (RUNTIME_NAME SYSTEM$ST_CONTAINER_RUNTIME_PY3_11, compute pool HOL_COMPUTE_POOL_CPU, query warehouse BARCLAYS_WH, external access integration PYPI_ACCESS_INTEGRATION). Use st.connection(\"snowflake\").session(). Include a pyproject.toml next to the app file with requires-python \">=3.11\" and dependencies \"streamlit>=1.50\", \"snowflake-snowpark-python\" and \"pydeck\", because the container runtime installs them from PyPI. Sidebar: a city picker (default Leeds) from BARCLAYS_HOL.RETAIL.BRANCHES (columns BRANCH_ID, BRANCH_NAME, CITY, FORMAT, LAT, LON), a catchment picker mapping \"10 min drive\", \"20 min drive\" and \"15 min walk\" to BRANCH_ISOCHRONES PROFILE/MINUTES values driving-car/10, driving-car/20 and foot-walking/15, and a customer density toggle. Draw one st.pydeck_chart with map_style \"light\" (a Carto basemap), centred on the mean LAT/LON of the city's branches at zoom 10.5, with three layers: a semi-transparent blue PolygonLayer of the city's BARCLAYS_HOL.RETAIL.BRANCH_ISOCHRONES catchments (select ST_ASGEOJSON(CATCHMENT)::STRING, parse it with json, and take the outer ring of a Polygon or the first polygon of a MultiPolygon), an orange H3HexagonLayer of BARCLAYS_HOL.RETAIL.RETAIL_CUSTOMERS counted by HOME_H3_CELL for the city with opacity scaled by count, and a dark blue ScatterplotLayer of branches (radius 180 m) on top. pydeck uses one tooltip template for all layers, so add a TIP text column to each layer's dataframe (\"<BRANCH_NAME> (<FORMAT>)\" for branches, \"<BRANCH_NAME>: <catchment> catchment\" for polygons, \"<n> customers\" for hexagons) and set tooltip={\"text\": \"{TIP}\"}. Below the map, show \"What if a branch closes?\" as a table from BARCLAYS_HOL.ANALYTICS.BRANCH_CLOSURE_IMPACT for the city with BRANCH_NAME, ANNUAL_SAVING_GBP, COST_PER_VISIT_GBP, AVG_ADDED_DRIVE_MIN, P90_ADDED_DRIVE_MIN, LOSE_WALK_IN_ACCESS, VULNERABLE_CUSTOMERS, DISRUPTION_RISK and MAIN_RECEIVING_BRANCH, LOW risk first. Cache queries with st.cache_data.",
      "sql": "",
@@ -613,7 +680,7 @@
     },
     {
      "title": "Ask Cortex Analyst",
-     "body": "Ask these in plain English, one at a time: \"Which 3 branches in Manchester could close with the least added travel time?\", \"How much could we save by closing all LOW risk branches with fewer than 500 visits?\" and \"Which branch closure would cost the most customers their walk-in access?\"",
+     "body": "Ask these in plain English, one at a time:\n1. \"Which 3 branches in Manchester could close with the least added travel time?\"\n2. \"How much could we save by closing all LOW risk branches with fewer than 500 visits?\"\n3. \"Which branch closure would cost the most customers their walk-in access?\"",
      "where": "Snowsight > **AI & ML > Cortex Analyst** > `SV_BRANCH_NETWORK`",
      "prompt": "",
      "sql": "",
@@ -662,7 +729,7 @@
    "steps": [
     {
      "title": "Create the agent with Cortex Code",
-     "body": "Name the new agent file `corporate_payments_360` straight away (it opens as \"Untitled\"). Cortex Code then guides you through the configuration; paste this as your brief.",
+     "body": "1. Rename the new agent file to `corporate_payments_360` straight away. It opens as \"Untitled\".\n2. Paste this brief into Cortex Code.\nCortex Code then guides you through the configuration.",
      "where": "payments-hol Workspace > **+ > Agent** > **Create with CoCo** (recommended)",
      "prompt": "Create a Cortex Agent SNOWFLAKE_INTELLIGENCE.AGENTS.CORPORATE_PAYMENTS_360 with display name \"Corporate Payments 360\". It supports Payments Operations and Relationship Managers in a UK corporate bank. Tools: a Cortex Analyst tool Client360 on semantic view BARCLAYS_HOL.ANALYTICS.SV_CLIENT_360 (client health, alerts, sentiment), a Cortex Analyst tool PaymentsOps on BARCLAYS_HOL.ANALYTICS.SV_PAYMENTS (scheme volumes and SLAs), both on warehouse BARCLAYS_WH, plus charting. Response instructions: lead with a one-line summary, format money in GBP with thousands separators and percentages to 1 dp, and when briefing on a client always cover payment volume and success rate, failed value, open and critical alerts, and feedback sentiment with the main topic. Sample questions: \"Brief me on the client with the most failed payment value\", \"Which relationship managers have the most open critical alerts?\", \"Which payment schemes breached SLA most often in the last 30 days?\", \"Show weekly payment volume for CHAPS as a chart\". Deploy it.",
      "sql": "",
@@ -672,7 +739,7 @@
     },
     {
      "title": "Ask it in Snowflake CoWork",
-     "body": "Run the four sample questions. Start with \"Brief me on the client with the most failed payment value\".",
+     "body": "1. Run the four sample questions.\n2. Start with \"Brief me on the client with the most failed payment value\".",
      "where": "Snowsight > **AI & ML > CoWork** (formerly Snowflake Intelligence) > **Corporate Payments 360**",
      "prompt": "",
      "sql": "",
@@ -682,7 +749,7 @@
     },
     {
      "title": "See how it answered",
-     "body": "Expand **Show details** on an answer to see which tool it chose and the SQL that ran.",
+     "body": "1. Expand **Show details** on an answer.\nIt shows which tool the agent chose and the SQL that ran.",
      "where": "",
      "prompt": "",
      "sql": "",
@@ -786,7 +853,7 @@
    "steps": [
     {
      "title": "Open CoWork with the payments agent",
-     "body": "CoWork opens on its own page. Pick **Payments Ops CoWork** in the agent picker and check the role is **HOL_PARTICIPANT** and the warehouse **BARCLAYS_WH** (the settings under your name).",
+     "body": "CoWork opens on its own page.\n1. Pick **Payments Ops CoWork** in the agent picker.\n2. Open the settings under your name.\n3. Check the role is **HOL_PARTICIPANT** and the warehouse is **BARCLAYS_WH**.",
      "where": "Snowsight > **AI & ML > CoWork** (or the CoWork app), then choose the agent **Payments Ops CoWork**",
      "prompt": "What can you tell me about our payments? Give me a short overview of volume, failures and the clients and schemes that matter most this year.",
      "sql": "",
@@ -836,7 +903,7 @@
     },
     {
      "title": "Build an AI dashboard with Cortex Code",
-     "body": "Create a dashboard named `payments_ops`, then ask Cortex Code to build it. Dashboards are stored as a `.dash` file in the Workspace: each tile is a SQL query rendered as a chart, table or text.",
+     "body": "1. Create a dashboard named `payments_ops`.\n2. Ask Cortex Code to build it with the prompt below.\nDashboards are stored as a `.dash` file in the Workspace.\nEach tile is a SQL query rendered as a chart, table or text.",
      "where": "payments-hol Workspace > **+ > Dashboard** (Preview), then the Cortex Code sidebar",
      "prompt": "Using the /dashboard skill, build the open dashboard payments_ops on the semantic view BARCLAYS_HOL.COWORK_PACK.SV_PAYMENTS_OPS (or the views PAYMENT_ACTIVITY and CLIENT_FEEDBACK in BARCLAYS_HOL.COWORK_PACK). Add a scorecard row with total payment value, success rate and failed value for the selected period; a stacked bar chart of monthly failed value by scheme; a table of the top 10 clients by failed value with sector and relationship manager; and a bar chart of failed payments by error code. Add filters for scheme and sector and a date range defaulting to the last 12 months, and make clicking a scheme in the failed value chart filter the other tiles.",
      "sql": "",
@@ -846,7 +913,7 @@
     },
     {
      "title": "Publish the dashboard to CoWork",
-     "body": "Under **Who has access**, add the role **HOL_PARTICIPANT** with **Can view**, then **Create**. The link is copied to your clipboard. Open it: the dashboard opens in **CoWork**, where you can ask a follow-up on any tile, for example \"why did SEPA failures jump in this month?\".",
+     "body": "1. Under **Who has access**, add the role **HOL_PARTICIPANT** with **Can view**.\n2. Click **Create**. The link is copied to your clipboard.\n3. Open the link. The dashboard opens in **CoWork**.\n4. Ask a follow-up on any tile, for example \"why did SEPA failures jump in this month?\".",
      "where": "the open `payments_ops` dashboard > **Share**",
      "prompt": "",
      "sql": "",
@@ -876,7 +943,7 @@
    "steps": [
     {
      "title": "Build the payment lookup tool",
-     "body": "Deterministic tools keep exact lookups exact: no text-to-SQL guessing.",
+     "body": "Deterministic tools keep exact lookups exact, with no text-to-SQL guessing.",
      "where": "the Cortex Code sidebar",
      "prompt": "In BARCLAYS_HOL.AGENTS create a SQL table function GET_PAYMENT_DETAILS(PAYMENT_ID_IN VARCHAR) that returns one payment from BARCLAYS_HOL.ANALYTICS.STG_PAYMENTS (matching UPPER(TRIM(PAYMENT_ID_IN))) with its date, type, amount, currency, status, processing time, error code, error description and IS_RETRYABLE (from RAW_DATA.ERROR_CODES), customer name and RM name (via STG_ACCOUNTS and STG_CUSTOMERS), and its count of open alerts. Agent tools need a scalar return, so also create PAYMENT_LOOKUP(PAYMENT_ID VARCHAR) RETURNS VARIANT that returns that row as a JSON object, or {\"error\": \"No payment found with ID ...\"}. Test it on the first FAILED payment.",
      "sql": "",
@@ -896,7 +963,7 @@
     },
     {
      "title": "Create the agent with Cortex Code",
-     "body": "Name the new agent file `payments_investigator` straight away, then paste this brief.",
+     "body": "1. Rename the new agent file to `payments_investigator` straight away.\n2. Paste this brief into Cortex Code.",
      "where": "payments-hol Workspace > **+ > Agent** > **Create with CoCo** (recommended)",
      "prompt": "Create a Cortex Agent BARCLAYS_HOL.AGENTS.PAYMENTS_INVESTIGATOR with display name \"Payments Investigator\". Tools: a generic function tool PaymentLookup on BARCLAYS_HOL.AGENTS.PAYMENT_LOOKUP (input payment_id string), a generic function tool SchemeRules on BARCLAYS_HOL.AGENTS.SCHEME_RULES (input scheme string), and a Cortex Analyst tool PaymentsOps on BARCLAYS_HOL.ANALYTICS.SV_PAYMENTS, all on warehouse BARCLAYS_WH. Orchestration: for a specific payment ID call PaymentLookup; for a scheme's cutoff, limit, settlement cycle or SLA call SchemeRules; use PaymentsOps for aggregate KPI questions. Deploy it.",
      "sql": "",
@@ -945,7 +1012,7 @@
    "steps": [
     {
      "title": "Create the MCP server",
-     "body": "One server, four governed tools, nothing to host. Every call runs as the caller's role.",
+     "body": "One server, four governed tools, nothing to host.\nEvery call runs as the caller's role.",
      "where": "the Cortex Code sidebar",
      "prompt": "Create a Snowflake-managed MCP server BARCLAYS_HOL.AGENTS.PAYMENTS_MCP with four tools: \"client-360-analyst\" (CORTEX_ANALYST_MESSAGE on BARCLAYS_HOL.ANALYTICS.SV_CLIENT_360), \"payments-360-agent\" (CORTEX_AGENT_RUN on SNOWFLAKE_INTELLIGENCE.AGENTS.CORPORATE_PAYMENTS_360, read-only), \"payment-lookup\" (GENERIC function tool on BARCLAYS_HOL.AGENTS.PAYMENT_LOOKUP, warehouse BARCLAYS_WH, input payment_id string, read-only and idempotent) and \"snowflake-docs\" (CORTEX_SEARCH_SERVICE_QUERY on SNOWFLAKE_DOCS_CKE.SHARED.CKE_SNOWFLAKE_DOCS_SERVICE). Then describe it.",
      "sql": "",
@@ -965,7 +1032,7 @@
     },
     {
      "title": "Connect a client and call the tools",
-     "body": "Create a short-lived programmatic access token restricted to `HOL_PARTICIPANT` (Snowsight: **Settings > Authentication > Programmatic access tokens**). Add the config to an MCP client such as Cortex Code Desktop or CLI, then ask it:",
+     "body": "1. Open **Settings > Authentication > Programmatic access tokens** in Snowsight.\n2. Create a short-lived programmatic access token restricted to `HOL_PARTICIPANT`.\n3. Add the config to an MCP client, such as Cortex Code Desktop or CLI.\n4. Ask the client this question:",
      "where": "",
      "prompt": "Using the barclays-payments tools, which clients have open critical alerts?",
      "sql": "",
@@ -994,7 +1061,7 @@
    "steps": [
     {
      "title": "See what came from the Marketplace",
-     "body": "Browse the knowledge extension listings (finance publishers are there too). Then, in the payments-hol Workspace:",
+     "body": "1. Browse the knowledge extension listings. Finance publishers are there too.\n2. Open the Cortex Code sidebar in the payments-hol Workspace and paste this prompt.",
      "where": "Snowsight > **Data Products > Marketplace**, search \"Cortex Knowledge Extension\"; then the Cortex Code sidebar",
      "prompt": "Show the Cortex Search services in database SNOWFLAKE_DOCS_CKE and explain what a Cortex Knowledge Extension is: who built and hosts it, what we can see of its source data, and how we pay for it.",
      "sql": "",
@@ -1014,7 +1081,7 @@
     },
     {
      "title": "Create an agent that uses both",
-     "body": "Name the new agent file `payments_platform_copilot` straight away, then paste this brief.",
+     "body": "1. Rename the new agent file to `payments_platform_copilot` straight away.\n2. Paste this brief into Cortex Code.",
      "where": "payments-hol Workspace > **+ > Agent** > **Create with CoCo** (recommended)",
      "prompt": "Create a Cortex Agent SNOWFLAKE_INTELLIGENCE.AGENTS.PAYMENTS_PLATFORM_COPILOT with display name \"Payments Platform Copilot\". Tools: a Cortex Analyst tool Client360 on BARCLAYS_HOL.ANALYTICS.SV_CLIENT_360 (warehouse BARCLAYS_WH) for client, alert and sentiment data, and a Cortex Search tool PlatformDocs on SNOWFLAKE_DOCS_CKE.SHARED.CKE_SNOWFLAKE_DOCS_SERVICE (max 4 results, title column DOCUMENT_TITLE, id column SOURCE_URL) for how-to questions about Snowflake. Instructions: use Client360 for data questions, PlatformDocs for how-to questions, both when a question needs both, and cite documentation URLs. Deploy it.",
      "sql": "",
@@ -1024,7 +1091,7 @@
     },
     {
      "title": "Ask a question that needs both",
-     "body": "Ask \"Which 3 clients have the most open critical alerts, and how could I build a dynamic table to keep that list up to date?\"",
+     "body": "1. Ask \"Which 3 clients have the most open critical alerts, and how could I build a dynamic table to keep that list up to date?\"",
      "where": "Snowsight > **AI & ML > CoWork** > **Payments Platform Copilot**",
      "prompt": "",
      "sql": "",
@@ -1136,18 +1203,18 @@
    "steps": [
     {
      "title": "Ask the agent a few questions first",
-     "body": "GOV2 audits a ready-made **audit pack** in `BARCLAYS_HOL.AUDIT_PACK`, built on the Iceberg sources: a daily SLA data product (`PAYMENT_SLA_DAILY`), a client accounts view with restricted columns (`CLIENT_ACCOUNTS`), a semantic view (`SV_PAYMENTS_AUDIT`) and an agent (`PAYMENTS_AUDIT_AGENT`). It's separate from everything the other modules build, so you can still do those afterwards. Do this now, at the start of the module: agent usage takes up to about 45 minutes to reach ACCOUNT_USAGE, so the queries you ask here are what you'll audit in \"What are our agents doing?\" later. Ask the agent three questions, one at a time: paste the first from the card below, then ask \"What is the success rate by payment scheme?\" and \"How many client accounts does each relationship manager look after?\"",
+     "body": "**Important:** do this step now, at the start of the module. Agent usage takes up to about 45 minutes to reach ACCOUNT_USAGE.\n1. Paste the first question from the card below into the agent chat.\n2. Ask \"What is the success rate by payment scheme?\"\n3. Ask \"How many client accounts does each relationship manager look after?\"\nThe queries you ask here are what you'll audit in \"What are our agents doing?\" later.\nGOV2 audits a ready-made **audit pack** in `BARCLAYS_HOL.AUDIT_PACK`, built on the Iceberg sources:\n- a daily SLA data product (`PAYMENT_SLA_DAILY`)\n- a client accounts view with restricted columns (`CLIENT_ACCOUNTS`)\n- a semantic view (`SV_PAYMENTS_AUDIT`)\n- an agent (`PAYMENTS_AUDIT_AGENT`)\nThe pack is separate from everything the other modules build, so you can still do those afterwards.",
      "where": "Snowsight > **AI & ML > Agents > PAYMENTS_AUDIT_AGENT** (the chat on the right)",
      "prompt": "Which payment scheme had the most SLA breach days?",
      "sql": "",
      "expect": "an answer to each question, with the SQL the agent ran over SV_PAYMENTS_AUDIT. Carry on with the next steps while the usage data arrives.",
      "checkId": "",
-     "pasteInto": "the **PAYMENTS_AUDIT_AGENT** chat (not the Cortex Code sidebar)"
+     "pasteInto": "the **PAYMENTS_AUDIT_AGENT** chat (not CoCo)"
     },
     {
      "title": "Impact analysis on the Iceberg source",
      "body": "",
-     "where": "the Cortex Code sidebar; also Snowsight > **Catalog > BARCLAYS_HOL > RAW_DATA > PAYMENTS > Lineage**",
+     "where": "the **CoCo** tab (Home/CoCo toggle at the top of the left nav > **New session**); also Snowsight > **Catalog > BARCLAYS_HOL > RAW_DATA > PAYMENTS > Lineage**",
      "prompt": "If I drop the column PROCESSING_TIME_MS from BARCLAYS_HOL.RAW_DATA.PAYMENTS, which downstream objects and agents break? Use SNOWFLAKE.CORE.GET_LINEAGE downstream to 3 levels, and explain any objects shown as ***.***.***.",
      "sql": "",
      "expect": "the audit pack chain `PAYMENT_SLA_DAILY` > `SV_PAYMENTS_AUDIT` > `PAYMENTS_AUDIT_AGENT`, so the agent breaks, plus any staging views, marts and dynamic tables you built in other modules. Masked rows are objects your role can't see: lineage never leaks them.",
@@ -1176,18 +1243,18 @@
     },
     {
      "title": "Turn the access check into a daily automation",
-     "body": "**Autonomous Data Engineering:** autonomous agents. A Cortex Code automation (GA in the CLI, public preview in Desktop) runs a prompt on a schedule, unattended; Cortex Code Cloud Agents take the same idea to longer, background tasks. Cortex Code offers to run the access-history query as a daily **Cortex Code automation**: a scheduled, unattended Cortex Code run in a Snowflake-managed sandbox. Accept the offer, or ask for it:",
-     "where": "the Cortex Code sidebar (same chat as the step above)",
+     "body": "**Autonomous Data Engineering:** autonomous agents.\n- A Cortex Code automation runs a prompt on a schedule, unattended. It's GA in the CLI and public preview in Desktop.\n- Cortex Code Cloud Agents take the same idea to longer, background tasks.\n1. Cortex Code offers to run the access-history query as a daily **Cortex Code automation**. Accept the offer, or ask for it with this prompt:\nA Cortex Code automation is a scheduled, unattended Cortex Code run in a Snowflake-managed sandbox.",
+     "where": "the **CoCo** tab, in the same session as the step above",
      "prompt": "Set up a daily Cortex Code automation called RESTRICTED_COLUMN_WATCH that runs at 08:00 Europe/London. Each run: query SNOWFLAKE.ACCOUNT_USAGE.ACCESS_HISTORY for reads of the IBAN, ACCOUNT_NUMBER or SORT_CODE columns of any BARCLAYS_HOL object in the last 24 hours, and report who read them, when, and from which object. It runs unattended, so it must not ask questions and must stay read-only. Create it paused, run it once now so I can see the report, then start the schedule.",
      "sql": "",
-     "expect": "Cortex Code summarises the automation (name, schedule, read-only), creates it paused, runs it once and shows the report, then asks before starting the schedule. See it under **Automations** in the Cortex Code sidebar. Each run uses your default role (`HOL_PARTICIPANT`), so it sees exactly what you see: masked values stay masked. Your lab login has no email address, so there's no emailed run report; read the report in the run's thread instead.",
+     "expect": "Cortex Code summarises the automation (name, schedule, read-only), creates it paused, runs it once and shows the report, then asks before starting the schedule. See it under **Automations** in the CoCo side nav (below **New session**). Each run uses your default role (`HOL_PARTICIPANT`), so it sees exactly what you see: masked values stay masked. Your lab login has no email address, so there's no emailed run report; read the report in the run's thread instead.",
      "checkId": "gov2_automation",
      "pasteInto": ""
     },
     {
      "title": "What are our agents doing?",
      "body": "",
-     "where": "the Cortex Code sidebar; also Snowsight > **AI & ML > Agents > PAYMENTS_AUDIT_AGENT > Monitoring**",
+     "where": "the **CoCo** tab (Home/CoCo toggle at the top of the left nav > **New session**); also Snowsight > **AI & ML > Agents > PAYMENTS_AUDIT_AGENT > Monitoring**",
      "prompt": "From SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY, show queries in the last day against BARCLAYS_HOL that used SEMANTIC_VIEW, with user, role, start time, duration and a preview of the SQL.",
      "sql": "",
      "expect": "the queries your agents and Cortex Analyst generated, including the three questions you asked at the start, attributed to the user who asked. If they aren't there yet, usage can take up to about 45 minutes to appear: carry on with the last step and come back to this one.",
@@ -1200,7 +1267,7 @@
      "where": "",
      "prompt": "Add a table comment to BARCLAYS_HOL.AUDIT_PACK.PAYMENT_SLA_DAILY that starts \"Daily SLA compliance per payment scheme. Owner: Payments Operations.\" and states its grain (day x scheme) and source, plus a column comment on SLA_STATUS explaining COMPLIANT, AT RISK and BREACH. Then produce a one-page data product card for it: owner, grain, lineage, quality checks, sensitivity tags and consumers.",
      "sql": "",
-     "expect": "the comments saved, so humans and AI find the right table, and a data product card in the sidebar",
+     "expect": "the comments saved, so humans and AI find the right table, and a data product card, which you see when you switch back to **Home** (Home/CoCo toggle)",
      "checkId": "gov2_documented",
      "pasteInto": ""
     }
@@ -1227,14 +1294,16 @@
    ],
    "steps": [
     {
-     "title": "Open the GOV3 starter notebook",
-     "body": "Open the starter notebook `gov3_ai_gateway`: it has the title and one numbered heading per step, so Cortex Code puts each cell in the right place. If you can't see the `notebooks/` and `vignettes/` folders in the file explorer, you're in the wrong Workspace: switch to **payments-hol** from the Workspace dropdown (top left) before you go on. (No starter? Use **+ > Notebook** in payments-hol and name it `gov3_ai_gateway`.) Choose the compute pool **NOTEBOOK_POOL** and the warehouse **BARCLAYS_WH**. Then open the notebook's settings (the **⋮** menu > **Notebook settings** > **External access**) and turn on **HOL_NOTEBOOK_ACCESS_INTEGRATION**. The notebook calls the gateway on this account's public endpoint, and Snowflake blocks outbound traffic from notebooks unless an integration allows it.",
+     "title": "Open the starter notebook and create its service",
+     "body": "1. Open `notebooks/` > **gov3_ai_gateway.ipynb** in the file explorer.\n2. In the notebook toolbar, click the arrow next to the status dot (right of the blue run button).\n3. Choose **Create new service**.\n- Already created one in another module? Pick it under **Select service** instead, usually `USER_SERVICE_1`.\n4. Expand **Service settings** and fill in **Connect your notebook** as below. Only the three **bold** rows change.\n| Setting | Value |\n|---|---|\n| Service name | leave the default (e.g. `USER_SERVICE_1`) |\n| Artifact repositories | leave as is (`SNOWFLAKE.SNOWPARK.PYPI_SHARED_REPOSITORY`) |\n| Enable distributed compute | off |\n| Runtime | leave as is (v3.0 · Python 3.12) |\n| Compute type | CPU |\n| Custom image | leave empty |\n| **Compute pool** | **NOTEBOOK_POOL** (change it from HOL_COMPUTE_POOL_CPU) |\n| **Idle timeout** | **1 hour** (change it from 24 hours) |\n| **External access integrations** | **HOL_NOTEBOOK_ACCESS_INTEGRATION** (lets notebooks reach Postgres and the AI Gateway; set it here so one service works for every notebook module) |\n| Secrets | leave empty |\n5. Click **Create and connect**. The first start takes 1-2 minutes.\n6. Check the role is **HOL_PARTICIPANT** and the warehouse is **BARCLAYS_WH**, using the role and warehouse button in the notebook toolbar.\n**Important:** if you can't see `notebooks/` and `vignettes/`, you're in the wrong Workspace. Pick **payments-hol** from the Workspace dropdown (top left).\nThe starter notebook has one numbered heading per step, so Cortex Code puts each cell in the right place.\nA notebook runs on its own **notebook service**, which you create once with these settings.",
      "where": "the **payments-hol** Workspace (not My Workspace) > file explorer > `notebooks/gov3_ai_gateway.ipynb`",
      "prompt": "",
      "sql": "",
-     "expect": "the starter notebook open in payments-hol with its numbered headings, a connected kernel and the external access integration enabled",
+     "expect": "the starter notebook open in payments-hol with its numbered headings, and the status dot showing the service connected",
      "checkId": "",
-     "pasteInto": ""
+     "pasteInto": "",
+     "media": "gov3_notebook_service.mp4",
+     "mediaCaption": "Open the notebook > Create new service > NOTEBOOK_POOL, 1 hour, HOL_NOTEBOOK_ACCESS_INTEGRATION"
     },
     {
      "title": "Inspect the gateway",

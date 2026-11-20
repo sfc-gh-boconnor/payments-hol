@@ -5,9 +5,9 @@ database: BARCLAYS_HOL
 schema: LAB
 query_warehouse: BARCLAYS_WH
 
-label: "Payments HOL Lab Companion"
-description: "Guided pathways for the Barclays Payments Operations hands-on lab, with live Check my work validation and facilitator progress."
-icon: public/icon.svg
+label: "Banking Data Products Lab Companion"
+description: "Guided pathways for the Banking Data Products hands-on lab (payments, client 360, customer voice and branch network), with live Check my work validation and facilitator progress."
+icon: public/brand/snowflake-bug-color-rgb.svg
 
 install:
   commands:

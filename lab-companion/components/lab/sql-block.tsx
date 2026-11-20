@@ -25,7 +25,7 @@ export function SqlBlock({ sql, path }: { sql: string; path: string }) {
           {copied ? "Copied" : "Copy SQL"}
         </Button>
       </div>
-      <pre className="max-h-[560px] overflow-auto bg-slate-950 p-4 text-[12.5px] leading-relaxed text-slate-100">
+      <pre className="max-h-[560px] overflow-auto bg-black p-4 text-[12.5px] leading-relaxed text-slate-100">
         <code>{sql}</code>
       </pre>
     </div>

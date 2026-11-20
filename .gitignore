@@ -12,3 +12,11 @@ lab-companion/*.tsbuildinfo
 lab-companion/.env*
 lab-companion/snowflake.log
 data/retail/parts/
+media/node_modules/
+media/.auth/
+media/.raw/
+
+# Texta is licensed to Snowflake, not redistributable: the app falls back to Lato without it
+lab-companion/public/fonts/Texta-*
+# raw clip output (published copies live in lab-companion/public/media)
+media/out/

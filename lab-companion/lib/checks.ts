@@ -46,7 +46,7 @@ export const CHECKS: Record<string, Check[]> = {
       id: "de1_staging",
       label: "dbt staging views built (STG_PAYMENTS)",
       sql: exists("ANALYTICS", "STG_PAYMENTS"),
-      hint: "In the dbt tab of the bottom panel, click the arrow next to Run > Build > Execute. Or run the reference SQL.",
+      hint: "In the dbt tab of the bottom panel, click the arrow next to the blue button > Build > Execute.",
     },
     {
       id: "de1_kpi_mart",
@@ -362,19 +362,19 @@ const pre = {
     id: "pre_sv_client_360",
     label: "SV_CLIENT_360 exists (DA1)",
     sql: show("SHOW SEMANTIC VIEWS LIKE 'SV_CLIENT_360' IN SCHEMA BARCLAYS_HOL.ANALYTICS", "SV_CLIENT_360"),
-    hint: "Create SV_CLIENT_360 in DA1, or run the DA1 reference SQL.",
+    hint: "Create SV_CLIENT_360 in DA1 first.",
   },
   agent360: {
     id: "pre_agent_360",
     label: "CORPORATE_PAYMENTS_360 agent exists (OPS1)",
     sql: show("SHOW AGENTS LIKE 'CORPORATE_PAYMENTS_360' IN SCHEMA SNOWFLAKE_INTELLIGENCE.AGENTS", "Agent"),
-    hint: "Create the agent in OPS1, or run the OPS1 reference SQL.",
+    hint: "Create the agent in OPS1 first.",
   },
   lookup: {
     id: "pre_payment_lookup",
     label: "PAYMENT_LOOKUP tool exists (AI1)",
     sql: show("SHOW USER FUNCTIONS LIKE 'PAYMENT_LOOKUP' IN SCHEMA BARCLAYS_HOL.AGENTS", "PAYMENT_LOOKUP"),
-    hint: "Build the payment lookup tool in AI1, or run the AI1 reference SQL.",
+    hint: "Build the payment lookup tool in AI1 first.",
   },
   cke: {
     id: "pre_cke",

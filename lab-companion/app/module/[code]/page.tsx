@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { CheckPanel } from "@/components/lab/check-panel"
 import { InlineMd } from "@/components/lab/inline-md"
 import { PromptCard } from "@/components/lab/prompt-card"
+import { StepBody } from "@/components/lab/step-body"
+import { StepMedia } from "@/components/lab/step-media"
 import { SqlBlock } from "@/components/lab/sql-block"
 import { CATCHUPS, MODULES, moduleByCode } from "@/lib/content"
 import { CHECKS, PREREQS } from "@/lib/checks"
@@ -56,10 +58,15 @@ export default async function ModulePage({ params }: { params: Promise<{ code: s
             <CardHeader><CardTitle>Steps</CardTitle></CardHeader>
             <CardContent>
               <div className="mb-5 space-y-3">
+                {/same session/i.test(m.steps[0]?.where ?? "") ? (
                 <p className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs">
-                  <span className="font-semibold">Start a new Cortex Code chat for this module</span> (<span className="font-semibold">+</span> at the top of the sidebar) and paste this first, so Cortex Code doesn&apos;t have to look for a warehouse. A fresh chat keeps Cortex Code focused.
+                  <span className="font-semibold">Carry on in your existing Cortex Code session</span> for this module, as the first step says. Don&apos;t start a new one: Cortex Code reuses what it has already worked out.
                 </p>
-                <PromptCard prompt={`For this chat, use role HOL_PARTICIPANT and warehouse BARCLAYS_WH, and work in database BARCLAYS_HOL. I'm working on lab module ${m.code}: ${m.title}.`} expect="Cortex Code confirms the role and warehouse, then waits for your first prompt." />
+                ) : (
+                <p className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs">
+                  <span className="font-semibold">Start a new Cortex Code session for this module</span> (<span className="font-semibold">New session</span> in the CoCo tab, or <span className="font-semibold">+</span> at the top of the Workspace sidebar, whichever the steps use). A fresh chat keeps Cortex Code focused.
+                </p>
+                )}
               </div>
               <ol className="space-y-6">
                 {m.steps.map((s, i) => {
@@ -71,11 +78,12 @@ export default async function ModulePage({ params }: { params: Promise<{ code: s
                         <div className="min-w-0 space-y-1">
                           <div className="font-medium"><InlineMd text={s.title} /></div>
                           {s.where && <div className="text-xs text-muted-foreground"><span className="font-semibold">Where: </span><InlineMd text={s.where} /></div>}
-                          {s.body && <p className="text-sm"><InlineMd text={s.body} /></p>}
+                          {s.body && <StepBody text={s.body} />}
                         </div>
                       </div>
                       <div className="space-y-3 pl-9">
                         {m.code === "DE3" && s.title.startsWith("Reveal the connection") && <PgConnectionPanel />}
+                        {s.media && <StepMedia file={s.media} caption={s.mediaCaption} />}
                         {s.prompt && <PromptCard prompt={s.prompt} expect={s.expect} pasteInto={s.pasteInto} />}
                         {s.sql && <SqlBlock sql={s.sql} path="Run in a SQL file in the Workspace" />}
                         {!s.prompt && s.expect && <p className="text-xs"><span className="font-semibold">What you should see: </span><InlineMd text={s.expect} /></p>}
@@ -87,12 +95,6 @@ export default async function ModulePage({ params }: { params: Promise<{ code: s
               </ol>
             </CardContent>
           </Card>
-
-          <details className="rounded-lg border bg-card p-4">
-            <summary className="cursor-pointer text-sm font-medium">Stuck? Run the reference SQL</summary>
-            <p className="mt-2 text-xs text-muted-foreground">The tested script that builds everything in this module. Use it if a prompt doesn&apos;t give you a working result.</p>
-            <div className="mt-3"><SqlBlock sql={m.sql} path={m.sqlPath} /></div>
-          </details>
 
           {relevantCatchups.map((c) => (
             <details key={c.sqlPath} className="rounded-lg border bg-card p-4">
