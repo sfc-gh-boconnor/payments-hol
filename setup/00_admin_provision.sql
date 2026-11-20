@@ -173,13 +173,21 @@ GRANT USAGE ON WAREHOUSE HOL_INTERACTIVE_WH TO ROLE HOL_PARTICIPANT;
 USE WAREHOUSE BARCLAYS_WH;
 
 -- GOV3/DE3 notebooks call the account's own public endpoint (AI gateway) and Snowflake Postgres
--- (DE3, any instance host on 5432), and install packages from PyPI, so they need external access to all three
+-- (DE3, any instance host on 5432), and install packages from PyPI, so they need external access to all three.
+-- Postgres hosts look like <instance-id>.<org>-<account>.<region>.<cloud>.postgres.snowflake.app, and
+-- network rule wildcards match one subdomain level only, so the wildcard sits just above the instance id.
 EXECUTE IMMEDIATE $$
 DECLARE
   account_host STRING DEFAULT (SELECT LOWER(CURRENT_ORGANIZATION_NAME() || '-' || CURRENT_ACCOUNT_NAME()) || '.snowflakecomputing.com');
+  -- CURRENT_REGION() is e.g. AWS_US_WEST_2 (or PUBLIC.AWS_US_WEST_2): the cloud, then the region parts
+  region STRING DEFAULT (SELECT LOWER(SPLIT_PART(CURRENT_REGION(), '.', -1)));
+  pg_hosts STRING;
 BEGIN
+  pg_hosts := '*.' || REPLACE(LOWER(CURRENT_ORGANIZATION_NAME() || '-' || CURRENT_ACCOUNT_NAME()), '_', '-') || '.'
+    || REPLACE(SUBSTR(:region, POSITION('_' IN :region) + 1), '_', '-') || '.' || SPLIT_PART(:region, '_', 1) || '.postgres.snowflake.app:5432';
   EXECUTE IMMEDIATE 'CREATE OR REPLACE NETWORK RULE BARCLAYS_HOL.ANALYTICS.HOL_NOTEBOOK_EGRESS_RULE MODE = EGRESS TYPE = HOST_PORT VALUE_LIST = ('''
-    || :account_host || ''', ''' || REPLACE(:account_host, '_', '-') || ''', ''pypi.org'', ''pypi.python.org'', ''pythonhosted.org'', ''files.pythonhosted.org'', ''*.postgres.snowflake.app:5432'')';
+    || :account_host || ''', ''' || REPLACE(:account_host, '_', '-') || ''', ''pypi.org'', ''pypi.python.org'', ''pythonhosted.org'', ''files.pythonhosted.org'', ''*.postgres.snowflake.app:5432'', '''
+    || :pg_hosts || ''')';
 END;
 $$;
 CREATE EXTERNAL ACCESS INTEGRATION IF NOT EXISTS HOL_NOTEBOOK_ACCESS_INTEGRATION
