@@ -107,6 +107,13 @@ CREATE COMPUTE POOL IF NOT EXISTS HOL_COMPUTE_POOL_CPU
   AUTO_RESUME = TRUE AUTO_SUSPEND_SECS = 3600
   COMMENT = 'Barclays HOL: Streamlit container runtime (DA3)';
 GRANT USAGE, MONITOR ON COMPUTE POOL HOL_COMPUTE_POOL_CPU TO ROLE HOL_PARTICIPANT;
+-- DS1/DS2: model training runs as an ML Job on its own pool. The notebook kernel stays on the small
+-- NOTEBOOK_POOL (1 XS node, 6 GiB, shared by every open notebook); training gets 13 GiB to itself.
+CREATE COMPUTE POOL IF NOT EXISTS DS_TRAINING_POOL
+    MIN_NODES = 1 MAX_NODES = 1 INSTANCE_FAMILY = CPU_X64_S
+    AUTO_RESUME = TRUE AUTO_SUSPEND_SECS = 600 INITIALLY_SUSPENDED = TRUE
+    COMMENT = 'Barclays HOL: ML Jobs for DS1 and DS2 model training';
+GRANT USAGE, MONITOR ON COMPUTE POOL DS_TRAINING_POOL TO ROLE HOL_PARTICIPANT;
 -- Container runtime installs streamlit/pydeck from PyPI, so it needs external access
 CREATE NETWORK RULE IF NOT EXISTS BARCLAYS_HOL.ANALYTICS.PYPI_NETWORK_RULE MODE = EGRESS TYPE = HOST_PORT
   VALUE_LIST = ('pypi.org', 'pypi.python.org', 'pythonhosted.org', 'files.pythonhosted.org');

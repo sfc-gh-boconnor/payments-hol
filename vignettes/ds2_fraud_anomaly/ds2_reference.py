@@ -1,7 +1,7 @@
 """DS2 reference solution: an unsupervised fraud anomaly model, tracked and registered.
 
 The answer key for notebooks/ds2_fraud_anomaly.ipynb. Trains an isolation forest on behaviour only
-(no labels), then uses IS_FRAUD just to measure it. Runs inside Snowflake on the active session.
+(no labels), then uses IS_FRAUD just to measure it. Runs inside Snowflake on the active session; submit_job() runs it as an ML Job on DS_TRAINING_POOL.
 """
 import numpy as np
 import pandas as pd
@@ -64,5 +64,26 @@ def main(session):
     return {run: m for run, (_, m) in results.items()} | {"registered": f"RB_FRAUD_ANOMALY {mv.version_name}"}
 
 
+def submit_job(session):
+    """Run main() as an ML Job on DS_TRAINING_POOL (3 vCPU, 13 GiB), so the notebook kernel
+    on the small NOTEBOOK_POOL never holds the training data or models in memory."""
+    import sys
+    import cloudpickle
+    from snowflake.ml.jobs import remote
+
+    if __name__ != "__main__":  # imported as a module: send its code with the job
+        cloudpickle.register_pickle_by_value(sys.modules[__name__])
+
+    @remote("DS_TRAINING_POOL", stage_name="BARCLAYS_HOL.ML.JOB_STAGE", session=session)
+    def train_ds2():
+        from snowflake.snowpark.context import get_active_session as active
+        return main(active())
+
+    job = train_ds2()
+    job.wait()  # first run starts the pool: a few minutes
+    print(job.status)
+    return job.result()
+
+
 if __name__ == "__main__":
-    print(main(get_active_session()))
+    print(submit_job(get_active_session()))

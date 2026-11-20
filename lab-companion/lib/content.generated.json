@@ -885,6 +885,7 @@
    "question": "Which retail customers will leave in the next 3 months, why, and who should the retention team call first?",
    "build": [
     "View `ML.RB_CHURN_FEATURES`: point-in-time features observed on 31 Aug 2026, labelled with who left in the 3 months after",
+    "An ML Job on `DS_TRAINING_POOL` that trains the models, away from the notebook's own small compute",
     "Experiment `ML.RB_ATTRITION` with two tracked runs (logistic baseline and XGBoost) and their metrics",
     "Model `ML.RB_ATTRITION_MODEL` in the Model Registry, best run as the default version",
     "Table `ML.RB_ATTRITION_SCORES`: a churn probability and risk band for every customer, scored with the registered model"
@@ -928,19 +929,19 @@
     },
     {
      "title": "Train two models and track them in an experiment",
-     "body": "Then compare the runs:\n1. Open **AI & ML > Experiments** in Snowsight (in a new browser tab).\n2. Open **RB_ATTRITION**, tick both runs and press **Compare**.\n**Tip:** accuracy would be about 98% for a model that predicts nobody leaves. Lift in the top decile is what the retention team cares about.",
+     "body": "**Tip:** the first job takes a few minutes while DS_TRAINING_POOL starts. The notebook stays responsive: it only waits for the result.\nThen compare the runs:\n1. Open **AI & ML > Experiments** in Snowsight (in a new browser tab).\n2. Open **RB_ATTRITION**, tick both runs and press **Compare**.\n**Tip:** accuracy would be about 98% for a model that predicts nobody leaves. Lift in the top decile is what the retention team cares about.",
      "where": "",
-     "prompt": "Under heading 2, add a Python cell named load that reads RB_CHURN_FEATURES into pandas with the active Snowpark session, and a cell named train_and_track that splits 70/30 stratified, then trains a logistic regression baseline (balanced class weights, scaled features) and an XGBoost classifier (scale_pos_weight for the imbalance) as scikit-learn pipelines. Track each as a run in the Snowflake experiment RB_ATTRITION in BARCLAYS_HOL.ML using snowflake.ml.experiment.ExperimentTracking: log parameters including the observation date, and metrics AUC, average precision, precision in the top decile and lift in the top decile. Give each run a unique name with a timestamp, because finished runs can't be reopened. Run both cells.",
+     "prompt": "Under heading 2, add a Python cell named load that shows the row count and label balance of RB_CHURN_FEATURES with the active Snowpark session (don't pull it into pandas here). Then add a cell named train_and_track that runs the training as a Snowflake ML Job, using the @remote decorator from snowflake.ml.jobs with compute pool DS_TRAINING_POOL and stage BARCLAYS_HOL.ML.JOB_STAGE, so the training data and models never sit in this notebook's memory. Inside the job function: get the session with get_active_session, read RB_CHURN_FEATURES into pandas, split 70/30 stratified, and train a logistic regression baseline (balanced class weights, scaled features) and an XGBoost classifier (scale_pos_weight for the imbalance) as scikit-learn pipelines. Track each as a run in the Snowflake experiment RB_ATTRITION in BARCLAYS_HOL.ML with snowflake.ml.experiment.ExperimentTracking, logging parameters including the observation date, and metrics AUC, average precision, precision in the top decile and lift in the top decile, with a unique timestamped run name each. Then log the best run's pipeline to the Model Registry in BARCLAYS_HOL.ML as RB_ATTRITION_MODEL (metrics, sample input, target platform WAREHOUSE, a comment naming the experiment), let it generate the version name, make it the default, and return the metrics. Submit the job, wait for it, and print its status and result. Run both cells.",
      "sql": "",
-     "expect": "two finished runs. XGBoost scores an AUC of about 0.87 against about 0.86 for the baseline, and its top decile holds about 7 times the average rate of leavers.",
+     "expect": "the job finishes as DONE with two runs in the experiment. Both score an AUC of about 0.83 to 0.87, XGBoost slightly ahead, and the top decile holds about 7 times the average rate of leavers.",
      "checkId": "ds1_experiment",
      "pasteInto": ""
     },
     {
-     "title": "Register the best model",
+     "title": "Check the registered model",
      "body": "Then look at it: **AI & ML > Models** > **RB_ATTRITION_MODEL** shows the version, its metrics and the comment.",
      "where": "",
-     "prompt": "Under heading 3, add a Python cell named register that picks the run with the best AUC and logs its pipeline to the Snowflake Model Registry (snowflake.ml.registry.Registry) in BARCLAYS_HOL.ML as model RB_ATTRITION_MODEL, with its metrics, sample input data, target platform WAREHOUSE and a comment naming the experiment and observation date. Let the registry generate the version name, then make the new version the default. Run it and show the model's versions.",
+     "prompt": "Under heading 3, add a Python cell named register that opens the Snowflake Model Registry (snowflake.ml.registry.Registry) in BARCLAYS_HOL.ML and shows the versions of RB_ATTRITION_MODEL, which version is the default, and its metrics and comment. Run it.",
      "sql": "",
      "expect": "RB_ATTRITION_MODEL with one version (more if you re-run), metrics attached and set as the default",
      "checkId": "ds1_model_registered",
@@ -1013,11 +1014,11 @@
     },
     {
      "title": "Train anomaly models without labels and track them",
-     "body": "**Important:** the labels never touch training. They're only there to tell you whether the model would have caught real fraud.",
+     "body": "**Tip:** the job runs on DS_TRAINING_POOL, not your notebook service. The first one takes a few minutes while the pool starts.\n**Important:** the labels never touch training. They're only there to tell you whether the model would have caught real fraud.",
      "where": "",
-     "prompt": "Under heading 2, add a Python cell named train_and_track that samples 300,000 rows of RB_TXN_FEATURES with the active session and trains two scikit-learn IsolationForest models on the features only (no labels): 100 trees with contamination 0.005, and 300 trees with contamination 0.01. Track each as a run in the Snowflake experiment RB_FRAUD in BARCLAYS_HOL.ML with ExperimentTracking, using unique run names with a timestamp. Score with -score_samples, flag the top 0.5% as alerts, then log the parameters, AUC and average precision against IS_FRAUD, precision and recall at the 0.5% alert rate, and recall for each FRAUD_TYPE. Run it.",
+     "prompt": "Under heading 2, add a Python cell named train_and_track that runs the training as a Snowflake ML Job, using the @remote decorator from snowflake.ml.jobs with compute pool DS_TRAINING_POOL and stage BARCLAYS_HOL.ML.JOB_STAGE, so the sample and models never sit in this notebook's memory. Inside the job function: get the session with get_active_session, sample 300,000 rows of RB_TXN_FEATURES, and train two scikit-learn IsolationForest models on the features only (no labels): 100 trees with contamination 0.005, and 300 trees with contamination 0.01. Track each as a run in the Snowflake experiment RB_FRAUD in BARCLAYS_HOL.ML with ExperimentTracking, using unique timestamped run names. Score with -score_samples, flag the top 0.5% as alerts, and log the parameters, AUC and average precision against IS_FRAUD, precision and recall at the 0.5% alert rate, and recall for each FRAUD_TYPE. Then log the run with the best average precision to the Model Registry in BARCLAYS_HOL.ML as RB_FRAUD_ANOMALY (sample input, metrics, target platform WAREHOUSE, a comment saying it was trained without labels), make it the default version, and return the metrics. Submit the job, wait for it, and print its status and result. Run it.",
      "sql": "",
-     "expect": "both runs score an AUC of about 0.99 against the labels. At a 0.5% alert rate, about 6 in 10 alerts are real fraud and about 3 in 4 frauds are caught: nearly all APP scams and account takeovers, most card testing, but only about 1 in 8 impossible-travel payments.",
+     "expect": "both runs score an AUC of about 0.99 against the labels. At a 0.5% alert rate, about 6 in 10 alerts are real fraud and about 2 in 3 to 3 in 4 frauds are caught: nearly all APP scams and account takeovers, most card testing, but only about 1 in 8 impossible-travel payments.",
      "checkId": "ds2_experiment",
      "pasteInto": ""
     },
@@ -1025,7 +1026,7 @@
      "title": "Register and score every transaction",
      "body": "",
      "where": "",
-     "prompt": "Under heading 3, add a Python cell named register_and_score that logs the run with the best average precision to the Snowflake Model Registry in BARCLAYS_HOL.ML as RB_FRAUD_ANOMALY (sample input, metrics, target platform WAREHOUSE, a comment saying it was trained without labels), makes that version the default, then runs it with score_samples on every row of RB_TXN_FEATURES in Snowflake and saves the top 0.5% most anomalous transactions to the table BARCLAYS_HOL.ML.RB_FRAUD_ALERTS with TXN_ID, CUSTOMER_ID, TXN_TS and ANOMALY_SCORE. Then add a SQL cell named alerts_by_type counting the alerts by FRAUD_TYPE (null means not labelled fraud). Run both.",
+     "prompt": "Under heading 3, add a Python cell named register_and_score that gets the default version of RB_FRAUD_ANOMALY from the Model Registry in BARCLAYS_HOL.ML, runs it with score_samples on a Snowpark DataFrame of every row of RB_TXN_FEATURES (so the scoring runs in the warehouse, not the notebook) and saves the top 0.5% most anomalous transactions to the table BARCLAYS_HOL.ML.RB_FRAUD_ALERTS with TXN_ID, CUSTOMER_ID, TXN_TS and ANOMALY_SCORE. Then add a SQL cell named alerts_by_type counting the alerts by FRAUD_TYPE (null means not labelled fraud). Run both.",
      "sql": "",
      "expect": "about 6,000 alerts, about 3,800 of them labelled fraud. The rest are unusual but genuine payments, which the fraud team would clear.",
      "checkId": "ds2_model_registered",

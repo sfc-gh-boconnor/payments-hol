@@ -1,7 +1,7 @@
 """DS1 reference solution: train, track and register the attrition model.
 
 The answer key for notebooks/ds1_attrition_model.ipynb, the same steps Cortex Code builds.
-Runs inside Snowflake (a notebook service, or a Python procedure) on the active session.
+Runs inside Snowflake on the active session; submit_job() runs it as an ML Job on DS_TRAINING_POOL.
 Needs snowflake-ml-python >= 1.19 and xgboost.
 """
 import numpy as np
@@ -78,5 +78,26 @@ def main(session):
     return {run: m for run, (_, m) in results.items()} | {"registered": f"RB_ATTRITION_MODEL {mv.version_name}"}
 
 
+def submit_job(session):
+    """Run main() as an ML Job on DS_TRAINING_POOL (3 vCPU, 13 GiB), so the notebook kernel
+    on the small NOTEBOOK_POOL never holds the training data or models in memory."""
+    import sys
+    import cloudpickle
+    from snowflake.ml.jobs import remote
+
+    if __name__ != "__main__":  # imported as a module: send its code with the job
+        cloudpickle.register_pickle_by_value(sys.modules[__name__])
+
+    @remote("DS_TRAINING_POOL", stage_name="BARCLAYS_HOL.ML.JOB_STAGE", session=session)
+    def train_ds1():
+        from snowflake.snowpark.context import get_active_session as active
+        return main(active())
+
+    job = train_ds1()
+    job.wait()  # first run starts the pool: a few minutes
+    print(job.status)
+    return job.result()
+
+
 if __name__ == "__main__":
-    print(main(get_active_session()))
+    print(submit_job(get_active_session()))
