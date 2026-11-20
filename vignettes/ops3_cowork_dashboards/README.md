@@ -23,7 +23,10 @@ Snowflake CoWork (formerly Snowflake Intelligence) is the agentic app for busine
 ## Steps
 ### Open CoWork with the payments agent
 Where: Snowsight > **AI & ML > CoWork** (or the CoWork app), then choose the agent **Payments Ops CoWork**
-CoWork opens on its own page. Pick **Payments Ops CoWork** in the agent picker and check the role is **HOL_PARTICIPANT** and the warehouse **BARCLAYS_WH** (the settings under your name).
+CoWork opens on its own page.
+1. Pick **Payments Ops CoWork** in the agent picker.
+2. Open the settings under your name.
+3. Check the role is **HOL_PARTICIPANT** and the warehouse is **BARCLAYS_WH**.
 Paste: the **CoWork** chat box (not the Cortex Code sidebar)
 ```prompt
 What can you tell me about our payments? Give me a short overview of volume, failures and the clients and schemes that matter most this year.
@@ -61,7 +64,10 @@ Expect: a **.pptx** you can preview and download, built by the agent's code exec
 
 ### Build an AI dashboard with Cortex Code
 Where: payments-hol Workspace > **+ > Dashboard** (Preview), then the Cortex Code sidebar
-Create a dashboard named `payments_ops`, then ask Cortex Code to build it. Dashboards are stored as a `.dash` file in the Workspace: each tile is a SQL query rendered as a chart, table or text.
+1. Create a dashboard named `payments_ops`.
+2. Ask Cortex Code to build it with the prompt below.
+Dashboards are stored as a `.dash` file in the Workspace.
+Each tile is a SQL query rendered as a chart, table or text.
 ```prompt
 Using the /dashboard skill, build the open dashboard payments_ops on the semantic view BARCLAYS_HOL.COWORK_PACK.SV_PAYMENTS_OPS (or the views PAYMENT_ACTIVITY and CLIENT_FEEDBACK in BARCLAYS_HOL.COWORK_PACK). Add a scorecard row with total payment value, success rate and failed value for the selected period; a stacked bar chart of monthly failed value by scheme; a table of the top 10 clients by failed value with sector and relationship manager; and a bar chart of failed payments by error code. Add filters for scheme and sector and a date range defaulting to the last 12 months, and make clicking a scheme in the failed value chart filter the other tiles.
 ```
@@ -69,7 +75,10 @@ Expect: a dashboard with live tiles, filters and a chart action, all SQL you can
 
 ### Publish the dashboard to CoWork
 Where: the open `payments_ops` dashboard > **Share**
-Under **Who has access**, add the role **HOL_PARTICIPANT** with **Can view**, then **Create**. The link is copied to your clipboard. Open it: the dashboard opens in **CoWork**, where you can ask a follow-up on any tile, for example "why did SEPA failures jump in this month?".
+1. Under **Who has access**, add the role **HOL_PARTICIPANT** with **Can view**.
+2. Click **Create**. The link is copied to your clipboard.
+3. Open the link. The dashboard opens in **CoWork**.
+4. Ask a follow-up on any tile, for example "why did SEPA failures jump in this month?".
 Expect: the published dashboard in CoWork and under **Projects > Artifacts**. Tiles run with each viewer's own privileges (caller's rights), so a viewer who can't see a table sees no data. Publishing later changes from the Workspace keeps the same link.
 
 ## Check your work

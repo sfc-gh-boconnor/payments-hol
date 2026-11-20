@@ -5,7 +5,6 @@
 | **Persona** | AI Builder |
 | **Time** | ~30 min |
 | **Prerequisites** | Facilitator setup 00 (installs `SNOWFLAKE_DOCS_CKE`), DA1 |
-| **Reference SQL** | [`ai3.sql`](ai3.sql) |
 
 ## Business question
 > Agents need trusted unstructured knowledge, but internal (PII) data cannot be vectorised yet. What can we do?
@@ -16,7 +15,8 @@
 ## Steps
 ### See what came from the Marketplace
 Where: Snowsight > **Data Products > Marketplace**, search "Cortex Knowledge Extension"; then the Cortex Code sidebar
-Browse the knowledge extension listings (finance publishers are there too). Then, in the payments-hol Workspace:
+1. Browse the knowledge extension listings. Finance publishers are there too.
+2. Open the Cortex Code sidebar in the payments-hol Workspace and paste this prompt.
 ```prompt
 Show the Cortex Search services in database SNOWFLAKE_DOCS_CKE and explain what a Cortex Knowledge Extension is: who built and hosts it, what we can see of its source data, and how we pay for it.
 ```
@@ -31,7 +31,8 @@ Expect: three documentation excerpts with their URLs
 
 ### Create an agent that uses both
 Where: payments-hol Workspace > **+ > Agent** > **Create with CoCo** (recommended)
-Name the new agent file `payments_platform_copilot` straight away, then paste this brief.
+1. Rename the new agent file to `payments_platform_copilot` straight away.
+2. Paste this brief into Cortex Code.
 ```prompt
 Create a Cortex Agent SNOWFLAKE_INTELLIGENCE.AGENTS.PAYMENTS_PLATFORM_COPILOT with display name "Payments Platform Copilot". Tools: a Cortex Analyst tool Client360 on BARCLAYS_HOL.ANALYTICS.SV_CLIENT_360 (warehouse BARCLAYS_WH) for client, alert and sentiment data, and a Cortex Search tool PlatformDocs on SNOWFLAKE_DOCS_CKE.SHARED.CKE_SNOWFLAKE_DOCS_SERVICE (max 4 results, title column DOCUMENT_TITLE, id column SOURCE_URL) for how-to questions about Snowflake. Instructions: use Client360 for data questions, PlatformDocs for how-to questions, both when a question needs both, and cite documentation URLs. Deploy it.
 ```
@@ -40,7 +41,7 @@ Check: ai3_agent
 
 ### Ask a question that needs both
 Where: Snowsight > **AI & ML > CoWork** > **Payments Platform Copilot**
-Ask "Which 3 clients have the most open critical alerts, and how could I build a dynamic table to keep that list up to date?"
+1. Ask "Which 3 clients have the most open critical alerts, and how could I build a dynamic table to keep that list up to date?"
 Expect: the agent calls both `Client360` and `PlatformDocs`, names three clients and cites documentation URLs
 
 ## Check your work

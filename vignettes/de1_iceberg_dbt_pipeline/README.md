@@ -5,7 +5,6 @@
 | **Persona** | Data Engineer |
 | **Time** | ~60 min |
 | **Prerequisites** | Core C1 only |
-| **Reference SQL** | [`de1.sql`](de1.sql) |
 
 ## Business question
 > Turn the published Iceberg sources into governed, tested data products - and publish them back to the lake as Iceberg.
@@ -19,7 +18,10 @@
 ## Steps
 ### Open the dbt project in the Workspace
 Where: Snowsight > **Projects > Workspaces** > **My Workspace** dropdown > **payments-hol**, then `dbt/` in the file explorer
-Open `dbt/models/staging/schema.yml`: the sources point straight at the `RAW_DATA` Iceberg tables. dbt reads Iceberg exactly like native tables.
+Media: start_open_workspace.mp4 | Home > Workspaces > payments-hol, then the Cortex Code sidebar
+1. Open `dbt/models/staging/schema.yml` in the file explorer.
+2. Paste this prompt into the Cortex Code sidebar.
+The sources in `schema.yml` point straight at the `RAW_DATA` Iceberg tables. dbt reads Iceberg exactly like native tables.
 ```prompt
 Walk me through the dbt project in the dbt/ folder of this Workspace: what each staging and mart model does, where the sources come from, and which models are defined in models/marts/schema.yml but have no .sql file yet.
 ```
@@ -27,7 +29,12 @@ Expect: 4 staging models and 2 marts (`mart_payment_kpis`, `mart_sla_compliance`
 
 ### Run dbt build from the dbt pane
 Where: the bottom panel of the Workspace > **dbt** tab (next to Query History)
-Open the **dbt** tab in the bottom panel. It shows Profile **dev** and a blue **Run** button. Click the arrow next to Run to open **Select Operation**, choose **Build** (not Run) and press **Execute**. Build runs the models and their tests in dependency order; Run only creates the models and skips the tests that prove Cortex Code's marts are correct.
+Media: de1_dbt_build.mp4 | Open a dbt file > bottom panel > dbt tab > arrow next to the blue button > Build
+1. Open the **dbt** tab in the bottom panel. It shows Profile **dev** and a blue **Run** button.
+2. Click the arrow next to **Run** to open **Select Operation**.
+3. Choose **Build** and press **Execute**.
+**Important:** choose **Build**, not **Run**. Run only creates the models and skips the tests that prove Cortex Code's marts are correct.
+Build runs the models and their tests in dependency order.
 Expect: the Output tab ends with every model and test passing (`ERROR=0`). Open the **DAG** tab to see the lineage from the Iceberg sources to the marts.
 Check: de1_staging
 
@@ -47,24 +54,28 @@ Expect: a new file `dbt/models/marts/mart_rm_performance.sql`, and Cortex Code r
 
 ### Build the whole project and check the tests
 Where: the bottom panel of the Workspace > **dbt** tab
-Writing or compiling a model doesn't create its table: only a build does. Click the arrow next to **Run** to open **Select Operation**, choose **Build** and press **Execute**.
+Media: de1_dbt_build.mp4 | dbt tab > arrow next to the blue button > Build > Execute
+1. Click the arrow next to **Run** to open **Select Operation**.
+2. Choose **Build** and press **Execute**.
+Writing or compiling a model doesn't create its table. Only a build does.
 Expect: the Output shows 8 models and every test passing (`ERROR=0`), including the tests for both Cortex Code marts. If a test fails, paste the error into Cortex Code, ask it to fix the model, and Build again.
 Check: de1_coco_marts
 
 ### Deploy the project
-The Workspace is where you develop; the deployed project object `BARCLAYS_HOL.ANALYTICS.BARCLAYS_DBT` is what production runs. It was deployed when the lab was set up, so it doesn't have the marts you just wrote yet.
 ```prompt
 Deploy the dbt project in my payments-hol Workspace (snow://workspace/DEFAULT_DATABASE.PUBLIC."payments-hol"/versions/live/dbt) to the existing dbt project object BARCLAYS_HOL.ANALYTICS.BARCLAYS_DBT with ALTER DBT PROJECT ... ADD VERSION FROM. Then list the models in the deployed project to confirm MART_CUSTOMER_PAYMENTS and MART_RM_PERFORMANCE are included.
 ```
 Expect: "Successfully deployed new files", and both Cortex Code marts listed in the deployed project. The nightly task in the next step now builds what you developed.
+The Workspace is where you develop. The deployed project object `BARCLAYS_HOL.ANALYTICS.BARCLAYS_DBT` is what production runs.
+It was deployed when the lab was set up, so it doesn't have the marts you just wrote yet.
 
 ### Schedule the project
-**Autonomous Data Engineering:** native orchestration with a task, so the data product rebuilds itself every night with no external orchestrator.
 ```prompt
 Create a task BARCLAYS_HOL.ANALYTICS.TSK_DBT_NIGHTLY_BUILD on warehouse BARCLAYS_WH that runs EXECUTE DBT PROJECT BARCLAYS_HOL.ANALYTICS.BARCLAYS_DBT ARGS = 'build' every day at 05:00 Europe/London. Leave it suspended.
 ```
 Expect: the task created and suspended, on a 05:00 Europe/London schedule. In production you'd resume it. No external orchestrator needed.
 Check: de1_task
+**Autonomous Data Engineering:** native orchestration with a task, so the data product rebuilds itself every night with no external orchestrator.
 
 ### Publish the data product back to the lake as Iceberg
 ```prompt

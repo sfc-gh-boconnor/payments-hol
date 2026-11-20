@@ -5,7 +5,6 @@
 | **Persona** | AI Builder |
 | **Time** | ~30 min |
 | **Prerequisites** | DA1, OPS1, AI1 and the knowledge extension from facilitator setup |
-| **Reference SQL** | [`ai2.sql`](ai2.sql) |
 
 ## Business question
 > Teams use different AI clients. Expose governed payments tools to all of them once.
@@ -16,7 +15,8 @@
 ## Steps
 ### Create the MCP server
 Where: the Cortex Code sidebar
-One server, four governed tools, nothing to host. Every call runs as the caller's role.
+One server, four governed tools, nothing to host.
+Every call runs as the caller's role.
 ```prompt
 Create a Snowflake-managed MCP server BARCLAYS_HOL.AGENTS.PAYMENTS_MCP with four tools: "client-360-analyst" (CORTEX_ANALYST_MESSAGE on BARCLAYS_HOL.ANALYTICS.SV_CLIENT_360), "payments-360-agent" (CORTEX_AGENT_RUN on SNOWFLAKE_INTELLIGENCE.AGENTS.CORPORATE_PAYMENTS_360, read-only), "payment-lookup" (GENERIC function tool on BARCLAYS_HOL.AGENTS.PAYMENT_LOOKUP, warehouse BARCLAYS_WH, input payment_id string, read-only and idempotent) and "snowflake-docs" (CORTEX_SEARCH_SERVICE_QUERY on SNOWFLAKE_DOCS_CKE.SHARED.CKE_SNOWFLAKE_DOCS_SERVICE). Then describe it.
 ```
@@ -30,7 +30,10 @@ Give me the MCP endpoint URL for BARCLAYS_HOL.AGENTS.PAYMENTS_MCP in this accoun
 Expect: your account's endpoint URL and a ready-to-paste config
 
 ### Connect a client and call the tools
-Create a short-lived programmatic access token restricted to `HOL_PARTICIPANT` (Snowsight: **Settings > Authentication > Programmatic access tokens**). Add the config to an MCP client such as Cortex Code Desktop or CLI, then ask it:
+1. Open **Settings > Authentication > Programmatic access tokens** in Snowsight.
+2. Create a short-lived programmatic access token restricted to `HOL_PARTICIPANT`.
+3. Add the config to an MCP client, such as Cortex Code Desktop or CLI.
+4. Ask the client this question:
 ```prompt
 Using the barclays-payments tools, which clients have open critical alerts?
 ```

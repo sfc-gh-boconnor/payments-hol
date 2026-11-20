@@ -5,7 +5,6 @@
 | **Persona** | Data Analyst |
 | **Time** | ~45 min |
 | **Prerequisites** | `setup/catchup/core_analytics.sql` (or DE1) |
-| **Reference SQL** | [`da2.sql`](da2.sql) |
 
 ## Business question
 > What are corporate clients actually complaining about, by scheme and by relationship manager - without reading 2,000 comments?
@@ -16,10 +15,34 @@
 - Notebook `da2_feedback_analysis` with the whole analysis and a sentiment-by-sector chart
 
 ## Steps
-### Open the DA2 starter notebook
+### Open the starter notebook and create its service
 Where: the **payments-hol** Workspace (not My Workspace) > file explorer > `notebooks/da2_feedback_analysis.ipynb`
-Open the starter notebook `da2_feedback_analysis`: it has the title and one numbered heading per step, so Cortex Code puts each cell in the right place. If you can't see the `notebooks/` and `vignettes/` folders in the file explorer, you're in the wrong Workspace: switch to **payments-hol** from the Workspace dropdown (top left) before you go on. (No starter? Use **+ > Notebook** in payments-hol and name it `da2_feedback_analysis`.) When it asks for compute, choose the compute pool **NOTEBOOK_POOL** and the warehouse **BARCLAYS_WH** (SQL cells run on the warehouse; Python and charts run on the pool). The first start can take a minute or two while the pool resumes. You'll build this whole module as cells in this notebook: Cortex Code adds them for you, and you run each one.
-Expect: the starter notebook open in payments-hol, with its numbered headings and a connected kernel
+Media: da2_notebook_service.mp4 | Open the notebook > Create new service > NOTEBOOK_POOL, 1 hour, HOL_NOTEBOOK_ACCESS_INTEGRATION
+1. Open `notebooks/` > **da2_feedback_analysis.ipynb** in the file explorer.
+- Can't see `notebooks/` and `vignettes/`? You're in the wrong Workspace. Pick **payments-hol** from the Workspace dropdown (top left).
+2. In the notebook toolbar, click the arrow next to the status dot (right of the blue run button).
+3. Choose **Create new service**.
+- Already created one in another module? Pick it under **Select service** instead, usually `USER_SERVICE_1`.
+4. Expand **Service settings** in **Connect your notebook** and fill it in as below. Only the three **bold** rows change.
+| Setting | Value |
+|---|---|
+| Service name | leave the default (e.g. `USER_SERVICE_1`) |
+| Artifact repositories | leave as is (`SNOWFLAKE.SNOWPARK.PYPI_SHARED_REPOSITORY`) |
+| Enable distributed compute | off |
+| Runtime | leave as is (v3.0 · Python 3.12) |
+| Compute type | CPU |
+| Custom image | leave empty |
+| **Compute pool** | **NOTEBOOK_POOL** (change it from HOL_COMPUTE_POOL_CPU) |
+| **Idle timeout** | **1 hour** (change it from 24 hours) |
+| **External access integrations** | **HOL_NOTEBOOK_ACCESS_INTEGRATION** (lets notebooks reach Postgres and the AI Gateway; set it here so one service works for every notebook module) |
+| Secrets | leave empty |
+5. Click **Create and connect**. The first start takes 1-2 minutes.
+6. Check the role is **HOL_PARTICIPANT** and the warehouse is **BARCLAYS_WH** (role and warehouse button in the notebook toolbar).
+The starter notebook has one numbered heading per step, so Cortex Code puts each cell in the right place.
+A notebook runs on its own **notebook service**, which you create once.
+SQL cells run on the warehouse. Python and charts run on the service.
+You'll build this whole module as cells in this notebook: Cortex Code adds them, and you run each one.
+Expect: the starter notebook open in payments-hol with its numbered headings, and the status dot showing the service connected
 
 ### Score sentiment by aspect
 Where: the Cortex Code sidebar, with `da2_feedback_analysis` open

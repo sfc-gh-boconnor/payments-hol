@@ -24,10 +24,32 @@ Cortex AI Gateway (preview) gives every AI client in the organisation one endpoi
 - **Cost:** per-user attribution, budgets and per-user quotas.
 
 ## Steps
-### Open the GOV3 starter notebook
+### Open the starter notebook and create its service
 Where: the **payments-hol** Workspace (not My Workspace) > file explorer > `notebooks/gov3_ai_gateway.ipynb`
-Open the starter notebook `gov3_ai_gateway`: it has the title and one numbered heading per step, so Cortex Code puts each cell in the right place. If you can't see the `notebooks/` and `vignettes/` folders in the file explorer, you're in the wrong Workspace: switch to **payments-hol** from the Workspace dropdown (top left) before you go on. (No starter? Use **+ > Notebook** in payments-hol and name it `gov3_ai_gateway`.) Choose the compute pool **NOTEBOOK_POOL** and the warehouse **BARCLAYS_WH**. Then open the notebook's settings (the **⋮** menu > **Notebook settings** > **External access**) and turn on **HOL_NOTEBOOK_ACCESS_INTEGRATION**. The notebook calls the gateway on this account's public endpoint, and Snowflake blocks outbound traffic from notebooks unless an integration allows it.
-Expect: the starter notebook open in payments-hol with its numbered headings, a connected kernel and the external access integration enabled
+Media: gov3_notebook_service.mp4 | Open the notebook > Create new service > NOTEBOOK_POOL, 1 hour, HOL_NOTEBOOK_ACCESS_INTEGRATION
+1. Open `notebooks/` > **gov3_ai_gateway.ipynb** in the file explorer.
+2. In the notebook toolbar, click the arrow next to the status dot (right of the blue run button).
+3. Choose **Create new service**.
+- Already created one in another module? Pick it under **Select service** instead, usually `USER_SERVICE_1`.
+4. Expand **Service settings** and fill in **Connect your notebook** as below. Only the three **bold** rows change.
+| Setting | Value |
+|---|---|
+| Service name | leave the default (e.g. `USER_SERVICE_1`) |
+| Artifact repositories | leave as is (`SNOWFLAKE.SNOWPARK.PYPI_SHARED_REPOSITORY`) |
+| Enable distributed compute | off |
+| Runtime | leave as is (v3.0 · Python 3.12) |
+| Compute type | CPU |
+| Custom image | leave empty |
+| **Compute pool** | **NOTEBOOK_POOL** (change it from HOL_COMPUTE_POOL_CPU) |
+| **Idle timeout** | **1 hour** (change it from 24 hours) |
+| **External access integrations** | **HOL_NOTEBOOK_ACCESS_INTEGRATION** (lets notebooks reach Postgres and the AI Gateway; set it here so one service works for every notebook module) |
+| Secrets | leave empty |
+5. Click **Create and connect**. The first start takes 1-2 minutes.
+6. Check the role is **HOL_PARTICIPANT** and the warehouse is **BARCLAYS_WH**, using the role and warehouse button in the notebook toolbar.
+**Important:** if you can't see `notebooks/` and `vignettes/`, you're in the wrong Workspace. Pick **payments-hol** from the Workspace dropdown (top left).
+The starter notebook has one numbered heading per step, so Cortex Code puts each cell in the right place.
+A notebook runs on its own **notebook service**, which you create once with these settings.
+Expect: the starter notebook open in payments-hol with its numbered headings, and the status dot showing the service connected
 
 ### Inspect the gateway
 Where: the Cortex Code sidebar, with `gov3_ai_gateway` open

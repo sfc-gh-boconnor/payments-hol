@@ -23,29 +23,49 @@
 - **Serving:** **Interactive Analytics** (GA): interactive warehouses return sub-second answers at high concurrency, directly on standard, dynamic or Iceberg tables, with no copy. They're built for dashboards, APIs and agents, with a 5 second statement limit and a 24 hour minimum run time once resumed, which is why the lab shares one.
 
 ## Steps
-### Open the DE3 starter notebook
+### Open the starter notebook and create its service
 Where: the **payments-hol** Workspace (not My Workspace) > file explorer > `notebooks/de3_realtime_payments.ipynb`
-Open the starter notebook `de3_realtime_payments`: it has the title and one numbered heading per step, so Cortex Code puts each cell in the right place. If you can't see the `notebooks/` and `vignettes/` folders in the file explorer, you're in the wrong Workspace: switch to **payments-hol** from the Workspace dropdown (top left) before you go on. (No starter? Use **+ > Notebook** in payments-hol and name it `de3_realtime_payments`.) Choose the compute pool **NOTEBOOK_POOL** and the warehouse **BARCLAYS_WH**, and check the role is **HOL_PARTICIPANT**. Open the notebook's settings (**⋮** > **Notebook settings** > **External access**) and turn on **HOL_NOTEBOOK_ACCESS_INTEGRATION**: the notebook installs the Postgres driver from PyPI and connects to Postgres on port 5432.
-Expect: the starter notebook open in payments-hol with its numbered headings, a connected kernel and the external access integration enabled
+Media: de3_notebook_service.mp4 | Open the notebook > Create new service > NOTEBOOK_POOL, 1 hour, HOL_NOTEBOOK_ACCESS_INTEGRATION
+1. Open `notebooks/` > **de3_realtime_payments.ipynb** in the file explorer.
+- Can't see `notebooks/` and `vignettes/`? You're in the wrong Workspace. Pick **payments-hol** from the Workspace dropdown (top left).
+2. In the notebook toolbar, click the arrow next to the status dot (right of the blue run button).
+3. Choose **Create new service**.
+- Already created one in another module? Pick it under **Select service** instead, usually `USER_SERVICE_1`.
+4. Expand **Service settings** in **Connect your notebook** and fill it in as below. Only the three **bold** rows change.
+| Setting | Value |
+|---|---|
+| Service name | leave the default (e.g. `USER_SERVICE_1`) |
+| Artifact repositories | leave as is (`SNOWFLAKE.SNOWPARK.PYPI_SHARED_REPOSITORY`) |
+| Enable distributed compute | off |
+| Runtime | leave as is (v3.0 · Python 3.12) |
+| Compute type | CPU |
+| Custom image | leave empty |
+| **Compute pool** | **NOTEBOOK_POOL** (change it from HOL_COMPUTE_POOL_CPU) |
+| **Idle timeout** | **1 hour** (change it from 24 hours) |
+| **External access integrations** | **HOL_NOTEBOOK_ACCESS_INTEGRATION** (lets notebooks reach Postgres and the AI Gateway; set it here so one service works for every notebook module) |
+| Secrets | leave empty |
+5. Click **Create and connect**. The first start takes 1-2 minutes.
+6. Check the role is **HOL_PARTICIPANT** and the warehouse is **BARCLAYS_WH** (role and warehouse button in the notebook toolbar).
+The starter notebook has one numbered heading per step, so Cortex Code puts each cell in the right place.
+A notebook runs on its own **notebook service**, which you create once.
+Expect: the starter notebook open in payments-hol with its numbered headings, and the status dot showing the service connected
 
 ### Create the Postgres instance
-You don't write the Postgres code yourself: the Workspace has a tested helper, `vignettes/de3_realtime_payments/de3_postgres.py`, and these cells import it.
 Where: the Cortex Code sidebar, with `de3_realtime_payments` open
 ```prompt
 In the open notebook de3_realtime_payments, put each cell I ask for under its matching numbered heading. Under heading 1, add a Python cell named create_pg that runs !pip install psycopg2-binary, makes vignettes/de3_realtime_payments/de3_postgres.py importable (search upwards from the current working directory for a folder containing vignettes/de3_realtime_payments/de3_postgres.py and add that folder to sys.path), imports de3_postgres as pg, and runs host = pg.create_postgres(get_active_session()). Don't rewrite the helper and never print the password. Then add a markdown cell explaining what create_postgres does: the instance size and why, the network policy, and what happens to the one-time password.
 ```
 Expect: the cell prints the instance moving through CREATING, STARTING and FINALIZING, then returns its host after 3 to 5 minutes. `HOL_PAYMENTS_PG` uses `STANDARD_M`, the smallest size Data Mirroring supports, with the network policy `HOL_PG_POLICY`. Its `snowflake_admin` password is shown only once, in the CREATE result, so the helper saves it straight into the secret `BARCLAYS_HOL.REALTIME.PG_ADMIN_SECRET` without printing it.
 Check: de3_postgres
+You don't write the Postgres code yourself. The cells import a tested helper in the Workspace, `vignettes/de3_realtime_payments/de3_postgres.py`.
 
 ### Reveal the connection and connect
 Where: the Lab Companion > **DE3** > **Reveal Postgres connection**, then the notebook
-Click **Reveal Postgres connection**: it reads the secret and shows the host, user and password with copy buttons. Paste them into a new Python cell under heading 2:
-```python
-PG_HOST = "<host>"
-PG_USER = "snowflake_admin"
-PG_PASS = "<password>"
-```
-Run it, then paste this into the Cortex Code sidebar:
+1. In the Lab Companion, click **Reveal Postgres connection**. It shows the host, user and password with copy buttons.
+2. In the notebook, find the connection cell under heading 2 (`PG_HOST`, `PG_USER`, `PG_PASS`).
+3. Replace each `<...>` placeholder with the value you copied, keeping the quotes.
+4. Run the cell.
+5. Paste this prompt into the Cortex Code sidebar:
 ```prompt
 Under heading 2, after my connection cell, add a Python cell named source_table that opens conn = pg.connect(PG_HOST, PG_USER, PG_PASS) and runs pg.create_source_table(conn), printing the row count it returns. Then explain the table it created in Postgres and why it has a primary key.
 ```

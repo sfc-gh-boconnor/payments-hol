@@ -5,7 +5,6 @@
 | **Persona** | Payments Ops analyst / team lead |
 | **Time** | ~30 min |
 | **Prerequisites** | `setup/catchup/core_analytics.sql` |
-| **Reference SQL** | [`ops2.sql`](ops2.sql) |
 
 ## Business question
 > Which open alerts should my team work first, what should we do, and which unhappy clients are linked to them?

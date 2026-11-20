@@ -5,7 +5,6 @@
 | **Persona** | Governance / Risk |
 | **Time** | ~45 min |
 | **Prerequisites** | `setup/catchup/core_analytics.sql` |
-| **Reference SQL** | [`gov1.sql`](gov1.sql) |
 
 ## Business question
 > Prove account identifiers are protected wherever they flow - dashboards, semantic views, agents - and that people only see clients in their region.

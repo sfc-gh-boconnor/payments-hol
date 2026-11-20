@@ -5,7 +5,6 @@
 | **Persona** | Data Analyst (Retail Banking) |
 | **Time** | ~45 min |
 | **Prerequisites** | C1 only. Uses the retail branch network in `BARCLAYS_HOL.RETAIL`, built at provisioning |
-| **Reference SQL** | [`da3.sql`](da3.sql) |
 
 ## Business question
 > Which branches could we consolidate, which nearby branches would absorb their customers, and how much longer would those customers have to travel?
@@ -27,10 +26,39 @@ These were precomputed once so the lab runs in any account.
 **Compute your own:** OpenRouteService runs natively in Snowflake on Snowpark Container Services, so you can calculate travel times, isochrones and route optimisations for your own branches and customers without data leaving Snowflake. It exposes SQL functions such as `OPENROUTESERVICE_APP.CORE.MATRIX`, `ISOCHRONES`, `DIRECTIONS` and `OPTIMIZATION`. See the quickstart [Build Routing Solution in Snowflake with Snowflake CoCo](https://www.snowflake.com/en/developers/guides/oss-install-openrouteservice-native-app/).
 
 ## Steps
-### Open the DA3 starter notebook
+### Open the starter notebook and create its service
 Where: the **payments-hol** Workspace (not My Workspace) > file explorer > `notebooks/da3_branch_network.ipynb`
-Open the starter notebook `da3_branch_network`: it has the title and one numbered heading per step, so Cortex Code puts each cell in the right place. If you can't see the `notebooks/` and `vignettes/` folders in the file explorer, you're in the wrong Workspace: switch to **payments-hol** from the Workspace dropdown (top left) before you go on. (No starter? Use **+ > Notebook** in payments-hol and name it `da3_branch_network`.) When it asks for compute, choose the compute pool **NOTEBOOK_POOL** and the warehouse **BARCLAYS_WH**. You'll build the analysis as cells in this notebook: Cortex Code adds them for you, and you run each one. The data is a synthetic UK retail network in `BARCLAYS_HOL.RETAIL`: about 60 branches in 8 cities, ATMs, 20,000 retail customers with a home location and H3 cell, a year of branch visits, and the ORS travel times and catchments described above.
-Expect: the starter notebook open in payments-hol, with its numbered headings and a connected kernel
+Media: da3_notebook_service.mp4 | Open the notebook > Create new service > NOTEBOOK_POOL, 1 hour, HOL_NOTEBOOK_ACCESS_INTEGRATION
+1. Open `notebooks/` > **da3_branch_network.ipynb** in the file explorer.
+- Can't see `notebooks/` and `vignettes/`? You're in the wrong Workspace. Pick **payments-hol** from the Workspace dropdown (top left).
+2. In the notebook toolbar, click the arrow next to the status dot (right of the blue run button).
+3. Choose **Create new service**.
+- Already created one in another module? Pick it under **Select service** instead, usually `USER_SERVICE_1`.
+4. Expand **Service settings** in **Connect your notebook** and fill it in as below. Only the three **bold** rows change.
+| Setting | Value |
+|---|---|
+| Service name | leave the default (e.g. `USER_SERVICE_1`) |
+| Artifact repositories | leave as is (`SNOWFLAKE.SNOWPARK.PYPI_SHARED_REPOSITORY`) |
+| Enable distributed compute | off |
+| Runtime | leave as is (v3.0 · Python 3.12) |
+| Compute type | CPU |
+| Custom image | leave empty |
+| **Compute pool** | **NOTEBOOK_POOL** (change it from HOL_COMPUTE_POOL_CPU) |
+| **Idle timeout** | **1 hour** (change it from 24 hours) |
+| **External access integrations** | **HOL_NOTEBOOK_ACCESS_INTEGRATION** (lets notebooks reach Postgres and the AI Gateway; set it here so one service works for every notebook module) |
+| Secrets | leave empty |
+5. Click **Create and connect**. The first start takes 1-2 minutes.
+6. Check the role is **HOL_PARTICIPANT** and the warehouse is **BARCLAYS_WH** (role and warehouse button in the notebook toolbar).
+The starter notebook has one numbered heading per step, so Cortex Code puts each cell in the right place.
+A notebook runs on its own **notebook service**, which you create once.
+You'll build the analysis as cells in this notebook: Cortex Code adds them, and you run each one.
+The data is a synthetic UK retail network in `BARCLAYS_HOL.RETAIL`:
+- about 60 branches in 8 cities
+- ATMs
+- 20,000 retail customers, each with a home location and H3 cell
+- a year of branch visits
+- the ORS travel times and catchments described above
+Expect: the starter notebook open in payments-hol with its numbered headings, and the status dot showing the service connected
 
 ### Map the branch network
 Where: the Cortex Code sidebar, with `da3_branch_network` open
@@ -80,17 +108,20 @@ Expect: the semantic view created, and a table of savings by city and risk tier
 Check: da3_semantic_view
 
 ### Build the branch network map app
-Notebook charts have no basemap, so build a Streamlit app that draws the network on a real map.
 Where: payments-hol Workspace > **+ > Streamlit App**, then the Cortex Code sidebar
 ```prompt
 Build a Streamlit in Snowflake app BARCLAYS_HOL.ANALYTICS.BRANCH_NETWORK_MAP titled "Branch network map" on the container runtime (RUNTIME_NAME SYSTEM$ST_CONTAINER_RUNTIME_PY3_11, compute pool HOL_COMPUTE_POOL_CPU, query warehouse BARCLAYS_WH, external access integration PYPI_ACCESS_INTEGRATION). Use st.connection("snowflake").session(). Include a pyproject.toml next to the app file with requires-python ">=3.11" and dependencies "streamlit>=1.50", "snowflake-snowpark-python" and "pydeck", because the container runtime installs them from PyPI. Sidebar: a city picker (default Leeds) from BARCLAYS_HOL.RETAIL.BRANCHES (columns BRANCH_ID, BRANCH_NAME, CITY, FORMAT, LAT, LON), a catchment picker mapping "10 min drive", "20 min drive" and "15 min walk" to BRANCH_ISOCHRONES PROFILE/MINUTES values driving-car/10, driving-car/20 and foot-walking/15, and a customer density toggle. Draw one st.pydeck_chart with map_style "light" (a Carto basemap), centred on the mean LAT/LON of the city's branches at zoom 10.5, with three layers: a semi-transparent blue PolygonLayer of the city's BARCLAYS_HOL.RETAIL.BRANCH_ISOCHRONES catchments (select ST_ASGEOJSON(CATCHMENT)::STRING, parse it with json, and take the outer ring of a Polygon or the first polygon of a MultiPolygon), an orange H3HexagonLayer of BARCLAYS_HOL.RETAIL.RETAIL_CUSTOMERS counted by HOME_H3_CELL for the city with opacity scaled by count, and a dark blue ScatterplotLayer of branches (radius 180 m) on top. pydeck uses one tooltip template for all layers, so add a TIP text column to each layer's dataframe ("<BRANCH_NAME> (<FORMAT>)" for branches, "<BRANCH_NAME>: <catchment> catchment" for polygons, "<n> customers" for hexagons) and set tooltip={"text": "{TIP}"}. Below the map, show "What if a branch closes?" as a table from BARCLAYS_HOL.ANALYTICS.BRANCH_CLOSURE_IMPACT for the city with BRANCH_NAME, ANNUAL_SAVING_GBP, COST_PER_VISIT_GBP, AVG_ADDED_DRIVE_MIN, P90_ADDED_DRIVE_MIN, LOSE_WALK_IN_ACCESS, VULNERABLE_CUSTOMERS, DISRUPTION_RISK and MAIN_RECEIVING_BRANCH, LOW risk first. Cache queries with st.cache_data.
 ```
 Expect: a map of Leeds with streets underneath, overlapping blue catchments around Boar Lane and the city centre, orange customer hexagons and the closure table below. The first start takes a minute or two while the container starts. A reference version is in `da3_branch_map.py` and `pyproject.toml`. If the app reports a missing pyproject.toml, Streamlit version or snowflake module, ask Cortex Code to add that file with those dependencies and attach PYPI_ACCESS_INTEGRATION.
 Check: da3_map_app
+Notebook charts have no basemap, so this Streamlit app draws the network on a real map.
 
 ### Ask Cortex Analyst
 Where: Snowsight > **AI & ML > Cortex Analyst** > `SV_BRANCH_NETWORK`
-Ask these in plain English, one at a time: "Which 3 branches in Manchester could close with the least added travel time?", "How much could we save by closing all LOW risk branches with fewer than 500 visits?" and "Which branch closure would cost the most customers their walk-in access?"
+Ask these in plain English, one at a time:
+1. "Which 3 branches in Manchester could close with the least added travel time?"
+2. "How much could we save by closing all LOW risk branches with fewer than 500 visits?"
+3. "Which branch closure would cost the most customers their walk-in access?"
 Expect: SQL generated over the semantic view, and answers that match your notebook
 
 ### Create the branch network advisor agent
