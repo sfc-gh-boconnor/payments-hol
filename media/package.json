@@ -1,0 +1,13 @@
+{
+  "name": "payments-hol-media",
+  "private": true,
+  "type": "module",
+  "description": "Records short step clips of Snowsight for the Lab Companion",
+  "scripts": {
+    "login": "node login.mjs",
+    "record": "node record.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.56.0"
+  }
+}

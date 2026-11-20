@@ -1,0 +1,5 @@
+{
+  "snowsightUrl": "https://app.snowflake.com/sfsehol/test_payments_hol_roconnor_hvennf/",
+  "viewport": { "width": 1440, "height": 900 },
+  "output": { "width": 800, "fps": 10, "crf": 32, "maxKb": 500 }
+}
