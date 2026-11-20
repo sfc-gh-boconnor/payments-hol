@@ -253,3 +253,13 @@ All data is **entirely synthetic** — no real customer, transaction, or Barclay
 | STATUS | VARCHAR(20) | NO | — | OPEN, ACKNOWLEDGED, INVESTIGATING, RESOLVED |
 | ASSIGNED_TO | VARCHAR(100) | NO | — | Operations team assigned |
 | RESOLUTION_TIME_MIN | NUMBER | YES | — | Time to resolution in minutes (NULL if unresolved) |
+
+## Retail banking data product (RB_*)
+
+A second data product alongside corporate payments: 20,000 synthetic retail customers on real UK geography, with their accounts, 12 monthly snapshots and a 90-day transaction ledger. It is published as Snowflake-managed Iceberg in `BARCLAYS_HOL.RAW_DATA` (`RB_CUSTOMERS`, `RB_ACCOUNTS`, `RB_MONTHLY_SNAPSHOT`, `RB_TRANSACTIONS`) and joins to the DA3 branch network through `RB_CUSTOMERS.HOME_BRANCH_ID`.
+
+- **Real:** locations (OS Open UPRN), postcodes and LSOAs (ONS NSPL), street names (OS Open Names), deprivation (IMD 2025, WIMD, SIMD 2020v2) and the Census 2021 mix each customer is drawn from. All are under the Open Government Licence.
+- **Synthetic:** people, names, house numbers, products and transactions.
+- **Planted for ML:** attrition, profitability, seasonality and four fraud patterns.
+
+Generator, validation checks, field-by-field method, limitations and attribution: [`data/retail_bank/README.md`](../data/retail_bank/README.md) and `setup/tools/build_retail_bank.py`.

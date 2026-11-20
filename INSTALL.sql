@@ -47,6 +47,9 @@ CREATE SCHEMA IF NOT EXISTS BARCLAYS_HOL.RETAIL;
 CREATE STAGE IF NOT EXISTS BARCLAYS_HOL.RETAIL.ORS_SEED;
 COPY FILES INTO @BARCLAYS_HOL.RETAIL.ORS_SEED FROM @BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/data/retail/;   -- precomputed ORS results
 EXECUTE IMMEDIATE FROM @BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/setup/07_retail_geo_seed.sql;   -- DA3 retail geospatial data
+CREATE STAGE IF NOT EXISTS BARCLAYS_HOL.RETAIL.RB_SEED;
+COPY FILES INTO @BARCLAYS_HOL.RETAIL.RB_SEED FROM @BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/data/retail_bank/ PATTERN = '.*[.]csv[.]gz';   -- generated retail banking data product
+EXECUTE IMMEDIATE FROM @BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/setup/08_retail_bank_seed.sql;   -- RB_* Iceberg tables in RAW_DATA
 EXECUTE IMMEDIATE FROM @BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/setup/09_cowork_pack.sql;   -- OPS3 CoWork agent
 EXECUTE IMMEDIATE FROM @BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/setup/04_lab_companion.sql;
 EXECUTE IMMEDIATE FROM @BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/setup/05_wake_schedule.sql;

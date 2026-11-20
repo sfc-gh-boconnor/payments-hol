@@ -55,6 +55,12 @@ snow stage copy "$ROOT/data/retail/*.csv.gz" @BARCLAYS_HOL.RETAIL.ORS_SEED/ --ov
   || { echo "FAILED: upload data/retail (see /tmp/hol_ors_seed.log)"; exit 1; }
 run_sql setup/07_retail_geo_seed.sql
 
+step "4e Retail banking data product (RB_* Iceberg tables in BARCLAYS_HOL.RAW_DATA)"
+snow sql -c "$CONN" --role HOL_ADMIN -q "CREATE STAGE IF NOT EXISTS BARCLAYS_HOL.RETAIL.RB_SEED;" > /dev/null
+snow stage copy "$ROOT/data/retail_bank/*.csv.gz" @BARCLAYS_HOL.RETAIL.RB_SEED/ --overwrite -c "$CONN" --role HOL_ADMIN > /tmp/hol_rb_seed.log 2>&1 \
+  || { echo "FAILED: upload data/retail_bank (see /tmp/hol_rb_seed.log)"; exit 1; }
+run_sql setup/08_retail_bank_seed.sql
+
 step "4d CoWork pack for OPS3 (PAYMENTS_OPS_COWORK agent)"
 run_sql setup/09_cowork_pack.sql
 
