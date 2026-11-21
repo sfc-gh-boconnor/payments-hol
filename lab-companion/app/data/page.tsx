@@ -1,5 +1,6 @@
 import { PageHeader } from "@/components/page-header"
 import { DataMap } from "@/components/lab/data-map"
+import { DataRefresh } from "@/components/lab/data-refresh"
 
 export const dynamic = "force-dynamic"
 
@@ -12,6 +13,7 @@ export default function DataMapPage() {
         description="The data products in this lab, where they live, how they join and how data flows from source to AI agent. Module C0 tours it hands-on."
       />
       <DataMap />
+      <DataRefresh />
     </main>
   )
 }

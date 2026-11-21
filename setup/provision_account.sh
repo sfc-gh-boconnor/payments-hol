@@ -12,7 +12,8 @@
 # offset, e.g. '2026-12-01 09:30:00 +00:00'), or the DataOps EVENT_START_DATETIME /
 # EVENT_END_DATETIME. LAB_WAKE_LEAD_MINUTES defaults to 30.
 #
-# Needs: Snowflake CLI 3.26+ (snow) and python3. Node.js is not needed locally -
+# Needs: Snowflake CLI 3.26+ (snow). The lab data loads inside Snowflake from the
+# lab's public GitHub repo (LAB.LOAD_LAB_DATA), so nothing is uploaded from here. Node.js is not needed locally -
 # the Lab Companion app is built inside Snowflake.
 # The connection must use a user with ACCOUNTADMIN.
 # =====================================================
@@ -29,49 +30,33 @@ run_sql() { snow sql -c "$CONN" -f "$1" > "/tmp/hol_$(basename "$1").log" 2>&1 |
 # Like run_sql, but returns non-zero instead of stopping the script
 try_sql() { snow sql -c "$CONN" -f "$1" > "/tmp/hol_$(basename "$1").log" 2>&1 && ! grep -q "─ Error" "/tmp/hol_$(basename "$1").log"; }
 
-step "1/7 Roles, database, warehouse, Marketplace knowledge extension"
+step "1/7 Roles, database, warehouse, compute pools, Marketplace knowledge extension"
 run_sql setup/00_admin_provision.sql
 
-step "2/7 Synthetic source data"
-run_sql setup/01_seed_synthetic_data.sql
+step "2/7 Connect the lab Git repository (the data loader reads it)"
+run_sql setup/git_repo.sql
 
-step "3/7 Publish sources as Snowflake-managed Iceberg"
-run_sql setup/02_publish_iceberg.sql
-if ! try_sql setup/git_repo.sql; then
-  echo "   Warning: lab Git repository not connected (is the repo public? see /tmp/hol_git_repo.sql.log). The lab and Lab Companion still work."
-fi
+step "3/7 Load every lab data set inside Snowflake (LAB.LOAD_LAB_DATA, ~2-3 min)"
+# One CALL instead of an upload and a script per data set: the procedure copies the
+# committed data from the Git repository and runs the seed scripts in Snowflake.
+run_sql setup/11_lab_data_loader.sql
+SEARCH_FLAG=$([[ "${HOL_ENABLE_SEARCH:-1}" == "1" ]] && echo TRUE || echo FALSE)
+[[ "$SEARCH_FLAG" == "FALSE" ]] && echo "  Cortex Search lab off (HOL_ENABLE_SEARCH=0): AI5 will show as skippable"
+snow sql -c "$CONN" --role HOL_ADMIN -q "USE WAREHOUSE BARCLAYS_WH; CALL BARCLAYS_HOL.LAB.LOAD_LAB_DATA('ALL', $SEARCH_FLAG)" > /tmp/hol_load_lab_data.log 2>&1 \
+  && ! grep -q "─ Error" /tmp/hol_load_lab_data.log \
+  || { echo "FAILED: LOAD_LAB_DATA (see /tmp/hol_load_lab_data.log; failing step in BARCLAYS_HOL.LAB.DATA_LOAD_LOG)"; grep -A8 "─ Error" /tmp/hol_load_lab_data.log | head -12; exit 1; }
+grep -o "Loaded ALL lab data[^|]*" /tmp/hol_load_lab_data.log || true
 
-step "4/7 dbt project (BARCLAYS_HOL.ANALYTICS.BARCLAYS_DBT)"
-snow dbt deploy BARCLAYS_DBT --source dbt --database BARCLAYS_HOL --schema ANALYTICS --role HOL_PARTICIPANT -c "$CONN" > /tmp/hol_dbt.log 2>&1 \
-  || { echo "FAILED: dbt deploy (see /tmp/hol_dbt.log)"; exit 1; }
-
-step "4a GOV2 audit pack (BARCLAYS_HOL.AUDIT_PACK)"
-run_sql setup/06_audit_pack.sql
-
-step "4c Retail geospatial data for DA3 (BARCLAYS_HOL.RETAIL)"
-# precomputed OpenRouteService travel times and catchments go on the stage first
-snow sql -c "$CONN" --role HOL_ADMIN -q "CREATE SCHEMA IF NOT EXISTS BARCLAYS_HOL.RETAIL; CREATE STAGE IF NOT EXISTS BARCLAYS_HOL.RETAIL.ORS_SEED;" > /dev/null
-snow stage copy "$ROOT/data/retail/*.csv.gz" @BARCLAYS_HOL.RETAIL.ORS_SEED/ --overwrite -c "$CONN" --role HOL_ADMIN > /tmp/hol_ors_seed.log 2>&1 \
-  || { echo "FAILED: upload data/retail (see /tmp/hol_ors_seed.log)"; exit 1; }
-run_sql setup/07_retail_geo_seed.sql
-
-step "4e Retail banking data product (RB_* Iceberg tables in BARCLAYS_HOL.RAW_DATA)"
-snow sql -c "$CONN" --role HOL_ADMIN -q "CREATE STAGE IF NOT EXISTS BARCLAYS_HOL.RETAIL.RB_SEED;" > /dev/null
-snow stage copy "$ROOT/data/retail_bank/*.csv.gz" @BARCLAYS_HOL.RETAIL.RB_SEED/ --overwrite -c "$CONN" --role HOL_ADMIN > /tmp/hol_rb_seed.log 2>&1 \
-  || { echo "FAILED: upload data/retail_bank (see /tmp/hol_rb_seed.log)"; exit 1; }
-run_sql setup/08_retail_bank_seed.sql
-
-step "4f Retail text and financial crime evidence (RB_* text tables, @RETAIL.FINCRIME_EVIDENCE, ML schema)"
-snow sql -c "$CONN" --role HOL_ADMIN -q "CREATE STAGE IF NOT EXISTS BARCLAYS_HOL.RETAIL.FINCRIME_EVIDENCE DIRECTORY = (ENABLE = TRUE) ENCRYPTION = (TYPE = 'SNOWFLAKE_SSE');" > /dev/null
-snow stage copy "$ROOT/data/retail_text/rb_*.csv.gz" @BARCLAYS_HOL.RETAIL.RB_SEED/text/ --overwrite -c "$CONN" --role HOL_ADMIN > /tmp/hol_rb_text.log 2>&1 \
-  && snow stage copy "$ROOT/data/retail_text/evidence/*" @BARCLAYS_HOL.RETAIL.FINCRIME_EVIDENCE/ --overwrite -c "$CONN" --role HOL_ADMIN >> /tmp/hol_rb_text.log 2>&1 \
-  || { echo "FAILED: upload data/retail_text (see /tmp/hol_rb_text.log)"; exit 1; }
-run_sql setup/10_retail_text_seed.sql
-# Cortex Search (AI5, optional): not approved at Barclays, so it can be switched off
-if [[ "${HOL_ENABLE_SEARCH:-1}" == "1" ]]; then run_sql setup/10b_search_lab.sql; else echo "  skipped 10b (HOL_ENABLE_SEARCH=0): AI5 will show as skippable"; fi
-
-step "4d CoWork pack for OPS3 (PAYMENTS_OPS_COWORK agent)"
-run_sql setup/09_cowork_pack.sql
+step "4/7 dbt project, audit pack and CoWork agent (one session, from the Git repository)"
+REPO="@BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO/branches/main"
+cat > /tmp/hol_lab_objects.sql <<SQL
+EXECUTE IMMEDIATE FROM $REPO/setup/06_audit_pack.sql;
+EXECUTE IMMEDIATE FROM $REPO/setup/09_cowork_pack.sql;
+USE ROLE HOL_PARTICIPANT;
+USE WAREHOUSE BARCLAYS_WH;
+CREATE OR REPLACE DBT PROJECT BARCLAYS_HOL.ANALYTICS.BARCLAYS_DBT FROM '$REPO/dbt' COMMENT = 'Barclays Payments HOL dbt project';
+SQL
+run_sql /tmp/hol_lab_objects.sql
 
 if [[ "$REFERENCE_BUILD" == "--with-reference-build" ]]; then
   step "4b Reference build (catch-up scripts, DA1, OPS1)"

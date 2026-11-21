@@ -31,30 +31,23 @@ CREATE GIT REPOSITORY IF NOT EXISTS BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO
 ALTER GIT REPOSITORY BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO FETCH;
 
 -- -----------------------------------------------------
--- 2. Roles, warehouse, database, synthetic data, Iceberg sources
+-- 2. Roles, warehouse and database, then all lab data
 -- -----------------------------------------------------
 EXECUTE IMMEDIATE FROM @BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/setup/00_admin_provision.sql;
-EXECUTE IMMEDIATE FROM @BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/setup/01_seed_synthetic_data.sql;
-EXECUTE IMMEDIATE FROM @BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/setup/02_publish_iceberg.sql;
 EXECUTE IMMEDIATE FROM @BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/setup/git_repo.sql;  -- attendee access to the repo
+EXECUTE IMMEDIATE FROM @BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/setup/11_lab_data_loader.sql;  -- LAB.LOAD_LAB_DATA
+
+-- Every lab data set, loaded from the repository (about 2-3 minutes). The second
+-- argument is the optional Cortex Search lab (AI5): use FALSE where Search isn't approved.
+USE ROLE HOL_ADMIN;
+USE WAREHOUSE BARCLAYS_WH;
+CALL BARCLAYS_HOL.LAB.LOAD_LAB_DATA('ALL', TRUE);
 
 -- -----------------------------------------------------
 -- 3. Lab Companion prerequisites and wake procedures
 -- -----------------------------------------------------
+USE ROLE ACCOUNTADMIN;
 EXECUTE IMMEDIATE FROM @BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/setup/06_audit_pack.sql;   -- GOV2 audit pack
-USE ROLE HOL_ADMIN;
-CREATE SCHEMA IF NOT EXISTS BARCLAYS_HOL.RETAIL;
-CREATE STAGE IF NOT EXISTS BARCLAYS_HOL.RETAIL.ORS_SEED;
-COPY FILES INTO @BARCLAYS_HOL.RETAIL.ORS_SEED FROM @BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/data/retail/;   -- precomputed ORS results
-EXECUTE IMMEDIATE FROM @BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/setup/07_retail_geo_seed.sql;   -- DA3 retail geospatial data
-CREATE STAGE IF NOT EXISTS BARCLAYS_HOL.RETAIL.RB_SEED;
-COPY FILES INTO @BARCLAYS_HOL.RETAIL.RB_SEED FROM @BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/data/retail_bank/ PATTERN = '.*[.]csv[.]gz';   -- generated retail banking data product
-EXECUTE IMMEDIATE FROM @BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/setup/08_retail_bank_seed.sql;   -- RB_* Iceberg tables in RAW_DATA
-COPY FILES INTO @BARCLAYS_HOL.RETAIL.RB_SEED/text/ FROM @BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/data/retail_text/ PATTERN = '.*rb_[a-z_]+[.]csv[.]gz';   -- retail text
-CREATE STAGE IF NOT EXISTS BARCLAYS_HOL.RETAIL.FINCRIME_EVIDENCE DIRECTORY = (ENABLE = TRUE) ENCRYPTION = (TYPE = 'SNOWFLAKE_SSE');
-COPY FILES INTO @BARCLAYS_HOL.RETAIL.FINCRIME_EVIDENCE FROM @BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/data/retail_text/evidence/;   -- fin crime evidence files
-EXECUTE IMMEDIATE FROM @BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/setup/10_retail_text_seed.sql;   -- text tables, evidence, ML schema
-EXECUTE IMMEDIATE FROM @BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/setup/10b_search_lab.sql;   -- OPTIONAL: Cortex Search for AI5; delete this line where Search isn't approved
 EXECUTE IMMEDIATE FROM @BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/setup/09_cowork_pack.sql;   -- OPS3 CoWork agent
 EXECUTE IMMEDIATE FROM @BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/setup/04_lab_companion.sql;
 EXECUTE IMMEDIATE FROM @BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/setup/05_wake_schedule.sql;

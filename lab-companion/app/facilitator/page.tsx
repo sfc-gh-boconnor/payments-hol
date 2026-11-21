@@ -1,5 +1,6 @@
 import { PageHeader } from "@/components/page-header"
 import { FacilitatorBoard } from "@/components/lab/facilitator-board"
+import { DataRefresh } from "@/components/lab/data-refresh"
 import { CHECKS } from "@/lib/checks"
 import { MODULES } from "@/lib/content"
 
@@ -15,6 +16,7 @@ export default function FacilitatorPage() {
         description="Who has completed what, from every Check my work run in this account. Use it to spot attendees who are stuck."
       />
       <FacilitatorBoard modules={modules} />
+      <DataRefresh />
     </main>
   )
 }
