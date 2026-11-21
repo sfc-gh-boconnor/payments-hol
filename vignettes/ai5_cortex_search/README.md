@@ -45,9 +45,10 @@ Expect: SAR narratives and account takeover cases describing funds moved on quic
 
 ### Compare search with AI SQL
 ```prompt
-Compare what we did with Cortex Search here against AI4, where AI_CLASSIFY and AI_AGG read the same transcripts. When is a search service the right tool, when is AI SQL enough, and how would an agent use RB_CALL_SEARCH as a tool?
+Compare Cortex Search with the approved AI SQL approach from AI4, on the same call transcripts in BARCLAYS_HOL.RAW_DATA.RB_CALL_TRANSCRIPTS. In AI4, AI_SENTIMENT and AI_CLASSIFY labelled each transcript into BARCLAYS_HOL.ANALYTICS.RB_CALL_INSIGHTS (columns SENTIMENT, CALL_REASON, VULNERABILITY_CUES), and AI_AGG summarised groups of transcripts in one paragraph. If RB_CALL_INSIGHTS doesn't exist (AI4 was skipped), don't build it: run AI_CLASSIFY on 20 transcripts instead. Answer one question both ways, "customers worried about savings rates who might leave": first with RB_CALL_SEARCH, then with AI_CLASSIFY or the RB_CALL_INSIGHTS labels plus AI_AGG over those calls. Show both results side by side, then explain when a search service is the right tool, when AI SQL is enough, and how an agent would use RB_CALL_SEARCH as a tool.
 ```
-Expect: search for finding similar documents and grounding an agent, AI SQL for scoring, classifying and summarising everything in a table
+**Tip:** Search returns the most relevant calls in a second, without reading every row. AI SQL reads and labels every row, so it can count and summarise them all.
+Expect: search finds the closest-matching calls to a plain-English question and can ground an agent; AI SQL labels, counts and summarises every call in a table
 
 ## Check your work
 Your Cortex Search service over call transcripts exists in `BARCLAYS_HOL.SEARCH_LAB`.
