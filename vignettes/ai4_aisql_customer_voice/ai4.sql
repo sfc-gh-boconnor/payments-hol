@@ -62,21 +62,38 @@ WHERE e.EVIDENCE_TYPE = 'PHISHING_SCREENSHOT'
 LIMIT 3;
 
 -- 6. One fraud case file, summarised into a decision draft from every source
-SELECT f.CASE_ID,
+SELECT f.CASE_ID, f.DECISION, c.AGE, c.VULNERABLE_FLAG,
        AI_COMPLETE('claude-sonnet-4-5', CONCAT(
            'You are a fraud operations team leader. Draft a 150-word case summary and a reimbursement recommendation, ',
-           'citing the evidence. Case notes: ', f.INVESTIGATOR_NOTES,
-           ' Customer call: ', COALESCE(ANY_VALUE(t.TRANSCRIPT), 'none'),
-           ' Decision recorded: ', f.DECISION)) AS DECISION_DRAFT
+           'citing the evidence, and flag anything in the sources that disagrees. Case notes: ', f.INVESTIGATOR_NOTES,
+           ' Customer call: ', COALESCE(t.TRANSCRIPT, 'none'),
+           ' Customer age: ', c.AGE, '. On the vulnerable customers register: ', IFF(c.VULNERABLE_FLAG, 'yes', 'no'),
+           '. Decision recorded: ', f.DECISION)) AS DECISION_DRAFT
 FROM BARCLAYS_HOL.RAW_DATA.RB_FRAUD_CASES f
-LEFT JOIN BARCLAYS_HOL.RAW_DATA.RB_CALL_TRANSCRIPTS t ON t.CUSTOMER_ID = f.CUSTOMER_ID AND t.QUEUE = 'FRAUD'
-WHERE f.FRAUD_TYPE = 'APP_SCAM'
-GROUP BY f.CASE_ID, f.INVESTIGATOR_NOTES, f.DECISION
+JOIN BARCLAYS_HOL.RAW_DATA.RB_CUSTOMERS c ON c.CUSTOMER_ID = f.CUSTOMER_ID
+LEFT JOIN BARCLAYS_HOL.RAW_DATA.RB_CALL_TRANSCRIPTS t
+       ON t.CUSTOMER_ID = f.CUSTOMER_ID AND t.QUEUE = 'FRAUD' AND t.TXN_ID = f.FIRST_FRAUD_TXN_ID
+WHERE f.FRAUD_TYPE = 'APP_SCAM' AND t.CALL_ID IS NOT NULL
+ORDER BY f.CASE_ID
 LIMIT 1;
 
--- 7. SAR narrative quality check against a simple standard
-SELECT SAR_ID,
-       AI_CLASSIFY(NARRATIVE, ['complete: who, what, when, why suspicious and action', 'missing the reason for suspicion',
-                               'missing dates or amounts', 'missing the action taken']):labels[0]::VARCHAR AS QUALITY
-FROM BARCLAYS_HOL.RAW_DATA.RB_SAR_NARRATIVES
-LIMIT 10;
+-- 7. SAR narrative quality check: one AI_EXTRACT question per element, scored against the planted QA_ISSUE
+WITH x AS (
+    SELECT SAR_ID, QA_ISSUE,
+           AI_EXTRACT(text => NARRATIVE, responseFormat => {
+               'reason': 'Why does the bank consider this activity suspicious? Answer None if no reason is given.',
+               'date':   'What is the specific date of the activity? Answer None if no date is given.',
+               'amount': 'What specific amount of money in pounds is mentioned? Answer None if none.',
+               'action': 'What action did the bank take or will it take? Answer None if no action is stated.'}):response AS R
+    FROM BARCLAYS_HOL.RAW_DATA.RB_SAR_NARRATIVES
+), f AS (
+    SELECT SAR_ID, QA_ISSUE,
+           CASE WHEN COALESCE(R:date::STRING, 'none') ILIKE 'none%' OR COALESCE(R:amount::STRING, 'none') ILIKE 'none%' THEN 'MISSING_DATES_AMOUNTS'
+                WHEN COALESCE(R:action::STRING, 'none') ILIKE 'none%' THEN 'MISSING_ACTION'
+                WHEN COALESCE(R:reason::STRING, 'none') ILIKE 'none%' THEN 'MISSING_REASON'
+                ELSE 'COMPLETE' END AS AI_FINDING
+    FROM x
+)
+SELECT QA_ISSUE, AI_FINDING, COUNT(*) AS SARS,
+       ROUND(100 * SUM(COUNT_IF(QA_ISSUE = AI_FINDING)) OVER () / SUM(COUNT(*)) OVER ()) AS PCT_MATCH
+FROM f GROUP BY 1, 2 ORDER BY 1, 3 DESC;

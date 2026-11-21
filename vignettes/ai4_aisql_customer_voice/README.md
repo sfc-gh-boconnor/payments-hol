@@ -60,10 +60,18 @@ Check: ai4_evidence_read
 
 ### Draft a fraud case decision
 ```prompt
-For one APP scam case in RB_FRAUD_CASES, combine the investigator notes, the customer's fraud call transcript and the recorded decision, and use AI_COMPLETE to draft a 150-word case summary with a reimbursement recommendation that cites the evidence. Then use AI_CLASSIFY to check 10 SAR narratives in RB_SAR_NARRATIVES against a simple standard: complete, missing the reason for suspicion, missing dates or amounts, or missing the action taken.
+For one APP scam case in RB_FRAUD_CASES, combine the investigator notes, the customer's fraud call transcript (RB_CALL_TRANSCRIPTS in the FRAUD queue with the same TXN_ID as the case's FIRST_FRAUD_TXN_ID), the customer's VULNERABLE_FLAG and age from RB_CUSTOMERS, and the recorded DECISION. Use AI_COMPLETE to draft a 150-word case summary with a reimbursement recommendation that cites the evidence, and flag anything in the sources that disagrees.
 ```
-**Important:** AI drafts, people decide. The investigator still owns the reimbursement decision and the SAR.
-Expect: a decision draft that quotes the amounts and dates from the case, and a quality label for each SAR narrative
+**Important:** AI drafts, people decide. The investigator still owns the reimbursement decision.
+Expect: a decision draft that quotes the case's amounts and dates and agrees with the recorded decision, or flags where the sources disagree
+
+### Check SAR narrative quality
+```prompt
+Check every narrative in RB_SAR_NARRATIVES against a simple standard. Use AI_EXTRACT with four questions: why the bank considers the activity suspicious, the specific date, the specific amount in pounds, and the action the bank took, each answering None if the narrative doesn't say. Turn the answers into one finding per SAR (COMPLETE, MISSING_REASON, MISSING_DATES_AMOUNTS or MISSING_ACTION), then compare it with the QA_ISSUE column in a confusion table and show the share that match.
+```
+**Tip:** QA_ISSUE is the answer key: the gap each narrative was written with. In real life you wouldn't have one, so a check like this is a first pass before a person reviews the SAR.
+**Tip:** Asking AI_EXTRACT one question per element works better than asking AI_CLASSIFY to judge "complete or not": classifiers lean towards "complete" when something is simply absent.
+Expect: about 80 to 85% match. Every complete SAR passes, and missing dates, amounts and actions are caught; a missing reason is the hardest, because the model infers one from the activity
 
 ## Check your work
 The call insights table exists, and you have read the financial crime evidence with AI SQL.

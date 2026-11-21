@@ -79,17 +79,31 @@ def complaint_prompt(f):
 
 
 def case_prompt(f):
+    vuln = ("The customer IS on the vulnerable customers register; you may say so." if f["vulnerable"] else
+            "The customer is NOT on the vulnerable customers register: do not describe them as vulnerable, and do not infer vulnerability from age.")
     return (f"Write fraud investigator case notes for a bank's fraud operations team: dated bullet entries (use the dates given), "
             f"120 to 220 words, covering the report, what the transactions show, contact with the customer, checks made, and the decision "
             f"with its reason. Facts: case {f['case_id']}, customer {f['first']} {f['last']} aged {f['age']}, fraud type {f['fraud_type']}. "
-            f"Transactions: {f['details']}. Reported on {f['reported']}. Decision: {f['outcome']}. {STYLE}")
+            f"Transactions: {f['details']}. Reported on {f['reported']}. Decision: {f['outcome']}. {vuln} "
+            f"Only state checks and findings that follow from these facts; don't invent other evidence. {STYLE}")
+
+
+# SAR narrative quality: most are complete, some leave out one element on purpose, so AI4 has something to find
+SAR_QA = {"COMPLETE": (0.6, ""),
+          "MISSING_REASON": (0.15, "This draft is deliberately incomplete: describe only who paid what, when and to whom, and the action taken. "
+                                   "Do NOT say why it is suspicious: never use the words suspicious, suspicion, concern, unusual, mule, "
+                                   "reported or flagged, and give no pattern, red flag or reason."),
+          "MISSING_DATES_AMOUNTS": (0.15, "Leave out every specific date and amount: describe the activity only in general terms."),
+          "MISSING_ACTION": (0.1, "This draft is deliberately incomplete: do NOT say what the bank did or will do (no restriction, "
+                                  "filing, NCA, consent, closure or exit); end straight after describing the activity and why it is suspicious.")}
 
 
 def sar_prompt(f):
+    flaw = SAR_QA[f["qa_issue"]][1]
     return (f"Write the narrative section of a Suspicious Activity Report a bank's money laundering reporting officer would file, "
             f"150 to 250 words, factual and neutral: who, what, when, why it is suspicious, and the action taken. Facts: subject account "
             f"holder {f['first']} {f['last']}, {f['city']}. Pattern: {f['reason']}. Activity: {f['details']}. Action: {f['outcome']}. "
-            f"Refer to the subject by name, and to counterparties only by the payee names given. {STYLE}")
+            f"Refer to the subject by name, and to counterparties only by the payee names given. {flaw} {STYLE}")
 
 
 def dispute_prompt(f):
@@ -118,7 +132,8 @@ def facts():
     def base(cid, kind, rid, when):
         c = cu.loc[cid]
         return {"kind": kind, "record_id": rid, "CUSTOMER_ID": cid, "first": c.FIRST_NAME, "last": c.LAST_NAME, "age": int(c.AGE),
-                "city": c.CITY, "branch": c.BRANCH_NAME, "agent": rng.choice(agents), "ts": when, "ACCOUNT_ID": None, "TXN_ID": None}
+                "city": c.CITY, "branch": c.BRANCH_NAME, "agent": rng.choice(agents), "ts": when, "ACCOUNT_ID": None, "TXN_ID": None,
+                "vulnerable": bool(c.VULNERABLE_FLAG)}
 
     def when_before(end, lo, hi):
         return (pd.Timestamp(end) - pd.Timedelta(days=float(rng.uniform(lo, hi)))).floor("min")
@@ -229,6 +244,8 @@ def facts():
         det = "; ".join(f"{t.TXN_TS:%d %b %Y %H:%M} {t.CHANNEL} {money(t.AMOUNT_GBP)} to {t.MERCHANT} ({t.MERCHANT_COUNTRY})" for t in lines.itertuples())
         f = base(cid, "case", f"FRC{100000 + i}", (v.FIRST_TS + pd.Timedelta(hours=float(rng.uniform(2, 40)))).floor("min"))
         dec = rng.choice(decision[v.FRAUD_TYPE])
+        if f["vulnerable"] and v.FRAUD_TYPE == "APP_SCAM":  # vulnerable APP scam victims are always reimbursed in full
+            dec = "REIMBURSED_PSR_RULES"
         f.update(case_id=f["record_id"], fraud_type=v.FRAUD_TYPE, details=det, reported=f"{f['ts']:%d %b %Y}", outcome=dec.replace("_", " ").lower(),
                  decision=dec, loss=round(float(v.LOSS), 2), ACCOUNT_ID=v.ACCOUNT_ID, TXN_ID=v.TXN_ID, topic=v.FRAUD_TYPE)
         f["prompt"] = case_prompt(f)
@@ -239,9 +256,11 @@ def facts():
     ato = victims[victims.FRAUD_TYPE.isin(["ACCOUNT_TAKEOVER", "APP_SCAM"])].sample(N_SARS, random_state=8)
     patterns = ["funds received and moved on within minutes (possible money mule)", "multiple new payees set up overnight after a password reset",
                 "authorised push payments to a payee reported by other banks", "rapid in-and-out transfers just under internal review thresholds"]
+    qa_rng = np.random.default_rng(SEED + 7)  # its own stream, so the other records don't change
     for i, (cid, v) in enumerate(ato.iterrows()):
         lines = fr[fr.CUSTOMER_ID == cid]
         f = base(cid, "sar", f"SAR{100000 + i}", (v.FIRST_TS + pd.Timedelta(days=float(rng.uniform(3, 20)))).floor("min"))
+        f["qa_issue"] = qa_rng.choice(list(SAR_QA), p=[w for w, _ in SAR_QA.values()])
         f.update(reason=rng.choice(patterns), details=f"{len(lines)} outbound payments totalling {money(v.LOSS)} on {v.FIRST_TS:%d %b %Y} to payee(s) {', '.join(sorted(set(lines.MERCHANT)))}",
                  outcome=rng.choice(["account restricted and SAR filed with the NCA", "SAR filed with the NCA; consent requested before releasing remaining funds", "relationship exited and SAR filed with the NCA"]),
                  ACCOUNT_ID=v.ACCOUNT_ID, TXN_ID=v.TXN_ID, topic="SAR")
@@ -356,7 +375,7 @@ def write_tables(p, text):
                           "STATUS": "CLOSED", "INVESTIGATOR_NOTES": f.TEXT})
     s = p[p.kind == "sar"]
     sars = pd.DataFrame({"SAR_ID": s.record_id, "CUSTOMER_ID": s.CUSTOMER_ID, "ACCOUNT_ID": s.ACCOUNT_ID, "FILED_TS": s.ts,
-                         "PATTERN": s.reason, "ACTION": s.outcome, "NARRATIVE": s.TEXT})
+                         "PATTERN": s.reason, "ACTION": s.outcome, "QA_ISSUE": s.qa_issue, "NARRATIVE": s.TEXT})
     d = p[p.kind == "dispute"]
     disputes = pd.DataFrame({"DISPUTE_ID": d.record_id, "CUSTOMER_ID": d.CUSTOMER_ID, "ACCOUNT_ID": d.ACCOUNT_ID, "TXN_ID": d.TXN_ID,
                              "OPENED_TS": d.ts, "MERCHANT": d.merchant, "AMOUNT_GBP": d.loss, "REASON_CODE": d.dispute_reason,
@@ -520,6 +539,15 @@ def validate():
         check(f"{n}: names the customer", np.mean(hit) > (0.6 if n == "rb_fraud_cases" else 0.85), f"{np.mean(hit):.0%}")
     amt = fc.apply(lambda r: f"{abs(r.LOSS_GBP):,.2f}" in str(r.INVESTIGATOR_NOTES) or f"{abs(r.LOSS_GBP):,.0f}" in str(r.INVESTIGATOR_NOTES), axis=1).mean()
     check("fraud case notes quote the loss or the transactions", amt > 0.5 or fc.INVESTIGATOR_NOTES.str.contains("£").mean() > 0.95, f"{amt:.0%} quote the exact total")
+    vul = cu.VULNERABLE_FLAG.astype(str).str.lower().isin(["true", "1"])
+    # a claim of vulnerability, not "not on the vulnerable customers register"
+    said = fc.INVESTIGATOR_NOTES.fillna("").apply(lambda x: any(
+        "vulnerab" in seg.lower() and not re.search(r"(?i)\b(not|no|isn't|without)\b", seg)
+        for seg in re.split(r"[.\n;•]", x)))
+    invented = (said & ~fc.CUSTOMER_ID.map(vul).fillna(False)).sum()
+    check("case notes only call registered customers vulnerable", invented == 0, f"{invented} invented")
+    sq = t["rb_sar_narratives"]
+    check("SAR narratives include planted quality issues", sq.QA_ISSUE.ne("COMPLETE").mean() >= 0.25, sq.QA_ISSUE.value_counts().to_dict())
     log("No real identifiers")
     allt = pd.concat([t[n][text_col[n]] for n in t]).fillna("")
     bank = allt.str.contains(r"\b(?:Barclays|HSBC|Lloyds|NatWest|Santander|Halifax|Nationwide|Monzo|Starling)\b", case=False).sum()
