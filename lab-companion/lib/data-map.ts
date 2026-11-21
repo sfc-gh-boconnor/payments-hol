@@ -69,9 +69,10 @@ export const DATA_PRODUCTS: DataProduct[] = [
       { name: "RB_SAR_NARRATIVES", grain: "one Suspicious Activity Report", rows: 60 },
       { name: "RB_DISPUTES", grain: "one card dispute", rows: 120 },
       { name: "RB_EVIDENCE_FILES", grain: "one evidence file on the stage", rows: 150 },
+      { name: "RB_NAME_MENTIONS", grain: "one person named in an outside record, as written there", rows: 300 },
     ],
     modules: ["AI4", "AI5"],
-    alsoWorksFor: "complaints handling, vulnerability, APP scam reimbursement, SAR quality",
+    alsoWorksFor: "complaints handling, vulnerability, APP scam reimbursement, SAR quality, fuzzy name matching",
   },
   {
     id: "branches",

@@ -13,6 +13,7 @@ Unstructured data for the retail banking data product, for AI4 (AI SQL) and AI5 
 | `rb_sar_narratives.csv.gz` | `RB_SAR_NARRATIVES` | 60 |
 | `rb_disputes.csv.gz` | `RB_DISPUTES` | 120 |
 | `rb_evidence_files.csv.gz` | `RB_EVIDENCE_FILES` | 150 |
+| `rb_name_mentions.csv.gz` | `RB_NAME_MENTIONS` | 300 | People named in police reports, other banks' mule referrals, dispute forms and the watchlist, spelt as those records spelt them (AI5 fuzzy name matching). `TRUE_CUSTOMER_ID` and `VARIATION` are the answer key. Built deterministically by `setup/tools/build_name_mentions.py`, no AI |
 | `evidence/` | files on `@RETAIL.FINCRIME_EVIDENCE` | 150 (1.8 MB) |
 
 ## How it links to the retail customers

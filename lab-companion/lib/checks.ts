@@ -123,6 +123,12 @@ export const CHECKS: Record<string, Check[]> = {
       sql: show("SHOW CORTEX SEARCH SERVICES IN SCHEMA BARCLAYS_HOL.SEARCH_LAB", "Search service"),
       hint: "Run the Create a search service prompt. If SEARCH_LAB doesn't exist, Cortex Search isn't enabled here: skip this optional module.",
     },
+    {
+      id: "ai5_name_matches",
+      label: "RB_NAME_MATCHES has a match decision for every outside name",
+      sql: rows("BARCLAYS_HOL.SEARCH_LAB.RB_NAME_MATCHES", 300),
+      hint: "Run the Match names from outside records prompt, so Cortex Code saves BARCLAYS_HOL.SEARCH_LAB.RB_NAME_MATCHES.",
+    },
   ],
   C1: [
     {

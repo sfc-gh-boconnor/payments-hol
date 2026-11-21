@@ -3,16 +3,18 @@
 | | |
 |---|---|
 | **Persona** | AI Builder |
-| **Time** | ~25 min |
+| **Time** | ~35 min |
 | **Optional** | Cortex Search is not yet approved at Barclays. This module shows what it would unlock: skip it if your account doesn't allow it (the prerequisite check below tells you). |
 | **Prerequisites** | AI4 recommended. Needs the `BARCLAYS_HOL.SEARCH_LAB` schema from `setup/10b_search_lab.sql` |
 
 ## Business question
-> Can a complaints handler or fraud investigator find "every call like this one" in plain English, instead of keyword searches and spreadsheets?
+> Can a complaints handler or fraud investigator find "every call like this one" in plain English, instead of keyword searches and spreadsheets? And when a police report says "Liz Moor" or "MOORE, Elizabeth", can they tell whether that's our customer?
 
 ## What you'll build
 - Cortex Search service `SEARCH_LAB.RB_CALL_SEARCH` over all 1,000 call transcripts, filterable by queue, topic and whether the customer left
 - Cortex Search service `SEARCH_LAB.RB_FINCRIME_SEARCH` over fraud case notes and SAR narratives
+- Cortex Search service `SEARCH_LAB.RB_CUSTOMER_NAME_SEARCH` over customer names, for fuzzy name matching
+- `SEARCH_LAB.RB_NAME_MATCHES`: names from police reports, other banks' referrals, dispute forms and the watchlist, matched to customers or sent for review
 - Plain-English searches with filters, and a comparison with AI4's AI SQL approach
 
 ## Steps
@@ -43,6 +45,25 @@ Create a second Cortex Search service BARCLAYS_HOL.SEARCH_LAB.RB_FINCRIME_SEARCH
 ```
 Expect: SAR narratives and account takeover cases describing funds moved on quickly to new payees
 
+### Search customers by name
+```prompt
+Create a Cortex Search service BARCLAYS_HOL.SEARCH_LAB.RB_CUSTOMER_NAME_SEARCH over every customer in BARCLAYS_HOL.RAW_DATA.RB_CUSTOMERS. Search on FULL_NAME (FIRST_NAME and LAST_NAME joined with a space), return CUSTOMER_ID, CITY and DOB (DATE_OF_BIRTH as YYYY-MM-DD text), make CITY an attribute, and use warehouse BARCLAYS_WH with a target lag of 1 day. Then use CORTEX_SEARCH_RETRIEVE to show the 5 closest customers to "Liz Moor" and to "MOORE, Elizabeth".
+```
+**Tip:** Cortex Search combines keyword and meaning-based matching, so spelling slips, initials, reversed order and nicknames still find the right people. Nothing here compares names letter by letter.
+Expect: Elizabeth Moore near the top for both searches, alongside other customers with similar names
+
+### Match names from outside records
+```prompt
+BARCLAYS_HOL.RAW_DATA.RB_NAME_MENTIONS holds people named in police reports, other banks' mule referrals, dispute forms and the watchlist, spelt as those records spelt them: NAME_AS_WRITTEN, DOB_AS_WRITTEN (DD/MM/YYYY, sometimes blank) and TOWN. Match each one to a customer in two stages, and save the result as BARCLAYS_HOL.SEARCH_LAB.RB_NAME_MATCHES:
+1. Candidates: for every mention, use LATERAL CORTEX_SEARCH_RETRIEVE on RB_CUSTOMER_NAME_SEARCH to get the 10 closest customers by name.
+2. Decide: score each candidate: 50 points if the date of birth matches (also try day and month swapped), 20 if the town matches, plus 0.3 times JAROWINKLER_SIMILARITY of the names (turn "SURNAME, First" round first). Keep the best candidate: MATCH at 75 or more, REVIEW from 45, otherwise NO_MATCH.
+Then check it against the answer key: TRUE_CUSTOMER_ID is the real customer (NULL for people who aren't customers) and VARIATION says how the name was changed. Show right matches, wrong matches, reviews and no-matches by VARIATION, and compare with matching on JAROWINKLER_SIMILARITY of the name alone across all customers.
+```
+**Important:** Treat a match as a lead, not a fact: anything marked REVIEW goes to an investigator, and nobody's record is changed on a name match alone.
+**Tip:** Search narrows 20,000 customers to 10 candidates per name; the date of birth and town then decide. Name similarity alone matches many people who just share a common name.
+Expect: around 6 in 10 mentions matched to the right customer and none to the wrong one, about 2 in 10 sent for review (mostly records with no date of birth), and no non-customer matched. Name similarity alone makes dozens of wrong matches
+Check: ai5_name_matches
+
 ### Compare search with AI SQL
 ```prompt
 Compare Cortex Search with the approved AI SQL approach from AI4, on the same call transcripts in BARCLAYS_HOL.RAW_DATA.RB_CALL_TRANSCRIPTS. In AI4, AI_SENTIMENT and AI_CLASSIFY labelled each transcript into BARCLAYS_HOL.ANALYTICS.RB_CALL_INSIGHTS (columns SENTIMENT, CALL_REASON, VULNERABILITY_CUES), and AI_AGG summarised groups of transcripts in one paragraph. If RB_CALL_INSIGHTS doesn't exist (AI4 was skipped), don't build it: run AI_CLASSIFY on 20 transcripts instead. Answer one question both ways, "customers worried about savings rates who might leave": first with RB_CALL_SEARCH, then with AI_CLASSIFY or the RB_CALL_INSIGHTS labels plus AI_AGG over those calls. Show both results side by side, then explain when a search service is the right tool, when AI SQL is enough, and how an agent would use RB_CALL_SEARCH as a tool.
@@ -51,7 +72,7 @@ Compare Cortex Search with the approved AI SQL approach from AI4, on the same ca
 Expect: search finds the closest-matching calls to a plain-English question and can ground an agent; AI SQL labels, counts and summarises every call in a table
 
 ## Check your work
-Your Cortex Search service over call transcripts exists in `BARCLAYS_HOL.SEARCH_LAB`.
+Your Cortex Search service over call transcripts exists in `BARCLAYS_HOL.SEARCH_LAB`, and every outside name mention has a match decision in `SEARCH_LAB.RB_NAME_MATCHES`.
 
 ## Barclayflake note
 Until Cortex Search is approved, AI4's AI SQL covers the scoring and summarising, and AI3's knowledge extension covers documentation search. This module is the business case for approving it: plain-English retrieval over the bank's own documents, governed in the same account.
