@@ -42,6 +42,8 @@ EXECUTE IMMEDIATE FROM @BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/setup/1
 USE ROLE HOL_ADMIN;
 USE WAREHOUSE BARCLAYS_WH;
 CALL BARCLAYS_HOL.LAB.LOAD_LAB_DATA('ALL', TRUE);
+-- The executive demo: its own BARCLAYS_DEMO database cloned from the lab data (about 5 minutes)
+CALL BARCLAYS_HOL.LAB.LOAD_LAB_DATA('DEMO', TRUE);
 
 -- -----------------------------------------------------
 -- 3. Lab Companion prerequisites and wake procedures

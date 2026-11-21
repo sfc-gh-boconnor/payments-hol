@@ -47,6 +47,12 @@ snow sql -c "$CONN" --role HOL_ADMIN -q "USE WAREHOUSE BARCLAYS_WH; CALL BARCLAY
   || { echo "FAILED: LOAD_LAB_DATA (see /tmp/hol_load_lab_data.log; failing step in BARCLAYS_HOL.LAB.DATA_LOAD_LOG)"; grep -A8 "─ Error" /tmp/hol_load_lab_data.log | head -12; exit 1; }
 grep -o "Loaded ALL lab data[^|]*" /tmp/hol_load_lab_data.log || true
 
+step "3b Executive demo (its own BARCLAYS_DEMO database, cloned from the lab data, ~5 min)"
+snow sql -c "$CONN" --role HOL_ADMIN -q "USE WAREHOUSE BARCLAYS_WH; CALL BARCLAYS_HOL.LAB.LOAD_LAB_DATA('DEMO', $SEARCH_FLAG)" > /tmp/hol_load_demo.log 2>&1 \
+  && ! grep -q "─ Error" /tmp/hol_load_demo.log \
+  || { echo "FAILED: executive demo (see /tmp/hol_load_demo.log; failing step in BARCLAYS_HOL.LAB.DATA_LOAD_LOG)"; grep -A8 "─ Error" /tmp/hol_load_demo.log | head -12; exit 1; }
+grep -o "Loaded DEMO lab data[^|]*" /tmp/hol_load_demo.log || true
+
 step "4/7 dbt project, audit pack and CoWork agent (one session, from the Git repository)"
 REPO="@BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO/branches/main"
 cat > /tmp/hol_lab_objects.sql <<SQL

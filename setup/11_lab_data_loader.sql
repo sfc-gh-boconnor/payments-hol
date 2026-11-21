@@ -8,6 +8,7 @@
 --   CALL BARCLAYS_HOL.LAB.LOAD_LAB_DATA('ALL');      -- everything (DataOps, INSTALL.sql)
 --   CALL BARCLAYS_HOL.LAB.LOAD_LAB_DATA('RETAIL');   -- retail banking + text and evidence
 --   CALL BARCLAYS_HOL.LAB.LOAD_LAB_DATA('TEXT');     -- text and evidence only (AI4, AI5, DS)
+--   CALL BARCLAYS_HOL.LAB.LOAD_LAB_DATA('DEMO');     -- rebuild the executive demo (BARCLAYS_DEMO) from the lab data
 --
 -- The second argument switches the optional Cortex Search lab (AI5, setup 10b):
 -- TRUE or FALSE, or NULL (default) to keep it only where SEARCH_LAB already exists.
@@ -66,8 +67,8 @@ DECLARE
     step_sql   VARCHAR;
     t0         TIMESTAMP_LTZ DEFAULT CURRENT_TIMESTAMP();
 BEGIN
-    IF (scope_u NOT IN ('ALL', 'RETAIL', 'TEXT')) THEN
-        RETURN 'Unknown scope ' || scope_u || ': use ALL, RETAIL or TEXT';
+    IF (scope_u NOT IN ('ALL', 'RETAIL', 'TEXT', 'DEMO')) THEN
+        RETURN 'Unknown scope ' || scope_u || ': use ALL, RETAIL, TEXT or DEMO';
     END IF;
     IF (search IS NULL) THEN
         SELECT COUNT(*) > 0 INTO :search FROM BARCLAYS_HOL.INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = 'SEARCH_LAB';
@@ -80,7 +81,7 @@ BEGIN
 
     -- [name, scopes, one SQL statement]; scripts run with EXECUTE IMMEDIATE FROM the repo
     all_steps := ARRAY_CONSTRUCT(
-        ARRAY_CONSTRUCT('Fetch the lab repository',       'ALL,RETAIL,TEXT', 'ALTER GIT REPOSITORY BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO FETCH'),
+        ARRAY_CONSTRUCT('Fetch the lab repository',       'ALL,RETAIL,TEXT,DEMO', 'ALTER GIT REPOSITORY BARCLAYS_HOL_SETUP.PUBLIC.HOL_REPO FETCH'),
         ARRAY_CONSTRUCT('Corporate payments source data', 'ALL',             'EXECUTE IMMEDIATE FROM ' || repo || 'setup/01_seed_synthetic_data.sql'),
         ARRAY_CONSTRUCT('Publish sources as Iceberg',     'ALL',             'EXECUTE IMMEDIATE FROM ' || repo || 'setup/02_publish_iceberg.sql'),
         ARRAY_CONSTRUCT('Copy branch travel times',       'ALL',             'COPY FILES INTO @BARCLAYS_HOL.RETAIL.ORS_SEED FROM ' || repo || 'data/retail/'),
@@ -90,10 +91,17 @@ BEGIN
         ARRAY_CONSTRUCT('Copy calls, emails and cases',   'ALL,RETAIL,TEXT', 'COPY FILES INTO @BARCLAYS_HOL.RETAIL.RB_SEED/text/ FROM ' || repo || 'data/retail_text/ PATTERN = ''.*rb_[a-z_]+[.]csv[.]gz'''),
         ARRAY_CONSTRUCT('Copy fraud evidence files',      'ALL,RETAIL,TEXT', 'COPY FILES INTO @BARCLAYS_HOL.RETAIL.FINCRIME_EVIDENCE FROM ' || repo || 'data/retail_text/evidence/'),
         ARRAY_CONSTRUCT('Text tables and ML schema',      'ALL,RETAIL,TEXT', 'EXECUTE IMMEDIATE FROM ' || repo || 'setup/10_retail_text_seed.sql'),
-        ARRAY_CONSTRUCT('Cortex Search lab (AI5)',        'SEARCH',          'EXECUTE IMMEDIATE FROM ' || repo || 'setup/10b_search_lab.sql'));
+        ARRAY_CONSTRUCT('Cortex Search lab (AI5)',        'SEARCH',          'EXECUTE IMMEDIATE FROM ' || repo || 'setup/10b_search_lab.sql'),
+        -- Executive demo: its own BARCLAYS_DEMO database, cloned from the lab data and never part of the lab
+        ARRAY_CONSTRUCT('Demo: copy the lab data',        'DEMO',            'EXECUTE IMMEDIATE FROM ' || repo || 'setup/12a_demo_data.sql'),
+        ARRAY_CONSTRUCT('Demo: maps, branches, network',  'DEMO',            'EXECUTE IMMEDIATE FROM ' || repo || 'setup/12b_demo_insights.sql'),
+        ARRAY_CONSTRUCT('Demo: models and AI results',    'DEMO',            'EXECUTE IMMEDIATE FROM ' || repo || 'setup/12c_demo_ai.sql'),
+        ARRAY_CONSTRUCT('Demo: semantic views, assistant','DEMO',            'EXECUTE IMMEDIATE FROM ' || repo || 'setup/12d_demo_semantic_agent.sql'),
+        ARRAY_CONSTRUCT('Demo: search and name matching', 'DEMO_SEARCH',     'EXECUTE IMMEDIATE FROM ' || repo || 'setup/12e_demo_search.sql'));
     FOR i IN 0 TO ARRAY_SIZE(all_steps) - 1 DO
         IF (ARRAY_CONTAINS(scope_u::VARIANT, SPLIT(all_steps[i][1]::VARCHAR, ','))
-            OR (all_steps[i][1]::VARCHAR = 'SEARCH' AND search)) THEN
+            OR (all_steps[i][1]::VARCHAR = 'SEARCH' AND search AND scope_u <> 'DEMO')
+            OR (all_steps[i][1]::VARCHAR = 'DEMO_SEARCH' AND search AND scope_u = 'DEMO')) THEN
             steps := ARRAY_APPEND(steps, all_steps[i]);
         END IF;
     END FOR;
@@ -115,7 +123,9 @@ BEGIN
         UPDATE BARCLAYS_HOL.LAB.DATA_LOAD_LOG SET STATUS = 'DONE', FINISHED_AT = CURRENT_TIMESTAMP()
          WHERE RUN_ID = :run_id AND STEP_NO = :step_no;
     END FOR;
-    ALTER STAGE BARCLAYS_HOL.RETAIL.FINCRIME_EVIDENCE REFRESH;
+    IF (scope_u <> 'DEMO') THEN
+        ALTER STAGE BARCLAYS_HOL.RETAIL.FINCRIME_EVIDENCE REFRESH;
+    END IF;
     RETURN 'Loaded ' || scope_u || ' lab data: ' || step_total || ' steps in '
         || DATEDIFF('second', t0, CURRENT_TIMESTAMP()) || ' s (run ' || run_id || ')';
 EXCEPTION
@@ -133,6 +143,11 @@ CREATE OR REPLACE TASK BARCLAYS_HOL.LAB.LOAD_LAB_DATA_TEXT
     WAREHOUSE = BARCLAYS_WH
     COMMENT = 'Lab Companion: reset the text and evidence data (AI4, AI5, DS)'
 AS CALL BARCLAYS_HOL.LAB.LOAD_LAB_DATA('TEXT');
+
+CREATE OR REPLACE TASK BARCLAYS_HOL.LAB.LOAD_LAB_DATA_DEMO
+    WAREHOUSE = BARCLAYS_WH
+    COMMENT = 'Lab Companion: rebuild the executive demo (BARCLAYS_DEMO)'
+AS CALL BARCLAYS_HOL.LAB.LOAD_LAB_DATA('DEMO');
 
 CREATE OR REPLACE TASK BARCLAYS_HOL.LAB.LOAD_LAB_DATA_ALL
     WAREHOUSE = BARCLAYS_WH
